@@ -483,8 +483,11 @@ namespace CrazyKTV_SongMgr
                 mouseClickTimer.Dispose();
 
             NativeMethods.SystemSleepManagement.ResotreSleep();
-            this.Owner.Show();
-            this.Owner.TopMost = (Global.MainCfgAlwaysOnTop == "True") ? true : false;
+            if (this.Owner != null)
+            {
+                this.Owner.Show();
+                this.Owner.TopMost = (Global.MainCfgAlwaysOnTop == "True") ? true : false;
+            }
         }
 
         private void DShowForm_FormClosed(object sender, FormClosedEventArgs e)
