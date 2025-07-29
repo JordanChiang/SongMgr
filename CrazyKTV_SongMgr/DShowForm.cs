@@ -1,10 +1,12 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Forms;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using CrazyKTV_MediaKit.DirectShow.Controls;
 using CrazyKTV_MediaKit.DirectShow.MediaPlayers;
 
@@ -30,15 +32,38 @@ namespace CrazyKTV_SongMgr
         private bool sliderInit;
         private bool sliderDrag;
 
+        /// <summary>
+        /// The index of the monitor to use for fullscreen mode (0 = primary).
+        /// </summary>
+        public int FullScreenMonitorIndex { get; set; } = 0;
+
+        /// <summary>
+        /// If true, the form will attempt to go fullscreen when it loads.
+        /// </summary>
+        public bool StartInFullScreen { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether hotkeys (ESC, F11, etc.) are enabled.
+        /// </summary>
+        public bool HotkeysEnabled { get; set; } = true;
+
         public DShowForm()
         {
             InitializeComponent();
+            this.Load += DShowForm_Load;
+            this.KeyPreview = true;
+            this.KeyDown += DShowForm_KeyDown;
+            SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
         }
 
         public DShowForm(Form ParentForm, List<string> PlayerSongInfoList)
         {
             InitializeComponent();
-            this.MouseWheel += new MouseEventHandler(DShowForm_MouseWheel);
+            this.Load += DShowForm_Load;
+            this.MouseWheel += DShowForm_MouseWheel;
+            this.KeyPreview = true;
+            this.KeyDown += DShowForm_KeyDown;
+            SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
             this.Owner = ParentForm;
             SongId = PlayerSongInfoList[0];
@@ -177,6 +202,141 @@ namespace CrazyKTV_SongMgr
                 Global.PlayerRandomVideoList.RemoveAt(0);
 
             NativeMethods.SystemSleepManagement.PreventSleep(true);
+        }
+
+        private void DShowForm_Load(object sender, EventArgs e)
+        {
+            //if (StartInFullScreen)
+            {
+                // Use BeginInvoke to ensure the form is fully loaded and visible before toggling.
+                this.BeginInvoke(new Action(() =>
+                {
+                    ToggleFullscreen();
+                }));
+            }
+        }
+
+        private void DShowForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (!HotkeysEnabled)
+                return;
+
+            // F11 to toggle fullscreen should always work.
+            if (e.KeyCode == Keys.F11)
+            {
+                ToggleFullscreen();
+                return;
+            }
+
+            // Other hotkeys (like ESC to close) only work when in fullscreen mode.
+            if (this.FormBorderStyle == FormBorderStyle.None)
+            {
+                switch (e.KeyCode)
+                {
+                    // Terminate (close) the player window with ESC or Q.
+                    case Keys.Escape:
+                    case Keys.Q:
+                        this.Close();
+                        break;
+                }
+            }
+        }
+
+        private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
+        {
+            // If we are in fullscreen mode, we might need to move to a different monitor.
+            if (this.FormBorderStyle == FormBorderStyle.None)
+            {
+                Screen[] screens = Screen.AllScreens;
+                Screen targetScreen;
+
+                // Check if the originally requested screen index is still valid.
+                if (FullScreenMonitorIndex >= 0 && FullScreenMonitorIndex < screens.Length)
+                {
+                    targetScreen = screens[FullScreenMonitorIndex];
+                }
+                else
+                {
+                    // If the monitor index is now invalid (e.g., screen disconnected), default to the primary screen.
+                    targetScreen = Screen.PrimaryScreen;
+                }
+
+                // If the form is not on the target screen, move it.
+                if (Screen.FromControl(this).DeviceName != targetScreen.DeviceName)
+                {
+                    this.Bounds = targetScreen.Bounds;
+                }
+            }
+            RecreateMediaElement();
+        }
+        private void RecreateMediaElement()
+        {
+            if (mediaUriElement == null)
+            {
+                return;
+            }
+
+            // 1. Store playback state and all necessary properties.
+            bool wasPlaying = (mediaUriElement.MediaUriPlayer.PlayerState == PlayerState.Playing);
+            long currentPosition = mediaUriElement.MediaPosition;
+            Uri currentVideoSource = mediaUriElement.VideoSource;
+            Uri currentSource = mediaUriElement.Source;
+            double currentVolume = mediaUriElement.Volume;
+            int currentAudioTrack = mediaUriElement.AudioTrack;
+            int currentAudioChannel = mediaUriElement.AudioChannel;
+            int gainVolume = mediaUriElement.AudioAmplify;
+
+            // 2. Detach and dispose the old media element.
+            elementHost.Child = null;
+            mediaUriElement.Close();
+            mediaUriElement = null;
+
+            // 3. Create a new MediaUriElement and re-initialize it.
+            mediaUriElement = new MediaUriElement();
+            mediaUriElement.BeginInit();
+            elementHost.Child = mediaUriElement;
+            mediaUriElement.EndInit();
+
+            // 4. Re-apply all the initial settings from the constructor.
+            mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec";
+            mediaUriElement.VideoRenderer = (Global.MainCfgPlayerOutput == "1") ? CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.VideoMixingRenderer9 : CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.EnhancedVideoRenderer;
+            mediaUriElement.DeeperColor = (Global.MainCfgPlayerOutput == "1") ? false : true;
+            mediaUriElement.Stretch = System.Windows.Media.Stretch.Fill;
+            mediaUriElement.EnableAudioCompressor = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
+            mediaUriElement.EnableAudioProcessor = bool.Parse(Global.MainCfgPlayerEnableAudioProcessor);
+
+            mediaUriElement.MediaFailed += MediaUriElement_MediaFailed;
+            mediaUriElement.MediaEnded += MediaUriElement_MediaEnded;
+            mediaUriElement.MouseLeftButtonDown += mediaUriElement_MouseLeftButtonDown;
+            mediaUriElement.MediaUriPlayer.MediaPositionChanged += MediaUriPlayer_MediaPositionChanged;
+
+            // 5. Restore media sources and properties
+            mediaUriElement.VideoSource = currentVideoSource;
+            mediaUriElement.Source = currentSource;
+            mediaUriElement.Volume = currentVolume;
+            mediaUriElement.AudioAmplify = gainVolume;
+
+            // 6. Wait for it to open, then restore audio track, seek, and play
+            Task.Run(() =>
+            {
+                // Spin until the player is in the opened state.
+                SpinWait.SpinUntil(() => mediaUriElement.MediaUriPlayer.PlayerState == PlayerState.Opened, 5000); // 5 sec timeout
+
+                if (mediaUriElement.MediaUriPlayer.PlayerState == PlayerState.Opened)
+                {
+                    mediaUriElement.Dispatcher.Invoke(() =>
+                    {
+                        mediaUriElement.AudioTrack = currentAudioTrack;
+                        mediaUriElement.AudioChannel = currentAudioChannel;
+                        mediaUriElement.MediaPosition = currentPosition;
+
+                        if (wasPlaying)
+                        {
+                            mediaUriElement.Play();
+                        }
+                    });
+                }
+            });
         }
 
         private void DShowForm_MouseWheel(object sender, MouseEventArgs e)
@@ -437,17 +597,13 @@ namespace CrazyKTV_SongMgr
                 this.Hide();
                 this.FormBorderStyle = FormBorderStyle.Sizable;
                 this.TopMost = false;
-                this.Location = winLoc;
-                this.Width = winWidth;
-                this.Height = winHeight;
+                this.Bounds = new System.Drawing.Rectangle(winLoc, new System.Drawing.Size(winWidth, winHeight));
 
                 elementHost.Dock = DockStyle.None;
                 elementHost.Location = new System.Drawing.Point(12, 12);
                 elementHost.Width = eHostWidth;
                 elementHost.Height = eHostHeight;
                 elementHost.Anchor = AnchorStyles.Bottom | AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Left;
-                Player_ProgressTrackBar.TrackBarValue = Player_ProgressTrackBar.TrackBarValue;
-                Player_ProgressTrackBar.ProgressBarValue = Player_ProgressTrackBar.ProgressBarValue;
                 Cursor.Show();
                 this.Show();
             }
@@ -463,8 +619,25 @@ namespace CrazyKTV_SongMgr
                 this.Hide();
                 this.FormBorderStyle = FormBorderStyle.None;
                 this.TopMost = true;
-                this.WindowState = FormWindowState.Normal;
-                this.WindowState = FormWindowState.Maximized;
+
+                Screen[] screens = Screen.AllScreens;
+                Screen targetScreen;
+
+                // Check if the requested screen index is valid
+                if (FullScreenMonitorIndex >= 0 && FullScreenMonitorIndex < screens.Length)
+                {
+                    targetScreen = screens[FullScreenMonitorIndex];
+                }
+                else
+                {
+                    // If the monitor index is invalid (e.g., screen disconnected), default to primary.
+                    targetScreen = Screen.PrimaryScreen;
+                    FullScreenMonitorIndex = 0;
+                }
+
+                this.WindowState = FormWindowState.Normal; // Must be normal to change bounds
+                this.Bounds = targetScreen.Bounds;
+
                 elementHost.Dock = DockStyle.Fill;
                 Cursor.Hide();
                 this.Show();
@@ -473,6 +646,7 @@ namespace CrazyKTV_SongMgr
 
         private void DShowForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
             mediaUriElement.MediaUriPlayer.MediaPositionChanged -= MediaUriPlayer_MediaPositionChanged;
             mediaUriElement.Stop();
             mediaUriElement.Close();
