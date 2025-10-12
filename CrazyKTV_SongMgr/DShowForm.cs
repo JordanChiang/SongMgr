@@ -206,7 +206,7 @@ namespace CrazyKTV_SongMgr
 
         private void DShowForm_Load(object sender, EventArgs e)
         {
-            //if (StartInFullScreen)
+            if (StartInFullScreen)
             {
                 // Use BeginInvoke to ensure the form is fully loaded and visible before toggling.
                 this.BeginInvoke(new Action(() =>
