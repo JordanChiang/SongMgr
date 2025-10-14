@@ -2,7 +2,6 @@
 
 CrazyKTV 加歌程式是基於 CrazyKTV 卡拉OK點歌軟體的歌庫管理工具,主要因為 CrazyKTV 原本所採用的 GodLiu 加歌程式擁有許多問題且已停止開發,所以才重新撰寫了這個加歌程式。經過將近一年的修改,已將加歌程式所需要的功能幾乎都實作了出來,並且也對程式做了許多除錯及優化,以確保資料的正確性及使用效率,目前已足以拿來實際運用。
 
-![CrazyKTV 加歌程式](https://raw.githubusercontent.com/wiki/KenLuoTW/CrazyKTVSongMgr/images/CrazyKTV_SongMgr01.png)
 
 ## 功能特色
 * 在操作上衍生了原本 GodLiu 加歌程式的使用習慣,讓舊用戶無需學習即能輕易上手。
@@ -54,24 +53,17 @@ Windows 10 內建 .NET 4.6 版本,你也可以升級為 [Microsoft .NET Framewor
 6. 將 CrazyKTV.cfg 、 CrazyKTV_SongMgr.cfg 、 CrazySong.mdb 三個備份檔案拷貝至 CrazyKTV 資料夾
 7. 執行 CrazyKTV_SongMgr.exe 檔案 (加歌程式)
 
-**一般更新:**
-
-1. 開啟 CrazyKTV 資料夾
-2. 執行 CrazyKTV_WebUpdater.exe 檔案後即會自動更新所有檔案
 
 ## 功能需求或問題回報
-* 如果你有註冊 GitHub 帳號,可直接在 [Issues](https://github.com/KenLuoTW/CrazyKTVSongMgr/issues) 裡回報。
+* 如果你有註冊 GitHub 帳號,可直接在 [Issues](https://github.com/JordanChiang/SongMgr/issues) 裡回報。
 * 如果你沒有 GitHub 帳號,也可直接在 [CrazyKTV 臉書專頁](https://www.facebook.com/NewCrazyKTV) 裡回報。
 
 ## 編譯環境及建置
 * Windows 10
-* Microsoft Visual Studio Community 2015
+* Microsoft Visual Studio Community 2022
 
-**洐生此專案**
 
-網址: https://github.com/KenLuoTW/CrazyKTVSongMgr.git
-
-1. 開啟 Microsoft Visual Studio Community 2015
+1. 開啟 Microsoft Visual Studio Community 2022
 2. 在管理連接裡的本機 Git 儲存機制複製上面的網址
-3. 開啟 CrazyKTV_SongMgr.sln
+3. 開啟 SongMgr.sln
 
