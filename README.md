@@ -61,6 +61,7 @@ Windows 10 內建 .NET 4.6 版本,你也可以升級為 [Microsoft .NET Framewor
 ## 編譯環境及建置
 * Windows 10
 * Microsoft Visual Studio Community 2022
+* .NET Framework 4.8
 
 
 1. 開啟 Microsoft Visual Studio Community 2022
