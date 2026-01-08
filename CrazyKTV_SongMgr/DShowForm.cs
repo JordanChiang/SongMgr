@@ -156,6 +156,7 @@ namespace CrazyKTV_SongMgr
                         break;
                 }
                 ChannelValue = SongTrack;
+                mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[0];
             }
             else if (mediaUriElement.AudioStreams.Count >= 3)
             {
