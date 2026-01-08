@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CrazyKTV_SongMgr</RootNamespace>
     <AssemblyName>CrazyKTV_SongMgr</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -130,10 +130,14 @@
   <PropertyGroup>
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
+  <PropertyGroup>
+    <CrazyKTVLibPath>Libs\CrazyKTV_MediaKit.dll</CrazyKTVLibPath>
+    <CrazyKTVLibPath Condition="Exists('Codec\CrazyKTV_MediaKit.dll')">Codec\CrazyKTV_MediaKit.dll</CrazyKTVLibPath>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="CrazyKTV_MediaKit, Version=4.0.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>Codec\CrazyKTV_MediaKit.dll</HintPath>
+      <HintPath>$(CrazyKTVLibPath)</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="HtmlAgilityPack">

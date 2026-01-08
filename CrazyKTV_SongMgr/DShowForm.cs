@@ -97,6 +97,7 @@ namespace CrazyKTV_SongMgr
             mediaUriElement.MediaEnded += MediaUriElement_MediaEnded;
             mediaUriElement.MouseLeftButtonDown += mediaUriElement_MouseLeftButtonDown;
             mediaUriElement.MediaUriPlayer.MediaPositionChanged += MediaUriPlayer_MediaPositionChanged;
+            mediaUriElement.MediaOpened += mediaUriElement_MediaOpened;
             MediaPositionChangeTime = DateTime.Now;
 
             // 隨選視訊
@@ -131,77 +132,81 @@ namespace CrazyKTV_SongMgr
             mediaUriElement.AudioAmplify = GainVolume;
             Player_CurrentGainValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = GainVolume + " %");
 
-            SpinWait.SpinUntil(() => mediaUriElement.MediaUriPlayer.PlayerState == PlayerState.Opened);
+            NativeMethods.SystemSleepManagement.PreventSleep(true);
+        }
 
-            mediaUriElement.AudioTrackList = mediaUriElement.GetAudioTrackList();
+        private void mediaUriElement_MediaOpened(object sender, RoutedEventArgs e)
+        {
             string ChannelValue = string.Empty;
-            Player_CurrentChannelValue_Label.Text= string.Empty;
-            if (mediaUriElement.AudioTrackList.Count == 1)
+
+            Player_CurrentChannelValue_Label.Text = string.Empty;
+            if (mediaUriElement.AudioStreams.Count == 1)
             {
                 switch (SongTrack)
                 {
                     case "1":
-                        if (mediaUriElement.AudioChannel != 1) mediaUriElement.AudioChannel = 1;
+                        if (mediaUriElement.AudioChannel != 1) 
+                            mediaUriElement.AudioChannel = 1;
                         ChannelValue = "1";
                         break;
                     case "2":
-                        if (mediaUriElement.AudioChannel != 2) mediaUriElement.AudioChannel = 2;
+                        if (mediaUriElement.AudioChannel != 2) 
+                            mediaUriElement.AudioChannel = 2;
                         ChannelValue = "2";
                         break;
                 }
+                ChannelValue = SongTrack;
             }
-            else if (mediaUriElement.AudioTrackList.Count >=3 )
+            else if (mediaUriElement.AudioStreams.Count >= 3)
             {
                 mediaUriElement.AudioTrack = Convert.ToInt32(SongTrack);
                 ChannelValue = SongTrack;
-//                if (ChannelValue == SongTrack)
-//                    Player_CurrentChannelValue_Label.Text = "伴唱";
-//                else
-//                    Player_CurrentChannelValue_Label.Text = String.Format("音軌 ({0})", mediaUriElement.AudioTrack);
+                //                if (ChannelValue == SongTrack)
+                //                    Player_CurrentChannelValue_Label.Text = "伴唱";
+                //                else
+                //                    Player_CurrentChannelValue_Label.Text = String.Format("音軌 ({0})", mediaUriElement.AudioTrack);
 
             }
-            else if (mediaUriElement.AudioTrackList.Count > 1)
+            else if (mediaUriElement.AudioStreams.Count > 1)
             {
                 switch (SongTrack)
                 {
                     case "1":
                         if (Global.SongMgrSongTrackMode == "True")
                         {
-                            if (mediaUriElement.AudioTrackList.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioTrackList[0]) 
-                                mediaUriElement.AudioTrack = mediaUriElement.AudioTrackList[0];
+                            if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[0])
+                                mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[0];
                         }
                         else
                         {
-                            if (mediaUriElement.AudioTrackList.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioTrackList[1]) 
-                                mediaUriElement.AudioTrack = mediaUriElement.AudioTrackList[1];
+                            if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[1])
+                                mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[1];
                         }
                         ChannelValue = "1";
                         break;
                     case "2":
                         if (Global.SongMgrSongTrackMode == "True")
                         {
-                            if (mediaUriElement.AudioTrackList.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioTrackList[1])
-                                mediaUriElement.AudioTrack = mediaUriElement.AudioTrackList[1];
+                            if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[1])
+                                mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[1];
                         }
                         else
                         {
-                            if (mediaUriElement.AudioTrackList.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioTrackList[0]) 
-                                mediaUriElement.AudioTrack = mediaUriElement.AudioTrackList[0];
+                            if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[0])
+                                mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[0];
                         }
                         ChannelValue = "2";
-                        break;                        
+                        break;
                 }
             }
             // no text needed if we are processed
-            if(Player_CurrentChannelValue_Label.Text == "")
+            if (Player_CurrentChannelValue_Label.Text == "")
                 Player_CurrentChannelValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = (ChannelValue == SongTrack) ? "伴唱" : "人聲");
 
             Player_CurrentVolumeValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = Convert.ToInt32(mediaUriElement.Volume * 100).ToString());
 
             if (mediaUriElement.MediaUriPlayer.IsAudioOnly && Global.PlayerRandomVideoList.Count > 0)
                 Global.PlayerRandomVideoList.RemoveAt(0);
-
-            NativeMethods.SystemSleepManagement.PreventSleep(true);
         }
 
         private void DShowForm_Load(object sender, EventArgs e)
@@ -452,10 +457,10 @@ namespace CrazyKTV_SongMgr
         {
             string ChannelValue;
 
-            if (mediaUriElement.AudioTrackList.Count >= 3)
+            if (mediaUriElement.AudioStreams.Count >= 3)
             {
                 // lookup audio track 1 ~ n
-                if (mediaUriElement.AudioTrack < mediaUriElement.AudioTrackList.Count)
+                if (mediaUriElement.AudioTrack < mediaUriElement.AudioStreams.Count)
                 {
                     mediaUriElement.AudioTrack++;
                 }
@@ -471,17 +476,17 @@ namespace CrazyKTV_SongMgr
                 else
                     Player_CurrentChannelValue_Label.Text = String.Format("音軌 ({0})", UpdateSongTrack);
             }
-            else if (mediaUriElement.AudioTrackList.Count > 1)
+            else if (mediaUriElement.AudioStreams.Count > 1)
             {
-                if (mediaUriElement.AudioTrackList.IndexOf(mediaUriElement.AudioTrack) == 0)
+                if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) == 0)
                 {
-                    mediaUriElement.AudioTrack = mediaUriElement.AudioTrackList[1];
+                    mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[1];
                     ChannelValue = "2";
                     UpdateSongTrack = "2";
                 }
                 else
                 {
-                    mediaUriElement.AudioTrack = mediaUriElement.AudioTrackList[0];
+                    mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[0];
                     ChannelValue = "1";
                     UpdateSongTrack = "1";
                 }
@@ -502,7 +507,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (mediaUriElement.AudioTrackList.Count <= 2)
+            if (mediaUriElement.AudioStreams.Count <= 2)
             { 
  //               if (Player_CurrentChannelValue_Label.Text == "")
                     Player_CurrentChannelValue_Label.Text = (ChannelValue == SongTrack) ? "伴唱" : "人聲";
@@ -511,7 +516,7 @@ namespace CrazyKTV_SongMgr
             Player_UpdateChannel_Button.Enabled = (Player_CurrentChannelValue_Label.Text == "人聲") ? true : false;
 
             // always enable the button if multiple audio track
-            if (mediaUriElement.AudioTrackList.Count > 2)
+            if (mediaUriElement.AudioStreams.Count > 2)
                 Player_UpdateChannel_Button.Enabled = true;
         }
 
