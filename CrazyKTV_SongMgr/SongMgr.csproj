@@ -130,14 +130,10 @@
   <PropertyGroup>
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
-  <PropertyGroup>
-    <CrazyKTVLibPath>Libs\CrazyKTV_MediaKit.dll</CrazyKTVLibPath>
-    <CrazyKTVLibPath Condition="Exists('Codec\CrazyKTV_MediaKit.dll')">Codec\CrazyKTV_MediaKit.dll</CrazyKTVLibPath>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="CrazyKTV_MediaKit, Version=4.0.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(CrazyKTVLibPath)</HintPath>
+      <HintPath>Codec\CrazyKTV_MediaKit.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="HtmlAgilityPack">
