@@ -188,7 +188,6 @@ namespace CrazyKTV_SongMgr
                             if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[1])
                                 mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[1];
                         }
-                        ChannelValue = "1";
                         break;
                     case "2":
                         if (Global.SongMgrSongTrackMode == "True")
@@ -201,9 +200,9 @@ namespace CrazyKTV_SongMgr
                             if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[0])
                                 mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[0];
                         }
-                        ChannelValue = "2";
                         break;
                 }
+                ChannelValue = SongTrack;
             }
             // no text needed if we are processed
             if (Player_CurrentChannelValue_Label.Text == "")
@@ -531,18 +530,27 @@ namespace CrazyKTV_SongMgr
             }
             else if (mediaUriElement.AudioStreams.Count > 1)
             {
-                if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) == 0)
+                // 2 tracks only, toggle between them
+                if (mediaUriElement.AudioTrack == mediaUriElement.AudioStreams[0])
                 {
                     mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[1];
                     ChannelValue = "2";
-                    UpdateSongTrack = "2";
                 }
-                else
+                else//  (mediaUriElement.AudioTrack == mediaUriElement.AudioStreams[1])
                 {
                     mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[0];
                     ChannelValue = "1";
-                    UpdateSongTrack = "1";
                 }
+
+                if (Global.SongMgrSongTrackMode == "True")
+                {
+                    ChannelValue = (ChannelValue == "2") ? "2" : "1";
+                }
+                else
+                {
+                    ChannelValue = (ChannelValue == "1") ? "2" : "1";
+                }
+                UpdateSongTrack = ChannelValue;
             }
             else
             {
