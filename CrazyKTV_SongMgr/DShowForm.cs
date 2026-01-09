@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CrazyKTV_MediaKit.DirectShow.Controls;
 using CrazyKTV_MediaKit.DirectShow.MediaPlayers;
+using System.Data.OleDb;
 
 namespace CrazyKTV_SongMgr
 {
@@ -130,7 +131,11 @@ namespace CrazyKTV_SongMgr
 
             }
             mediaUriElement.AudioAmplify = GainVolume;
-            Player_CurrentGainValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = GainVolume + " %");
+            Player_CurrentVolValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = SongVolume + " %");
+
+            Player_VolumeSlider.TrackBarValue = Convert.ToInt32(SongVolume);
+            Player_VolumeSlider.ProgressBarValue = Player_VolumeSlider.TrackBarValue;
+            Player_VolumeSlider.TrackBarValueChanged += Player_VolumeSlider_ValueChanged;
 
             NativeMethods.SystemSleepManagement.PreventSleep(true);
         }
@@ -203,9 +208,7 @@ namespace CrazyKTV_SongMgr
             // no text needed if we are processed
             if (Player_CurrentChannelValue_Label.Text == "")
                 Player_CurrentChannelValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = (ChannelValue == SongTrack) ? "伴唱" : "人聲");
-
-            Player_CurrentVolumeValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = Convert.ToInt32(mediaUriElement.Volume * 100).ToString());
-
+         
             if (mediaUriElement.MediaUriPlayer.IsAudioOnly && Global.PlayerRandomVideoList.Count > 0)
                 Global.PlayerRandomVideoList.RemoveAt(0);
         }
@@ -372,7 +375,13 @@ namespace CrazyKTV_SongMgr
                     }
                 }
                 mediaUriElement.Volume = Math.Round(mediaUriElement.Volume, 2);
-                Player_CurrentVolumeValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = Convert.ToInt32(mediaUriElement.Volume * 100).ToString());
+                
+                int volPos = (int)(mediaUriElement.Volume * 100);
+                if (Player_VolumeSlider.TrackBarValue != volPos)
+                {
+                   Player_VolumeSlider.TrackBarValue = volPos;
+                   Player_VolumeSlider.ProgressBarValue = volPos;
+                }
             }
         }
 
@@ -454,6 +463,49 @@ namespace CrazyKTV_SongMgr
             Player_PlayControl_Button.Text = "播放";
         }
 
+        private void Player_UpdateVolume_Button_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (System.Data.OleDb.OleDbConnection conn = new System.Data.OleDb.OleDbConnection("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Global.CrazyktvDatabaseFile))
+                {
+                    conn.Open();
+                    string sql = "UPDATE ktv_Song SET Song_Volume = @Volume WHERE Song_Id = @SongId";
+                    using (System.Data.OleDb.OleDbCommand cmd = new System.Data.OleDb.OleDbCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Volume", Player_VolumeSlider.TrackBarValue.ToString());
+                        cmd.Parameters.AddWithValue("@SongId", SongId);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                
+                SongVolume = Player_VolumeSlider.TrackBarValue.ToString();
+                Player_UpdateVolume_Button.Enabled = false;
+
+                // Sync to MainForm DataGridView
+                if (this.Owner != null)
+                {
+                    System.Reflection.FieldInfo field = this.Owner.GetType().GetField("SongQuery_DataGridView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    if (field != null)
+                    {
+                        System.Windows.Forms.DataGridView grid = (System.Windows.Forms.DataGridView)field.GetValue(this.Owner);
+                        if (grid != null && int.TryParse(dvRowIndex, out int rowIndex) && rowIndex >= 0 && rowIndex < grid.Rows.Count)
+                        {
+                            if (grid.Columns.Contains("Song_Volume"))
+                            {
+                                grid.Rows[rowIndex].Cells["Song_Volume"].Value = SongVolume;
+                            }
+                        }
+                    }
+                }
+
+                this.Text = "【" + SongLang + "】" + SongSinger + " - " + SongSongName + " - 音量更新成功!";
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show("音量更新失敗: " + ex.Message, "錯誤", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+            }
+        }
         private void Player_SwithChannel_Button_Click(object sender, EventArgs e)
         {
             string ChannelValue;
@@ -668,6 +720,51 @@ namespace CrazyKTV_SongMgr
                 this.Owner.Show();
                 this.Owner.TopMost = (Global.MainCfgAlwaysOnTop == "True") ? true : false;
             }
+        }
+
+        private void Player_VolumeSlider_ValueChanged(object sender, EventArgs e)
+        {
+            int val = Player_VolumeSlider.TrackBarValue;
+            
+            // Enforce step of 5
+            int remainder = val % 5;
+            if (remainder != 0)
+            {
+                if (remainder >= 3) val += (5 - remainder);
+                else val -= remainder;
+
+                // Clamp to valid range
+                if (val > Player_VolumeSlider.Maximum) val = Player_VolumeSlider.Maximum;
+                if (val < Player_VolumeSlider.Minimum) val = Player_VolumeSlider.Minimum;
+
+                if (Player_VolumeSlider.TrackBarValue != val)
+                {
+                    Player_VolumeSlider.TrackBarValue = val;
+                    return; // Return to let the new event handle the update
+                }
+            }
+
+            double newVol = (double)val / 100.0;
+            if (mediaUriElement.Volume != newVol)
+            {
+                mediaUriElement.Volume = newVol;
+            }
+            Player_VolumeSlider.ProgressBarValue = val;
+            Player_CurrentVolValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = val.ToString() + " %");
+            if(val.ToString() == SongVolume)
+            {
+                Player_UpdateVolume_Button.Enabled = false;
+            }
+            else
+            {
+                Player_UpdateVolume_Button.Enabled = true;
+            }
+        }
+            
+        private void Player_VolumeSlider_Click(object sender, EventArgs e)
+        {
+             // Handled by ValueChanged, but kept for Designer compatibility or click-specific logic if needed.
+             // Currently ProgressTrackBar updates TrackBarValue on mouse moves/clicks which triggers ValueChanged.
         }
 
         private void DShowForm_FormClosed(object sender, FormClosedEventArgs e)
