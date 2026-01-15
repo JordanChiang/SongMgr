@@ -6974,6 +6974,7 @@
             this.MainCfg_PlayerRegAudioProcessor_Button.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             this.MainCfg_PlayerRegAudioProcessor_Button.UseVisualStyleBackColor = true;
             this.MainCfg_PlayerRegAudioProcessor_Button.Click += new System.EventHandler(this.MainCfg_PlayerRegAudioProcessor_Button_Click);
+            this.MainCfg_PlayerRegAudioProcessor_Button.Hide();
             // 
             // MainCfg_PlayerSetAudioProcessor_Button
             // 
@@ -6988,6 +6989,7 @@
             this.MainCfg_PlayerSetAudioProcessor_Button.Text = "設定";
             this.MainCfg_PlayerSetAudioProcessor_Button.UseVisualStyleBackColor = true;
             this.MainCfg_PlayerSetAudioProcessor_Button.Click += new System.EventHandler(this.MainCfg_PlayerSetAudioProcessor_Button_Click);
+            this.MainCfg_PlayerSetAudioProcessor_Button.Hide();
             // 
             // MainCfg_PlayerEnableAudioProcessor_CheckBox
             // 
@@ -7002,6 +7004,7 @@
             this.MainCfg_PlayerEnableAudioProcessor_CheckBox.Text = "啟用音效處理器 (ffdshow)";
             this.MainCfg_PlayerEnableAudioProcessor_CheckBox.UseVisualStyleBackColor = true;
             this.MainCfg_PlayerEnableAudioProcessor_CheckBox.CheckedChanged += new System.EventHandler(this.MainCfg_PlayerEnableAudioProcessor_CheckBox_CheckedChanged);
+            this.MainCfg_PlayerEnableAudioProcessor_CheckBox.Hide();
             // 
             // MainCfg_PlayerEnableAudioCompressor_CheckBox
             // 
