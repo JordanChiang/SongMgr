@@ -1066,7 +1066,10 @@ namespace CrazyKTV_SongMgr
                     
                     // Use Regex for case-insensitive replacement
                     SongPath = Regex.Replace(originalPath, Regex.Escape(SrcSongPath), DestSongPath, RegexOptions.IgnoreCase);
-                    
+
+                    if (!SongPath.EndsWith(@"\")) 
+                        SongPath += @"\";
+
                     // Debug: Log first few replacements to verify
                     if (processedCount <= 3)
                     {
