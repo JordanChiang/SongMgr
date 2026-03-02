@@ -401,7 +401,7 @@
   </Target>
   <Target Name="AfterBuild">
   </Target>
-    <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(PublishProtocol)' == ''">
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(PublishProtocol)' == ''">
     <!-- Only copy Codec files during build, not during publish -->
     <Exec Command="xcopy &quot;$(ProjectDir)$(CodecDir)&quot; &quot;$(TargetDir)$(CodecDir)\&quot; /E /I /Y&#xD;&#xA;" />
   </Target>
