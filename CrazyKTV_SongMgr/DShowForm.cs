@@ -119,6 +119,7 @@ namespace CrazyKTV_SongMgr
             mediaUriElement.Source = new Uri(SongFilePath);
 
             mediaUriElement.Volume = Math.Round(Convert.ToDouble(Global.MainCfgPlayerDefaultVolume) / 100, 2);
+            mediaUriElement.Volume = Math.Round(Convert.ToDouble(SongVolume) / 100, 2);
             // 音量平衡
             int GainVolume = Convert.ToInt32(SongVolume);
             if (!string.IsNullOrEmpty(SongReplayGain))
@@ -130,7 +131,7 @@ namespace CrazyKTV_SongMgr
                 GainVolume = Convert.ToInt32(basevolume * Math.Pow(10, GainDB / 20));
 
             }
-            mediaUriElement.AudioAmplify = GainVolume;
+            mediaUriElement.AudioAmplify = 100;// = GainVolume;
             Player_CurrentVolValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = SongVolume + " %");
 
             Player_VolumeSlider.TrackBarValue = Convert.ToInt32(SongVolume);
