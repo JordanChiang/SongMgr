@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
@@ -3328,7 +3328,7 @@ namespace CrazyKTV_SongMgr
         {
             int AudioCount = 0;
             string SongTrack;
-            string ffprobePath = Application.StartupPath + @"\FFmpeg\bin\ffprobe.exe";
+            string ffprobePath = Application.StartupPath + @"\FFmpeg\ffprobe.exe";
 
             ProcessStartInfo processStartInfo = new ProcessStartInfo(ffprobePath)
             {

@@ -1,4 +1,4 @@
-﻿using HtmlAgilityPack;
+using HtmlAgilityPack;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -402,7 +402,7 @@ namespace CrazyKTV_SongMgr
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
             List<string> list = new List<string>();
-            string ffprobePath = Application.StartupPath + @"\FFmpeg\bin\ffprobe.exe";
+            string ffprobePath = Application.StartupPath + @"\FFmpeg\ffprobe.exe";
 
             var query = from row in Global.SongDT.AsEnumerable()
                          where row.Field<byte>("Song_Track").Equals(1) ||

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -11,7 +11,7 @@ namespace CrazyKTV_SongMgr
 {
     class FFmpeg
     {
-        private static string FFmpegPath = Application.StartupPath + @"\FFmpeg\bin\ffmpeg.exe";
+        private static string FFmpegPath = Application.StartupPath + @"\FFmpeg\ffmpeg.exe";
 
         private static StreamReader RunFFmpeg(string fileName, string arguments)
         {
