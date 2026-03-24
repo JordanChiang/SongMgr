@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -793,7 +793,7 @@ namespace CrazyKTV_SongMgr
                         {
                             var tasks = new List<Task>()
                             {
-                                Task.Factory.StartNew(() => SongQuery_SongUpdate(UpdateList, UpdateDT))
+                                Task.Factory.StartNew(() => SongQuery_SongUpdate(UpdateList, UpdateDT, false))
                             };
 
                             Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>

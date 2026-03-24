@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using Microsoft.Win32;
@@ -237,13 +237,19 @@ namespace CrazyKTV_SongMgr
                 return;
             }
 
-            // Other hotkeys (like ESC to close) only work when in fullscreen mode.
+            // ESC to close the player window should always work.
+            if (e.KeyCode == Keys.Escape)
+            {
+                this.Close();
+                return;
+            }
+
+            // Other hotkeys only work when in fullscreen mode.
             if (this.FormBorderStyle == FormBorderStyle.None)
             {
                 switch (e.KeyCode)
                 {
-                    // Terminate (close) the player window with ESC or Q.
-                    case Keys.Escape:
+                    // Terminate (close) the player window with Q.
                     case Keys.Q:
                         this.Close();
                         break;

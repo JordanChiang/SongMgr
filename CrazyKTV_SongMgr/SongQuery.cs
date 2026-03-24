@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
@@ -712,7 +712,7 @@ namespace CrazyKTV_SongMgr
 
         #region --- SongQuery 更新歌曲 ---
 
-        private void SongQuery_SongUpdate(List<string> UpdateList, DataTable UpdateDT)
+        private void SongQuery_SongUpdate(List<string> UpdateList, DataTable UpdateDT, bool RefreshStatistics = true)
         {
             if (UpdateList.Count <= 0) return;
 
@@ -1196,12 +1196,14 @@ namespace CrazyKTV_SongMgr
 
             int MaxDigitCode;
             if (Global.SongMgrMaxDigitCode == "1") { MaxDigitCode = 5; } else { MaxDigitCode = 6; }
-            var tasks = new List<Task>()
+            var tasks = new List<Task>();
+            tasks.Add(Task.Factory.StartNew(() => CommonFunc.GetMaxSongId(MaxDigitCode)));
+            tasks.Add(Task.Factory.StartNew(() => CommonFunc.GetUnusedSongId(MaxDigitCode)));
+
+            if (RefreshStatistics)
             {
-                Task.Factory.StartNew(() => CommonFunc.GetMaxSongId(MaxDigitCode)),
-                Task.Factory.StartNew(() => CommonFunc.GetUnusedSongId(MaxDigitCode)),
-                Task.Factory.StartNew(() => Common_GetSongStatisticsTask())
-            };
+                tasks.Add(Task.Factory.StartNew(() => Common_GetSongStatisticsTask()));
+            }
 
             this.BeginInvoke((Action)delegate()
             {
