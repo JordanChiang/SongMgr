@@ -221,6 +221,9 @@ namespace CrazyKTV_SongMgr
                 CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerDefaultVolume", null, false)
             };
 
+            // 音量正規化 top-level tab (programmatic – added to MainTabControl)
+            InitSongNormVolTab();
+
             foreach (TabPage MainTabPage in MainTabControl.TabPages)
             {
                 MainTabPage.Show();
@@ -712,6 +715,11 @@ namespace CrazyKTV_SongMgr
                 case "Cashbox_TabPage":
                     i = 5;
                     Cashbox_QueryValue_TextBox.Focus();
+                    break;
+                case "NormVol_TabPage":
+                    // Refresh 基準音量 label in case the user changed it in SongMaintenance
+                    NormVol_BaseVol_Label.Text = Global.SongMaintenanceReplayGainVolume;
+                    NormVol_Singer_TextBox.Focus();
                     break;
             }
 

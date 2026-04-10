@@ -251,6 +251,9 @@
     <Compile Include="SongQueryDataGridView.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="SongNormVol.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <EmbeddedResource Include="DetectUnusedFileForm.resx">
       <DependentUpon>DetectUnusedFileForm.cs</DependentUpon>
     </EmbeddedResource>
