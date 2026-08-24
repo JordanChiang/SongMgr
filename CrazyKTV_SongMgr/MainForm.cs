@@ -503,9 +503,9 @@ namespace CrazyKTV_SongMgr
             // 檢查解碼器登錄狀態
             RegistryKey regKey = Registry.ClassesRoot.OpenSubKey("CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\{B86F6BEE-E7C0-4D03-8D52-5B4430CF6C88}");
             Global.FFDShowAudioProcessorRegistered = (regKey == null) ? false : true;
-            MainCfg_PlayerEnableAudioProcessor_CheckBox.Enabled = (Global.MainCfgPlayerCore == "1" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec\ffdshow\ffdshow.ax")) ? true : false;
-            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor == "True" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec\ffdshow\ffdshow.ax")) ? true : false;
-            MainCfg_PlayerRegAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && !Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec\ffdshow\ffdshow.ax")) ? true : false;
+            MainCfg_PlayerEnableAudioProcessor_CheckBox.Enabled = (Global.MainCfgPlayerCore == "1" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
+            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor == "True" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
+            MainCfg_PlayerRegAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && !Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
             if (!Global.FFDShowAudioProcessorRegistered)
             {
                 if (Global.MainCfgPlayerEnableAudioProcessor == "True")

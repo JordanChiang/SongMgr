@@ -279,17 +279,24 @@ namespace CrazyKTV_SongMgr
             MainTabControl.TabPages.Add(NormVol_TabPage);
         }
 
-        private void NormVol_AppendLog(string text)
+        private void NormVol_AppendLog(string text, Color? color = null)
         {
+            Console.WriteLine(text);
             if (NormVol_Log_TextBox == null) return;
             if (NormVol_Log_TextBox.InvokeRequired)
             {
-                NormVol_Log_TextBox.Invoke((Action)(() => NormVol_AppendLog(text)));
+                NormVol_Log_TextBox.Invoke((Action)(() => NormVol_AppendLog(text, color)));
                 return;
             }
 
             string timestamp = DateTime.Now.ToString("HH:mm:ss");
+            Color textColor = color ?? ((text.Contains("失敗") || text.Contains("錯誤")) ? Color.Yellow : Color.LightGreen);
+
+            NormVol_Log_TextBox.SelectionStart = NormVol_Log_TextBox.TextLength;
+            NormVol_Log_TextBox.SelectionLength = 0;
+            NormVol_Log_TextBox.SelectionColor = textColor;
             NormVol_Log_TextBox.AppendText(string.Format("[{0}] {1}\r\n", timestamp, text));
+            NormVol_Log_TextBox.SelectionColor = NormVol_Log_TextBox.ForeColor;
             NormVol_Log_TextBox.SelectionStart = NormVol_Log_TextBox.Text.Length;
             NormVol_Log_TextBox.ScrollToCaret();
         }
@@ -474,7 +481,9 @@ namespace CrazyKTV_SongMgr
 
             if (!File.Exists(filePath))
             {
-                NormVol_Status_Label.Text = "【" + songFile + "】檔案不存在。";
+                string msg = "【" + songFile + "】檔案不存在。";
+                NormVol_Status_Label.Text = msg;
+                NormVol_AppendLog(string.Format("播放失敗: {0} ({1})", msg, filePath));
                 return;
             }
 
@@ -534,7 +543,7 @@ namespace CrazyKTV_SongMgr
             NormVol_Status_Label.Text     = string.Format("正在分析音量 (基準音量={0})，請稍待...", baseVolume);
 
             NormVol_Log_TextBox.Clear();
-            NormVol_AppendLog(string.Format("=== 開始音量分析 (基準音量: {0}) ===", baseVolume));
+            NormVol_AppendLog(string.Format("=== 開始音量分析 (基準音量: {0}) ===", baseVolume), Color.Cyan);
 
             // Snapshot row data
             bool fastMode = NormVol_FastMode_CheckBox.Checked;
@@ -569,34 +578,50 @@ namespace CrazyKTV_SongMgr
                     Stopwatch sw = Stopwatch.StartNew();
                     string sugVol   = "";
                     string filePath = Path.Combine(r.path, r.file);
+                    string errorMsg = "";
 
-                    // Compute seekArgs in background to avoid UI hang
-                    string seekArgs;
-                    if (fastMode)
+                    if (!File.Exists(filePath))
                     {
-                        seekArgs = "-ss 30 -t 60";
+                        errorMsg = "檔案不存在 (" + filePath + ")";
                     }
                     else
                     {
-                        double dur = File.Exists(filePath) ? FFmpeg.GetFileDuration(filePath) : 0;
-                        seekArgs = (dur > 15)
-                            ? string.Format(System.Globalization.CultureInfo.InvariantCulture, "-ss 5 -t {0:F2}", Math.Max(dur - 10, 1))
-                            : "";
-                    }
+                        // Compute seekArgs in background to avoid UI hang
+                        string seekArgs;
+                        if (fastMode)
+                        {
+                            seekArgs = "-ss 30 -t 60";
+                        }
+                        else
+                        {
+                            double dur = FFmpeg.GetFileDuration(filePath);
+                            seekArgs = (dur > 15)
+                                ? string.Format(System.Globalization.CultureInfo.InvariantCulture, "-ss 5 -t {0:F2}", Math.Max(dur - 10, 1))
+                                : "";
+                        }
 
-                    if (File.Exists(filePath))
-                    {
                         try
                         {
                             // Use Song_Track + seek args (fast/full mode)
                             FFmpeg.SongVolumeValue sv = FFmpeg.GetSongVolume(filePath, r.track, seekArgs);
-                            sugVol = FFmpeg.CalSongVolume(baseVolume, sv.GainDB);
-                            // Clamp suggested volume to valid range [5, 100]
-                            int volClamped;
-                            if (int.TryParse(sugVol, out volClamped))
-                                sugVol = Math.Max(5, Math.Min(100, volClamped)).ToString();
+                            if (sv.Success)
+                            {
+                                sugVol = FFmpeg.CalSongVolume(baseVolume, sv.GainDB);
+                                // Clamp suggested volume to valid range [5, 100]
+                                int volClamped;
+                                if (int.TryParse(sugVol, out volClamped))
+                                    sugVol = Math.Max(5, Math.Min(100, volClamped)).ToString();
+                            }
+                            else
+                            {
+                                errorMsg = string.IsNullOrEmpty(sv.ErrorMessage) ? "分析失敗" : sv.ErrorMessage;
+                            }
                         }
-                        catch { sugVol = ""; }
+                        catch (Exception ex)
+                        {
+                            errorMsg = "分析失敗: " + ex.Message;
+                            sugVol = "";
+                        }
                     }
                     sw.Stop();
 
@@ -605,11 +630,21 @@ namespace CrazyKTV_SongMgr
                     done++;
                     int doneCapture = done;
 
-                    string logMsg = string.Format(
-                        "[{0}] {1} ({2}) | 音軌:{3} | 建議:{4} | 耗時:{5:F2}s",
-                        r.lang, r.name, r.singer, r.track,
-                        sugVolCapture,
-                        sw.Elapsed.TotalSeconds);
+                    string logMsg;
+                    if (!string.IsNullOrEmpty(errorMsg))
+                    {
+                        logMsg = string.Format(
+                            "[{0}] {1} ({2}) | 音軌:{3} | 失敗: {4}",
+                            r.lang, r.name, r.singer, r.track, errorMsg);
+                    }
+                    else
+                    {
+                        logMsg = string.Format(
+                            "[{0}] {1} ({2}) | 音軌:{3} | 建議:{4} | 耗時:{5:F2}s",
+                            r.lang, r.name, r.singer, r.track,
+                            sugVolCapture,
+                            sw.Elapsed.TotalSeconds);
+                    }
 
                     this.BeginInvoke((Action)delegate ()
                     {

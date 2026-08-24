@@ -11,8 +11,8 @@ namespace CrazyKTV_SongMgr
 {
     class FFmpeg
     {
-        private static string FFmpegPath  = Application.StartupPath + @"\FFmpeg\ffmpeg.exe";
-        private static string FFprobePath = Application.StartupPath + @"\FFmpeg\ffprobe.exe";
+        private static string FFmpegPath  = Application.StartupPath + @"\Tools\ffmpeg.exe";
+        private static string FFprobePath = Application.StartupPath + @"\Tools\ffprobe.exe";
 
         private static StreamReader RunFFmpeg(string fileName, string arguments)
         {
@@ -72,6 +72,8 @@ namespace CrazyKTV_SongMgr
         public class SongVolumeValue
         {
             public double GainDB { get; set; }
+            public bool Success { get; set; }
+            public string ErrorMessage { get; set; }
         }
 
         public static SongVolumeValue GetSongVolume(string file)
@@ -96,88 +98,104 @@ namespace CrazyKTV_SongMgr
         /// </summary>
         public static SongVolumeValue GetSongVolume(string file, int track, string seekArgs = "")
         {
-            SongVolumeValue result = new SongVolumeValue { GainDB = 0 };
+            SongVolumeValue result = new SongVolumeValue { GainDB = 0, Success = false, ErrorMessage = "" };
 
-            bool trackMode = (Global.SongMgrSongTrackMode == "True");
-
-            // Build audio filter chain mirroring mediaUriElement_MediaOpened:
-            string afFilter;
-            string mapArg;
-
-            if (track <= 2)
+            if (!File.Exists(FFmpegPath))
             {
-                // Could be 1-stream (L/R channel) or 2-stream.
-                // For 1-stream: track 1 = left accomp, track 2 = right accomp (both ignore TrackMode).
-                // For 2-stream: TrackMode reverses which stream is accompaniment.
-                //
-                // We can't probe stream count here, so apply the 2-stream heuristic:
-                // if TrackMode=True  → track1→stream[0], track2→stream[1]
-                // if TrackMode=False → track1→stream[1], track2→stream[0]
-                //
-                // For true single-stream L/R files, the pan approach below is equivalent:
-                // stream[0] ≡ left channel, so TrackMode=True track1→stream[0] = left = same result.
-                if (track == 1)
-                {
-                    if (trackMode)
-                    {
-                        // Accompaniment on stream[0] / left channel
-                        mapArg   = "";                                      // use default (first) stream
-                        afFilter = "pan=mono|c0=c0,replaygain";             // left channel for 1-stream
-                    }
-                    else
-                    {
-                        // Accompaniment on stream[1] / right channel
-                        mapArg   = "-map 0:a:1";                            // try stream[1] for 2-stream
-                        afFilter = "replaygain";
-                        // Note: if this is truly a 1-stream file the -map will fail gracefully
-                        // (FFmpeg returns 0 dB gain which CalSongVolume handles safely).
-                    }
-                }
-                else // track == 2
-                {
-                    if (trackMode)
-                    {
-                        // Accompaniment on stream[1] / right channel
-                        mapArg   = "-map 0:a:1";
-                        afFilter = "replaygain";
-                    }
-                    else
-                    {
-                        // Accompaniment on stream[0] / left channel
-                        mapArg   = "-map 0:a:0";
-                        afFilter = "replaygain";
-                    }
-                }
-            }
-            else
-            {
-                // 3+ streams: player uses AudioTrack = SongTrack (1-based track number).
-                // FFmpeg -map 0:a:N is 0-based, and the player's AudioTrack integer
-                // directly corresponds to stream index, so use track - 1.
-                mapArg   = string.Format("-map 0:a:{0}", track - 1);
-                afFilter = "replaygain";
+                result.ErrorMessage = "找不到 FFmpeg 執行檔";
+                return result;
             }
 
-            // seekArgs go BEFORE -i for fast input seeking (e.g. "-ss 30 -t 60")
-            string args = string.Format(
-                "{0} -i \"{1}\" {2} -af \"{3}\" -vn -sn -dn -f null /dev/null",
-                seekArgs, file, mapArg, afFilter).TrimStart();
-
-            using (StreamReader sr = RunFFmpeg(FFmpegPath, args))
+            try
             {
-                if (sr != null)
+                bool trackMode = (Global.SongMgrSongTrackMode == "True");
+
+                // Build audio filter chain mirroring mediaUriElement_MediaOpened:
+                string afFilter;
+                string mapArg;
+
+                if (track <= 2)
                 {
+                    if (track == 1)
+                    {
+                        if (trackMode)
+                        {
+                            // Accompaniment on stream[0] / left channel
+                            mapArg   = "";                                      // use default (first) stream
+                            afFilter = "pan=mono|c0=c0,replaygain";             // left channel for 1-stream
+                        }
+                        else
+                        {
+                            // Accompaniment on stream[1] / right channel
+                            mapArg   = "-map 0:a:1";                            // try stream[1] for 2-stream
+                            afFilter = "replaygain";
+                        }
+                    }
+                    else // track == 2
+                    {
+                        if (trackMode)
+                        {
+                            // Accompaniment on stream[1] / right channel
+                            mapArg   = "-map 0:a:1";
+                            afFilter = "replaygain";
+                        }
+                        else
+                        {
+                            // Accompaniment on stream[0] / left channel
+                            mapArg   = "-map 0:a:0";
+                            afFilter = "replaygain";
+                        }
+                    }
+                }
+                else
+                {
+                    // 3+ streams: player uses AudioTrack = SongTrack (1-based track number).
+                    mapArg   = string.Format("-map 0:a:{0}", track - 1);
+                    afFilter = "replaygain";
+                }
+
+                // seekArgs go BEFORE -i for fast input seeking (e.g. "-ss 30 -t 60")
+                string args = string.Format(
+                    "{0} -i \"{1}\" {2} -af \"{3}\" -vn -sn -dn -f null /dev/null",
+                    seekArgs, file, mapArg, afFilter).TrimStart();
+
+                using (StreamReader sr = RunFFmpeg(FFmpegPath, args))
+                {
+                    if (sr == null)
+                    {
+                        result.ErrorMessage = "FFmpeg 執行失敗";
+                        return result;
+                    }
+
                     double GainDB = 0;
+                    bool matched = false;
                     Regex gainline = new Regex(@"\[Parsed_replaygain_\d+.+?\] track_gain =");
 
                     while (!sr.EndOfStream)
                     {
                         string line = sr.ReadLine();
-                        if (gainline.IsMatch(line))
+                        if (line != null && gainline.IsMatch(line))
+                        {
                             GainDB = Convert.ToDouble(Regex.Replace(line, @"\[.+?\]|track_gain =|dB|/s", ""));
+                            matched = true;
+                        }
                     }
-                    result.GainDB = Math.Round(GainDB, 2);
+
+                    if (matched)
+                    {
+                        result.GainDB = Math.Round(GainDB, 2);
+                        result.Success = true;
+                    }
+                    else
+                    {
+                        result.ErrorMessage = "無法讀取重播增益 (FFmpeg 分析失敗或無音軌)";
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.ErrorMessage = ex.Message;
             }
             return result;
         }

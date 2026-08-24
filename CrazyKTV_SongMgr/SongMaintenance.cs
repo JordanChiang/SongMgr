@@ -402,7 +402,7 @@ namespace CrazyKTV_SongMgr
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
             List<string> list = new List<string>();
-            string ffprobePath = Application.StartupPath + @"\FFmpeg\ffprobe.exe";
+            string ffprobePath = Application.StartupPath + @"\Tools\ffprobe.exe";
 
             var query = from row in Global.SongDT.AsEnumerable()
                          where row.Field<byte>("Song_Track").Equals(1) ||
@@ -976,6 +976,18 @@ namespace CrazyKTV_SongMgr
         #region --- 歌曲路徑變更 ---
 
 
+        private string NormalizeDirectoryPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return "";
+            string normalized = path.Trim().Replace('/', '\\');
+            normalized = Regex.Replace(normalized, @"(?<!^)\\{2,}", @"\");
+            if (!normalized.EndsWith(@"\"))
+            {
+                normalized += @"\";
+            }
+            return normalized;
+        }
+
         private void SongMaintenance_SongPathChange_Button_Click(object sender, EventArgs e)
         {
             if (SongMaintenance_SongPathChange_Button.Text == "瀏覽")
@@ -985,28 +997,37 @@ namespace CrazyKTV_SongMgr
 
                 if (opd.ShowDialog() == DialogResult.OK && opd.SelectedPath.Length > 0)
                 {
-                    SongMaintenance_DestSongPath_TextBox.Text = opd.SelectedPath;
+                    SongMaintenance_DestSongPath_TextBox.Text = NormalizeDirectoryPath(opd.SelectedPath);
                     SongMaintenance_SongPathChange_Button.Text = "變更";
                 }
             }
             else
             {
-                if (SongMaintenance_SrcSongPath_TextBox.Text == "")
+                string rawSrcPath = SongMaintenance_SrcSongPath_TextBox.Text.Trim();
+                string rawDestPath = SongMaintenance_DestSongPath_TextBox.Text.Trim();
+
+                if (string.IsNullOrEmpty(rawSrcPath))
                 {
                     SongMaintenance_Tooltip_Label.Text = "你尚未輸入【原始路徑】!";
                 }
+                else if (string.IsNullOrEmpty(rawDestPath))
+                {
+                    SongMaintenance_Tooltip_Label.Text = "你尚未選擇【目標路徑】!";
+                }
                 else
                 {
+                    string SrcSongPath = NormalizeDirectoryPath(rawSrcPath);
+                    string DestSongPath = NormalizeDirectoryPath(rawDestPath);
+
+                    SongMaintenance_SrcSongPath_TextBox.Text = SrcSongPath;
+                    SongMaintenance_DestSongPath_TextBox.Text = DestSongPath;
+
                     if (MessageBox.Show("你確定要變更歌曲路徑嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         Global.TimerStartTime = DateTime.Now;
                         Global.TotalList = new List<int>() { 0, 0, 0, 0 };
                         SongMaintenance.CreateSongDataTable();
                         Common_SwitchSetUI(false);
-
-                        string SrcSongPath = SongMaintenance_SrcSongPath_TextBox.Text;
-                        if (!SrcSongPath.EndsWith(@"\")) SrcSongPath += @"\";
-                        string DestSongPath = SongMaintenance_DestSongPath_TextBox.Text;
 
                         var tasks = new List<Task>()
                         {
@@ -1036,8 +1057,8 @@ namespace CrazyKTV_SongMgr
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
             string SongPath = "";
-            string SrcSongPath = (string)ObjSrcSongPath;
-            string DestSongPath = (string)ObjDestSongPath;
+            string SrcSongPath = NormalizeDirectoryPath((string)ObjSrcSongPath);
+            string DestSongPath = NormalizeDirectoryPath((string)ObjDestSongPath);
             List<string> list = new List<string>();
 
             // Debug: Log total records in Global.SongDT

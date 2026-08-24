@@ -3328,7 +3328,7 @@ namespace CrazyKTV_SongMgr
         {
             int AudioCount = 0;
             string SongTrack;
-            string ffprobePath = Application.StartupPath + @"\FFmpeg\ffprobe.exe";
+            string ffprobePath = Application.StartupPath + @"\Tools\ffprobe.exe";
 
             ProcessStartInfo processStartInfo = new ProcessStartInfo(ffprobePath)
             {

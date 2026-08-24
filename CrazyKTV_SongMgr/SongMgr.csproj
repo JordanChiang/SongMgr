@@ -133,7 +133,7 @@
   <ItemGroup>
     <Reference Include="CrazyKTV_MediaKit, Version=4.0.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>Codec\CrazyKTV_MediaKit.dll</HintPath>
+      <HintPath>Codec_x86\CrazyKTV_MediaKit.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="HtmlAgilityPack">
@@ -288,13 +288,13 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <None Include="FFmpeg\ffmpeg.exe">
+    <None Include="Tools\ffmpeg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="FFmpeg\ffplay.exe">
+    <None Include="Tools\ffplay.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="FFmpeg\ffprobe.exe">
+    <None Include="Tools\ffprobe.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Resources\UAC.png" />
@@ -346,7 +346,7 @@
   </ItemGroup>
   <ItemGroup />
   <PropertyGroup Condition="'$(Platform)' == 'x86' Or '$(Platform)' == '' Or '$(Platform)' == 'Any CPU'">
-    <CodecDir>Codec</CodecDir>
+    <CodecDir>Codec_x86</CodecDir>
   </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

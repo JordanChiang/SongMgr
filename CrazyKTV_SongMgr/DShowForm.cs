@@ -87,7 +87,7 @@ namespace CrazyKTV_SongMgr
             elementHost.Child = mediaUriElement;
             mediaUriElement.EndInit();
 
-            mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec";
+            mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec_x86";
             mediaUriElement.VideoRenderer = (Global.MainCfgPlayerOutput == "1") ? CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.VideoMixingRenderer9 : CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.EnhancedVideoRenderer;
             mediaUriElement.DeeperColor = (Global.MainCfgPlayerOutput == "1") ? false : true;
             mediaUriElement.Stretch = System.Windows.Media.Stretch.Fill;
@@ -313,7 +313,7 @@ namespace CrazyKTV_SongMgr
             mediaUriElement.EndInit();
 
             // 4. Re-apply all the initial settings from the constructor.
-            mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec";
+            mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec_x86";
             mediaUriElement.VideoRenderer = (Global.MainCfgPlayerOutput == "1") ? CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.VideoMixingRenderer9 : CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.EnhancedVideoRenderer;
             mediaUriElement.DeeperColor = (Global.MainCfgPlayerOutput == "1") ? false : true;
             mediaUriElement.Stretch = System.Windows.Media.Stretch.Fill;
