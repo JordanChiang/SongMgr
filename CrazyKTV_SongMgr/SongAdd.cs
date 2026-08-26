@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -485,6 +485,14 @@ namespace CrazyKTV_SongMgr
                     SongAdd_DataGridView.Focus();
                     SongAdd_Add_Button.Enabled = SongAdd_CheckSongAddStatus();
                 }
+                else
+                {
+                    if (SongAnalysis.SongAnalysisDT != null)
+                    {
+                        SongAddSong.SongAddDT = SongAnalysis.SongAnalysisDT.Copy();
+                        System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongAdd_SongAnalysisTask] Preserved SongAddDT with {SongAddSong.SongAddDT.Rows.Count} rows for Mode 4");
+                    }
+                }
 
                 Global.TimerEndTime = DateTime.Now;
 
@@ -572,37 +580,66 @@ namespace CrazyKTV_SongMgr
 
         private void SongAdd_SongAddTask()
         {
-            Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-
-            this.BeginInvoke((Action)delegate()
+            try
             {
-                SongAddSong.SongAddDT = new DataTable();
-                SongAddSong.SongAddDT = SongAdd_DataGridView.DataSource as DataTable;
-            });
+                System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongAdd_SongAddTask] Start execution");
+                Thread.CurrentThread.Priority = ThreadPriority.Lowest;
 
-            SongAddSong.SongAddValueList = new List<string>();
-            SongAddSong.ChorusSingerList = new List<string>();
-            Global.TotalList = new List<int>() { 0, 0, 0, 0, 0 };
-            SongAddSong.CreateSongDataTable();
-
-            CommonFunc.GetMaxSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
-            CommonFunc.GetUnusedSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
-
-            int count = SongAddSong.SongAddDT.Rows.Count;
-
-            for (int i = 0; i < count; i++)
-            {
-                SongAddSong.StartAddSong(i);
-
-                this.BeginInvoke((Action)delegate()
+                if (this.InvokeRequired)
                 {
-                    SongAdd_Tooltip_Label.Text = "已成功加入 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首...";
-                    if (Global.SongMgrSongAddMode == "4")
+                    this.Invoke((Action)delegate()
                     {
-                        SongQuery_QueryStatus_Label.Text = SongAdd_Tooltip_Label.Text;
-                        SongMgrCfg_Tooltip_Label.Text = SongAdd_Tooltip_Label.Text;
+                        SongAddSong.SongAddDT = (SongAdd_DataGridView.DataSource as DataTable)?.Copy();
+                    });
+                }
+                else
+                {
+                    SongAddSong.SongAddDT = (SongAdd_DataGridView.DataSource as DataTable)?.Copy();
+                }
+
+                if (SongAddSong.SongAddDT == null || SongAddSong.SongAddDT.Rows.Count == 0)
+                {
+                    if (SongAnalysis.SongAnalysisDT != null)
+                    {
+                        SongAddSong.SongAddDT = SongAnalysis.SongAnalysisDT.Copy();
                     }
-                });
+                    else
+                    {
+                        SongAddSong.SongAddDT = new DataTable();
+                    }
+                }
+
+                System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongAdd_SongAddTask] Prepared SongAddDT with {SongAddSong.SongAddDT.Rows.Count} rows");
+
+                SongAddSong.SongAddValueList = new List<string>();
+                SongAddSong.ChorusSingerList = new List<string>();
+                Global.TotalList = new List<int>() { 0, 0, 0, 0, 0 };
+                SongAddSong.CreateSongDataTable();
+
+                CommonFunc.GetMaxSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
+                CommonFunc.GetUnusedSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
+
+                int count = SongAddSong.SongAddDT.Rows.Count;
+
+                for (int i = 0; i < count; i++)
+                {
+                    SongAddSong.StartAddSong(i);
+
+                    this.BeginInvoke((Action)delegate()
+                    {
+                        SongAdd_Tooltip_Label.Text = "已成功加入 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首...";
+                        if (Global.SongMgrSongAddMode == "4")
+                        {
+                            SongQuery_QueryStatus_Label.Text = SongAdd_Tooltip_Label.Text;
+                            SongMgrCfg_Tooltip_Label.Text = SongAdd_Tooltip_Label.Text;
+                        }
+                    });
+                }
+                System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongAdd_SongAddTask] StartAddSong completed for {count} rows");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongAdd_SongAddTask EXCEPTION] {ex}");
             }
 
             string NextSingerId = string.Empty;

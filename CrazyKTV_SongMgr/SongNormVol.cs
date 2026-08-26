@@ -290,7 +290,7 @@ namespace CrazyKTV_SongMgr
             }
 
             string timestamp = DateTime.Now.ToString("HH:mm:ss");
-            Color textColor = color ?? ((text.Contains("失敗") || text.Contains("錯誤")) ? Color.Yellow : Color.LightGreen);
+            Color textColor = color ?? ((text.Contains("失敗") || text.Contains("錯誤")) ? Color.Red : Color.LightGreen);
 
             NormVol_Log_TextBox.SelectionStart = NormVol_Log_TextBox.TextLength;
             NormVol_Log_TextBox.SelectionLength = 0;

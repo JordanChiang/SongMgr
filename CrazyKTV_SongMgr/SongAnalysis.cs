@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
@@ -103,7 +103,7 @@ namespace CrazyKTV_SongMgr
                     foreach (DataRow row in dt.AsEnumerable())
                     {
                         SongDataLowCaseList.Add(row["Song_Lang"].ToString() + "|" + row["Song_Singer"].ToString().ToLower() + "|" + row["Song_SongName"].ToString().ToLower() + "|" + row["Song_SongType"].ToString().ToLower());
-                        SongDataFilePathList.Add(Path.Combine(row["Song_Path"].ToString(), row["Song_FileName"].ToString()).ToLower());
+                        SongDataFilePathList.Add(Path.GetFullPath(Path.Combine(row["Song_Path"].ToString(), row["Song_FileName"].ToString())).ToLower());
                     }
                 }
             }));
@@ -988,9 +988,12 @@ namespace CrazyKTV_SongMgr
             {
                 if (SongLang == "未知")
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫監視】檔案結構中須有語系類別資訊才能加歌: " + SongSrcPath;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    lock (LockThis)
+                    {
+                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
+                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫監視】檔案結構中須有語系類別資訊才能加歌: " + SongSrcPath;
+                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    }
                 }
                 else
                 {
