@@ -720,11 +720,25 @@ namespace CrazyKTV_SongMgr
         private void DShowForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
-            mediaUriElement.MediaUriPlayer.MediaPositionChanged -= MediaUriPlayer_MediaPositionChanged;
-            mediaUriElement.Stop();
-            mediaUriElement.Close();
-            mediaUriElement.Source = null;
-            mediaUriElement.VideoSource = null;
+            if (mediaUriElement != null)
+            {
+                if (mediaUriElement.MediaUriPlayer != null)
+                {
+                    mediaUriElement.MediaUriPlayer.MediaPositionChanged -= MediaUriPlayer_MediaPositionChanged;
+                }
+
+                mediaUriElement.Stop();
+                mediaUriElement.Source = null;
+                mediaUriElement.VideoSource = null;
+                mediaUriElement.Close();
+
+                // Pump WinForms and WPF messages and pause briefly to let DirectShow COM worker threads flush buffers and release file handles.
+                System.Windows.Forms.Application.DoEvents();
+                System.Threading.Thread.Sleep(150);
+                System.Windows.Forms.Application.DoEvents();
+
+                elementHost.Child = null;
+            }
 
             if (mouseClickTimer != null)
                 mouseClickTimer.Dispose();
@@ -786,6 +800,7 @@ namespace CrazyKTV_SongMgr
         {
             mediaUriElement = null;
             GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
     }
 }
