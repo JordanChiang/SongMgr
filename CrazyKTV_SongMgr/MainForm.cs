@@ -29,11 +29,13 @@ namespace CrazyKTV_SongMgr
         
         private void MainForm_Load(object sender, EventArgs e)
         {
-            string CurVer = " v" + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileMajorPart + "." +
-                                   FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileMinorPart + "." +
-                                   FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileBuildPart;
+            string exePath = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
+            var verInfo = FileVersionInfo.GetVersionInfo(exePath);
+            string CurVer = " v" + verInfo.FileMajorPart + "." +
+                                   verInfo.FileMinorPart + "." +
+                                   verInfo.FileBuildPart;
 
-            if (FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FilePrivatePart > 0) CurVer += "." + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FilePrivatePart;
+            if (verInfo.FilePrivatePart > 0) CurVer += "." + verInfo.FilePrivatePart;
 
             this.Text += CurVer;
 

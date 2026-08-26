@@ -12,11 +12,33 @@ namespace CrazyKTV_SongMgr
     {
         static Program()
         {
-            AppDomain.CurrentDomain.SetData("PRIVATE_BINPATH", @"Libs;SongMgr\Libs;Codec_x86");
-            AppDomain.CurrentDomain.SetData("BINPATH_PROBE_ONLY", @"Libs;SongMgr\Libs;Codec_x86");
-            var m = typeof(AppDomainSetup).GetMethod("UpdateContextProperty", BindingFlags.NonPublic | BindingFlags.Static);
-            var funsion = typeof(AppDomain).GetMethod("GetFusionContext", BindingFlags.NonPublic | BindingFlags.Instance);
-            m.Invoke(null, new object[] { funsion.Invoke(AppDomain.CurrentDomain, null), "PRIVATE_BINPATH", @"Libs;SongMgr\Libs;Codec_x86" });
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+            {
+                string assemblyName = new AssemblyName(args.Name).Name + ".dll";
+                string[] searchPaths = new[] { "Libs", @"SongMgr\Libs", "Codec_x86" };
+                foreach (string path in searchPaths)
+                {
+                    string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path, assemblyName);
+                    if (File.Exists(fullPath))
+                    {
+                        return Assembly.LoadFrom(fullPath);
+                    }
+                }
+                return null;
+            };
+
+            try
+            {
+                AppDomain.CurrentDomain.SetData("PRIVATE_BINPATH", @"Libs;SongMgr\Libs;Codec_x86");
+                AppDomain.CurrentDomain.SetData("BINPATH_PROBE_ONLY", @"Libs;SongMgr\Libs;Codec_x86");
+                var m = typeof(AppDomainSetup).GetMethod("UpdateContextProperty", BindingFlags.NonPublic | BindingFlags.Static);
+                var funsion = typeof(AppDomain).GetMethod("GetFusionContext", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (m != null && funsion != null)
+                {
+                    m.Invoke(null, new object[] { funsion.Invoke(AppDomain.CurrentDomain, null), "PRIVATE_BINPATH", @"Libs;SongMgr\Libs;Codec_x86" });
+                }
+            }
+            catch { }
         }
 
         /// <summary>
@@ -25,6 +47,8 @@ namespace CrazyKTV_SongMgr
         [STAThread]
         static void Main()
         {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
             if (Environment.OSVersion.Version.Major >= 6) NativeMethods.SetProcessDPIAware();
 
             Application.EnableVisualStyles();
@@ -51,7 +75,7 @@ namespace CrazyKTV_SongMgr
         public static bool DatabaseUpdateFinished = false;
         public static bool InitializeSongData = false;
 
-        public static string SongMgrVer = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion.ToString().Replace(".", "");
+        public static string SongMgrVer = FileVersionInfo.GetVersionInfo(Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location).FileVersion.ToString().Replace(".", "");
         public static string SongMgrCfgFile = Application.StartupPath + @"\CrazyKTV_SongMgr.cfg";
         public static string SongMgrSupportFormat = ".avi;.flv;.dat;.mkv;.mp4;.mov;.mpeg;.mpg;.rmvb;.ts;.vob;.webm;.wmv";
         public static string SongMgrDestFolder = "";

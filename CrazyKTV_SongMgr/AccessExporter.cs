@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2014, Austin Liang
  * All rights reserved.
  *
@@ -361,6 +361,7 @@ namespace CrazyKTV_SongMgr
                                 case "BINARY":
                                 case "LONGBINARY":
                                 case "OLE":
+#pragma warning disable SYSLIB0011
                                     var formatter = new BinaryFormatter();
                                     using (var ms = new MemoryStream())
                                     {
@@ -368,6 +369,7 @@ namespace CrazyKTV_SongMgr
                                         ms.Seek(0, SeekOrigin.Begin);
                                         cmd.Parameters.AddWithValue("@param" + (i + 1), ms.ToArray());
                                     }
+#pragma warning restore SYSLIB0011
                                     break;
                                 case "FLOAT":
                                     cmd.Parameters.AddWithValue("@param" + (i + 1), (Double)(float)value);
