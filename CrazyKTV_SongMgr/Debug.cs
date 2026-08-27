@@ -1,4 +1,4 @@
-﻿using HtmlAgilityPack;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -508,7 +508,7 @@ namespace CrazyKTV_SongMgr
                     cmd.ExecuteNonQuery();
                 }
 
-                using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\UpdateCashboxDB.txt"))
+                using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\UpdateCashboxDB.txt", Encoding.UTF8))
                 {
                     while (!sr.EndOfStream)
                     {
@@ -1229,7 +1229,7 @@ namespace CrazyKTV_SongMgr
 
             using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvSongMgrDatabaseFile, ""))
             {
-                using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\NewSinger.txt"))
+                using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\NewSinger.txt", Encoding.UTF8))
                 {
                     while (!sr.EndOfStream)
                     {
@@ -1488,7 +1488,7 @@ namespace CrazyKTV_SongMgr
                     cmd.ExecuteNonQuery();
                 }
 
-                using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\ConfigData.txt"))
+                using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\ConfigData.txt", Encoding.UTF8))
                 {
                     while (!sr.EndOfStream)
                     {

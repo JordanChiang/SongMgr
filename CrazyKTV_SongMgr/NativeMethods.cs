@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -12,7 +12,7 @@ namespace CrazyKTV_SongMgr
         public static extern bool SetProcessDPIAware();
 
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern int LCMapString(int locale, int dwMapFlags, string lpSrcStr, int cchSrc, [Out] string lpDestStr, int cchDest);
+        public static extern int LCMapString(int locale, int dwMapFlags, string lpSrcStr, int cchSrc, StringBuilder lpDestStr, int cchDest);
 
         public class SystemSleepManagement
         {
@@ -181,8 +181,8 @@ namespace CrazyKTV_SongMgr
                 for (uint i = 0; i <= numFiles - 1; i++)
                 {
                     uint size = DragQueryFileW(m.WParam, i, null, 0);
-                    StringBuilder sb = new StringBuilder((int)size);
-                    if (DragQueryFileW(m.WParam, i, sb, (uint)sb.Capacity + 1) > 0)
+                    StringBuilder sb = new StringBuilder((int)size + 1);
+                    if (DragQueryFileW(m.WParam, i, sb, (uint)sb.Capacity) > 0)
                     {
                         list.Add(sb.ToString());
                     }

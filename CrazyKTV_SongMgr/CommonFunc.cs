@@ -710,7 +710,7 @@ namespace CrazyKTV_SongMgr
                         string CashboxLogFile = Application.StartupPath + @"\SongMgr\CashboxLog.txt";
                         if (File.Exists(CashboxLogFile))
                         {
-                            using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\CashboxLog.txt"))
+                            using (StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\CashboxLog.txt", Encoding.UTF8))
                             {
                                 while (!sr.EndOfStream)
                                 {
@@ -3165,10 +3165,12 @@ namespace CrazyKTV_SongMgr
 
         public static string ConvToTraditionalChinese(string strSource)
         {
+            if (string.IsNullOrEmpty(strSource)) return strSource;
+
             int LocaleSystemDefault = 0x0800;
             int LcmapTraditionalChinese = 0x04000000;
 
-            byte[] strSourceByte = Encoding.Default.GetBytes(strSource);
+            byte[] strSourceByte = Encoding.GetEncoding(950).GetBytes(strSource);
             int Result = ChEncAutoDetector.Analyze(strSourceByte);
             if (Result == -1)
             {
@@ -3176,9 +3178,9 @@ namespace CrazyKTV_SongMgr
                 strSource = Encoding.UTF8.GetString(strDestByte);
             }
             
-            var strDest = new String(' ', strSource.Length);
-            NativeMethods.LCMapString(LocaleSystemDefault, LcmapTraditionalChinese, strSource, strSource.Length, strDest, strSource.Length);
-            return strDest;
+            var strDest = new StringBuilder(strSource.Length + 1);
+            NativeMethods.LCMapString(LocaleSystemDefault, LcmapTraditionalChinese, strSource, -1, strDest, strDest.Capacity);
+            return strDest.ToString();
         }
 
         #endregion
