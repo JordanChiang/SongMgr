@@ -1344,6 +1344,7 @@ namespace CrazyKTV_SongMgr
                 string SongSongType;
                 string SongVolume;
                 string SongWordCount;
+                string SongPlayCount;
                 string SongCreatDate;
                 string SongSpell;
                 string SongSpellNum;
@@ -1364,6 +1365,7 @@ namespace CrazyKTV_SongMgr
                         SongSongType = row.Cells["Song_SongType"].Value.ToString();
                         SongVolume = row.Cells["Song_Volume"].Value.ToString();
                         SongWordCount = row.Cells["Song_WordCount"].Value.ToString();
+                        SongPlayCount = row.Cells["Song_PlayCount"].Value.ToString();
                         SongCreatDate = row.Cells["Song_CreatDate"].Value.ToString();
                         SongSpell = row.Cells["Song_Spell"].Value.ToString();
                         SongSpellNum = row.Cells["Song_SpellNum"].Value.ToString();
@@ -1407,10 +1409,15 @@ namespace CrazyKTV_SongMgr
                         {
                             SongVolume = SongAdd_EditSongVolume_TextBox.Text;
                         }
+
+                        if (Global.SongAddMultiEditUpdateList[7])
+                        {
+                            SongPlayCount = SongAdd_EditSongPlayCount_TextBox.Text;
+                        }
                         SongAddStatus = (SongLang == "未知") ? "語系類別必須有值才能加歌!" : "";
                         SongAddStatus = (SongAddStatus == "" && SongSingerType == "10") ? "此歌手尚未設定歌手資料!" : SongAddStatus;
 
-                        UpdateList.Add(SongAddStatus + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongCreatDate + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongSrcPath);
+                        UpdateList.Add(SongAddStatus + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongCreatDate + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongSrcPath);
                     }
                 }
                 else if (SelectedRowsCount == 1)
@@ -1433,6 +1440,8 @@ namespace CrazyKTV_SongMgr
 
                         SongVolume = SongAdd_EditSongVolume_TextBox.Text;
 
+                        SongPlayCount = SongAdd_EditSongPlayCount_TextBox.Text;
+
                         // 計算歌曲字數
                         List<string> SongWordCountList = new List<string>();
                         SongWordCountList = CommonFunc.GetSongWordCount(SongSongName);
@@ -1451,7 +1460,7 @@ namespace CrazyKTV_SongMgr
                         SongPenStyle = SongSpellList[3];
                         SongSrcPath = row.Cells["Song_SrcPath"].Value.ToString();
 
-                        UpdateList.Add(SongAddStatus + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongCreatDate + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongSrcPath);
+                        UpdateList.Add(SongAddStatus + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongCreatDate + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongSrcPath);
                     }
                 }
 
@@ -1468,10 +1477,10 @@ namespace CrazyKTV_SongMgr
                     foreach (string UpdateStr in UpdateList)
                     {
                         valuelist = new List<string>(UpdateStr.Split('|'));
-                        Global.SongAddDataGridViewRestoreSelectList.Add(valuelist[14]);
+                        Global.SongAddDataGridViewRestoreSelectList.Add(valuelist[15]);
 
                         var query = from row in UpdateDT.AsEnumerable()
-                                    where row["Song_SrcPath"].ToString() == valuelist[14]
+                                    where row["Song_SrcPath"].ToString() == valuelist[15]
                                     select row;
 
                         foreach (DataRow row in query)
@@ -1485,12 +1494,13 @@ namespace CrazyKTV_SongMgr
                             row["Song_SongType"] = valuelist[6];
                             row["Song_Volume"] = valuelist[7];
                             row["Song_WordCount"] = valuelist[8];
-                            row["Song_CreatDate"] = valuelist[9];
-                            row["Song_Spell"] = valuelist[10];
-                            row["Song_SpellNum"] = valuelist[11];
-                            row["Song_SongStroke"] = valuelist[12];
-                            row["Song_PenStyle"] = valuelist[13];
-                            row["Song_SrcPath"] = valuelist[14];
+                            row["Song_PlayCount"] = valuelist[9];
+                            row["Song_CreatDate"] = valuelist[10];
+                            row["Song_Spell"] = valuelist[11];
+                            row["Song_SpellNum"] = valuelist[12];
+                            row["Song_SongStroke"] = valuelist[13];
+                            row["Song_PenStyle"] = valuelist[14];
+                            row["Song_SrcPath"] = valuelist[15];
                         }
                         if (valuelist[0] == "語系類別必須有值才能加歌!") EnabledButton = false;
                         valuelist.Clear();
@@ -1833,7 +1843,7 @@ namespace CrazyKTV_SongMgr
                     list = new List<string>() { "歌曲字數", ColumnWidth_120, "2" };
                     break;
                 case "Song_PlayCount":
-                    list = new List<string>() { "點播次數", "0", "9" };
+                    list = new List<string>() { "點播次數", ColumnWidth_120, "9" };
                     break;
                 case "Song_MB":
                     list = new List<string>() { "歌曲大小", ColumnWidth_120, "7" };

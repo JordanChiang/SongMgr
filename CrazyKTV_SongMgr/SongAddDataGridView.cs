@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -246,7 +246,7 @@ namespace CrazyKTV_SongMgr
                         SongAdd_EditSongTrack_ComboBox.Enabled = true;
                         SongAdd_EditSongTrack_Button.Enabled = false;
                         SongAdd_EditSongVolume_TextBox.Enabled = true;
-                        SongAdd_EditSongPlayCount_TextBox.Enabled = false;
+                        SongAdd_EditSongPlayCount_TextBox.Enabled = true;
                         SongAdd_EditApplyChanges_Button.Enabled = true;
 
                         SongAdd_EditSongId_TextBox.Text = "";
@@ -311,7 +311,7 @@ namespace CrazyKTV_SongMgr
                     SongAdd_EditSongTrack_ComboBox.Enabled = true;
                     SongAdd_EditSongTrack_Button.Enabled = true;
                     SongAdd_EditSongVolume_TextBox.Enabled = true;
-                    SongAdd_EditSongPlayCount_TextBox.Enabled = false;
+                    SongAdd_EditSongPlayCount_TextBox.Enabled = true;
                     SongAdd_EditApplyChanges_Button.Enabled = true;
 
                     string SongId = SongAdd_DataGridView.SelectedRows[0].Cells["Song_Id"].Value.ToString();
@@ -349,7 +349,7 @@ namespace CrazyKTV_SongMgr
                     SongAdd_EditSongSrcPath_TextBox.Text = SongSrcPath;
                     SongAdd_EditSongTrack_ComboBox.SelectedValue = SongTrack;
                     SongAdd_EditSongVolume_TextBox.Text = SongVolume;
-                    SongAdd_EditSongPlayCount_TextBox.Text = "";
+                    SongAdd_EditSongPlayCount_TextBox.Text = SongPlayCount;
 
                     Global.SongAddDataGridViewSelectList = new List<string>();
                     string SelectValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + SongSrcPath + "|" + SongReplayGain;
