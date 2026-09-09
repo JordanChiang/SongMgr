@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -91,6 +91,7 @@ namespace CrazyKTV_SongMgr
                                 GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)].Click += new EventHandler(SongQuery_DataGridView_FavoriteUserContextMenuItem_RightClick);
                                 GridView_ContextMenuItem[1].DropDown.Items.Add(GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)]);
                             }
+                            EnableDropDownMouseWheelScroll(GridView_ContextMenuItem[1].DropDown);
                             GridView_ContextMenu.Items.Add(GridView_ContextMenuItem[1]);
                         }
                         GridView_ContextMenu.Show(MousePosition.X, MousePosition.Y);
@@ -120,6 +121,7 @@ namespace CrazyKTV_SongMgr
                                 GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)].Click += new EventHandler(SongQuery_DataGridView_FavoriteUserContextMenuItem_RightClick);
                                 GridView_ContextMenuItem[3].DropDown.Items.Add(GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)]);
                             }
+                            EnableDropDownMouseWheelScroll(GridView_ContextMenuItem[3].DropDown);
                             GridView_ContextMenu.Items.Add(GridView_ContextMenuItem[3]);
                         }
                         GridView_ContextMenu.Show(MousePosition.X, MousePosition.Y);
@@ -160,6 +162,7 @@ namespace CrazyKTV_SongMgr
                                     GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)].Click += new EventHandler(SongQuery_DataGridView_FavoriteUserContextMenuItem_RightClick);
                                     GridView_ContextMenuItem[0].DropDown.Items.Add(GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)]);
                                 }
+                                EnableDropDownMouseWheelScroll(GridView_ContextMenuItem[0].DropDown);
                                 GridView_ContextMenu.Items.Add(GridView_ContextMenuItem[0]);
                             }
                             GridView_ContextMenu.Show(MousePosition.X, MousePosition.Y);
@@ -207,6 +210,7 @@ namespace CrazyKTV_SongMgr
                                     GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)].Click += new EventHandler(SongQuery_DataGridView_FavoriteUserContextMenuItem_RightClick);
                                     GridView_ContextMenuItem[2].DropDown.Items.Add(GridView_ContextMenuSubItem[Global.FavoriteUserDT.Rows.IndexOf(row)]);
                                 }
+                                EnableDropDownMouseWheelScroll(GridView_ContextMenuItem[2].DropDown);
                                 GridView_ContextMenu.Items.Add(GridView_ContextMenuItem[2]);
                             }
                             GridView_ContextMenu.Show(MousePosition.X, MousePosition.Y);
@@ -694,6 +698,148 @@ namespace CrazyKTV_SongMgr
                 string SongFullPath = row.Cells["Song_Path"].Value.ToString() + row.Cells["Song_FileName"].Value.ToString();
                 row.Cells["Song_FullPath"].Value = SongFullPath;
             }
+        }
+
+        #endregion
+
+        #region --- ToolStripDropDown 滑鼠滾輪支援 ---
+
+        private void EnableDropDownMouseWheelScroll(ToolStripDropDown dropDown)
+        {
+            System.Reflection.MethodInfo cachedMethod = null;
+            Type cachedParamType = null;
+            int cachedItemHeight = 22;
+            System.Reflection.PropertyInfo upButtonProp = null;
+            System.Reflection.PropertyInfo downButtonProp = null;
+            System.Reflection.FieldInfo upButtonField = null;
+            System.Reflection.FieldInfo downButtonField = null;
+            System.Reflection.PropertyInfo topIndexProp = null;
+            System.Reflection.FieldInfo topIndexField = null;
+
+            dropDown.MouseWheel += (sender, e) =>
+            {
+                if (!(sender is ToolStripDropDownMenu menu)) return;
+                if (menu.Items.Count == 0) return;
+
+                // 快取反射資訊，只查詢一次
+                if (cachedMethod == null)
+                {
+                    var scrollMethods = typeof(ToolStripDropDownMenu)
+                        .GetMethods(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                        .Where(m => m.Name == "ScrollInternal" && m.GetParameters().Length == 1)
+                        .ToArray();
+
+                    if (scrollMethods.Length == 0) return;
+
+                    cachedMethod = scrollMethods.FirstOrDefault(m => m.GetParameters()[0].ParameterType == typeof(bool))
+                                ?? scrollMethods[0];
+                    cachedParamType = cachedMethod.GetParameters()[0].ParameterType;
+
+                    upButtonProp = typeof(ToolStripDropDownMenu).GetProperty("UpScrollButton",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Public |
+                        System.Reflection.BindingFlags.Instance);
+
+                    downButtonProp = typeof(ToolStripDropDownMenu).GetProperty("DownScrollButton",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Public |
+                        System.Reflection.BindingFlags.Instance);
+
+                    if (upButtonProp == null)
+                    {
+                        upButtonField = typeof(ToolStripDropDownMenu).GetField("upScrollButton",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        downButtonField = typeof(ToolStripDropDownMenu).GetField("downScrollButton",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    }
+
+                    topIndexProp = typeof(ToolStripDropDownMenu).GetProperty("TopDisplayedItemIndex",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Public |
+                        System.Reflection.BindingFlags.Instance);
+
+                    if (topIndexProp == null)
+                    {
+                        topIndexField = typeof(ToolStripDropDownMenu).GetField("topDisplayedItemIndex",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    }
+
+                    if (menu.Items.Count > 0) cachedItemHeight = menu.Items[0].Height;
+                }
+
+                bool up = e.Delta > 0;
+                int scrollLines = SystemInformation.MouseWheelScrollLines;
+
+                for (int i = 0; i < scrollLines; i++)
+                {
+                    // 1. 透過 TopDisplayedItemIndex 精確限制邊界，防止滾動到只剩最後 1 個項目
+                    int currentTopIndex = -1;
+                    if (topIndexProp != null)
+                    {
+                        currentTopIndex = (int)topIndexProp.GetValue(menu);
+                    }
+                    else if (topIndexField != null)
+                    {
+                        currentTopIndex = (int)topIndexField.GetValue(menu);
+                    }
+
+                    if (currentTopIndex >= 0)
+                    {
+                        if (up && currentTopIndex <= 0)
+                        {
+                            break; // 頂端
+                        }
+
+                        if (!up)
+                        {
+                            int itemH = menu.Items[0].Height > 0 ? menu.Items[0].Height : cachedItemHeight;
+                            int visibleItemsCount = (itemH > 0 && menu.Height > 0)
+                                ? Math.Max(1, menu.Height / itemH)
+                                : 1;
+                            int maxTopIndex = Math.Max(0, menu.Items.Count - Math.Max(2, visibleItemsCount));
+
+                            if (currentTopIndex >= maxTopIndex || currentTopIndex >= menu.Items.Count - 2)
+                            {
+                                break; // 已到最後頁/最後筆，停止往下捲動，絕對不捲到只剩 1 筆
+                            }
+                        }
+                    }
+
+                    // 2. 備用：檢查 WinForms 內部的滾動按鈕可見狀態 (UpScrollButton / DownScrollButton)
+                    if (up)
+                    {
+                        var upBtn = (upButtonProp?.GetValue(menu) ?? upButtonField?.GetValue(menu)) as ToolStripItem;
+                        if (upBtn != null && !upBtn.Visible)
+                        {
+                            break; // 已達頂端
+                        }
+                    }
+                    else
+                    {
+                        var downBtn = (downButtonProp?.GetValue(menu) ?? downButtonField?.GetValue(menu)) as ToolStripItem;
+                        if (downBtn != null && !downBtn.Visible)
+                        {
+                            break; // 已達底端
+                        }
+                    }
+
+                    try
+                    {
+                        if (cachedParamType == typeof(bool))
+                        {
+                            cachedMethod.Invoke(menu, new object[] { up });
+                        }
+                        else
+                        {
+                            cachedMethod.Invoke(menu, new object[] { up ? cachedItemHeight : -cachedItemHeight });
+                        }
+                    }
+                    catch
+                    {
+                        break;
+                    }
+                }
+            };
         }
 
         #endregion
