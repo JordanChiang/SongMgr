@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
@@ -449,7 +449,7 @@ namespace CrazyKTV_SongMgr
 
                                                     if (File.Exists(SongDestPath))
                                                     {
-                                                        if (SongSrcPath.ToLower() == SongDestPath.ToLower())
+                                                        if (Path.GetFullPath(SongSrcPath).ToLower() == Path.GetFullPath(SongDestPath).ToLower())
                                                         {
                                                             try
                                                             {

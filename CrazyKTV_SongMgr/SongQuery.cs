@@ -957,7 +957,7 @@ namespace CrazyKTV_SongMgr
 
                             if (File.Exists(SongDestPath))
                             {
-                                if (SongSrcPath.ToLower() == SongDestPath.ToLower())
+                                if (Path.GetFullPath(SongSrcPath).ToLower() == Path.GetFullPath(SongDestPath).ToLower())
                                 {
                                     try
                                     {
