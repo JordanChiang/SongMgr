@@ -19,6 +19,8 @@ using System.Runtime.InteropServices;
 // 的類型，請在該類型上將 ComVisible 屬性設定為 true。
 [assembly: ComVisible(false)]
 
+[assembly: InternalsVisibleTo("SongMgr.Tests")]
+
 // 下列 GUID 為專案公開 (Expose) 至 COM 時所要使用的 typelib ID
 [assembly: Guid("ae7cb9bd-f50e-4e26-b843-ab246e9d7119")]
 

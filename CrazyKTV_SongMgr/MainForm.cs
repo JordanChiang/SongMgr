@@ -106,122 +106,10 @@ namespace CrazyKTV_SongMgr
             // 載入歌庫設定
             if (!File.Exists(Global.SongMgrCfgFile))
             {
-                CommonFunc.CreateConfigXmlFile(Global.SongMgrCfgFile);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvDatabaseFile", Global.CrazyktvDatabaseFile);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSupportFormat", Global.SongMgrSupportFormat);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrDestFolder", Global.SongMgrDestFolder);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongAddMode", Global.SongMgrSongAddMode);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrChorusMerge", Global.SongMgrChorusMerge);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMaxDigitCode", Global.SongMgrMaxDigitCode);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrLangCode", Global.SongMgrLangCode);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongType", Global.SongMgrSongType);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongInfoSeparate", Global.SongMgrSongInfoSeparate);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrChorusSeparate", Global.SongMgrChorusSeparate);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongLang", Global.SongAddDefaultSongLang);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSingerType", Global.SongAddDefaultSingerType);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongTrack", Global.SongAddDefaultSongTrack);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongType", Global.SongAddDefaultSongType);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongVolume", Global.SongAddDefaultSongVolume);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddSpecialStr", Global.SongAddSpecialStr);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrFolderStructure", Global.SongMgrFolderStructure);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrFileStructure", Global.SongMgrFileStructure);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongTrackMode", Global.SongMgrSongTrackMode);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddSongIdentificationMode", Global.SongAddSongIdentificationMode);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDupSongMode", Global.SongAddDupSongMode);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangStr", string.Join(",", Global.CrazyktvSongLangList));
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangKeyWord", string.Join("|", Global.CrazyktvSongLangKeyWordList));
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrBackupRemoveSong", Global.SongMgrBackupRemoveSong);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddEngSongNameFormat", Global.SongAddEngSongNameFormat);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgAlwaysOnTop", Global.MainCfgAlwaysOnTop);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongDBVer", Global.CrazyktvSongDBVer);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongDBConverterTabPage", Global.MainCfgHideSongDBConverterTabPage);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongAddResultTabPage", Global.MainCfgHideSongAddResultTabPage);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongLogTabPage", Global.MainCfgHideSongLogTabPage);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupRemoveSongDays", Global.MainCfgBackupRemoveSongDays);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "DBVerEnableDBVerUpdate", Global.DBVerEnableDBVerUpdate);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUIScale", Global.MainCfgUIScale);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMaintenanceReplayGainVolume", Global.SongMaintenanceReplayGainVolume);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddEnableVolumeDetect", Global.SongAddEnableVolumeDetect);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddUseCustomSongID", Global.SongAddUseCustomSongID);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUIFont", Global.MainCfgUIFont);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgEnableUIScale", Global.MainCfgEnableUIScale);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrCustomSingerTypeStructure", Global.SongMgrCustomSingerTypeStructure);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgEnableAutoUpdate", Global.MainCfgEnableAutoUpdate);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddEnableConvToTC", Global.SongAddEnableConvToTC);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrEnableMonitorFolders", Global.SongMgrEnableMonitorFolders);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMonitorFolders", string.Join(",", Global.SongMgrMonitorFoldersList));
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SingerMgrSyncSongSinger", Global.SingerMgrSyncSongSinger);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSingerGroup", Global.SongMgrSingerGroup);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideApplyCashboxIdButton", Global.MainCfgHideApplyCashboxIdButton);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUICustomScale", Global.MainCfgUICustomScale);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupDB", Global.MainCfgBackupDB);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupDBPath", Global.MainCfgBackupDBPath);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerCore", Global.MainCfgPlayerCore);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerOutput", Global.MainCfgPlayerOutput);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerEnableAudioCompressor", Global.MainCfgPlayerEnableAudioCompressor);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerEnableAudioProcessor", Global.MainCfgPlayerEnableAudioProcessor);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerDefaultVolume", Global.MainCfgPlayerDefaultVolume);
+                SettingsFile.Create(Global.SongMgrCfgFile, SongMgrSettings.Defaults());
             }
 
-            List<string> list = new List<string>()
-            { 
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvDatabaseFile", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSupportFormat", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrDestFolder", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongAddMode", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrChorusMerge", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMaxDigitCode", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrLangCode", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongType", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongInfoSeparate", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrChorusSeparate", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongLang", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSingerType", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongTrack", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongType", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongVolume", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddSpecialStr", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrFolderStructure", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrFileStructure", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongTrackMode", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddSongIdentificationMode", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddDupSongMode", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangStr", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangKeyWord", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrBackupRemoveSong", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddEngSongNameFormat", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgAlwaysOnTop", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongDBVer", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongDBConverterTabPage", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongAddResultTabPage", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongLogTabPage", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupRemoveSongDays", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SingerMgrDefaultSingerDataTable", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "DBVerEnableDBVerUpdate", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUIScale", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMaintenanceReplayGainVolume", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddEnableVolumeDetect", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddUseCustomSongID", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUIFont", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgEnableUIScale", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrCustomSingerTypeStructure", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgEnableAutoUpdate", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongAddEnableConvToTC", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrEnableMonitorFolders", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMonitorFolders", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SingerMgrSyncSongSinger", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSingerGroup", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideApplyCashboxIdButton", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUICustomScale", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupDB", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupDBPath", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMaintenanceMaxVolume", null, false), //已無用處
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerCore", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerOutput", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerEnableAudioCompressor", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerEnableAudioProcessor", null, false),
-                CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerDefaultVolume", null, false)
-            };
+            SettingsFile cfg = SettingsFile.Load(Global.SongMgrCfgFile);
 
             // 音量正規化 top-level tab (programmatic – added to MainTabControl)
             InitSongNormVolTab();
@@ -251,108 +139,108 @@ namespace CrazyKTV_SongMgr
                 CashboxTabPage.Show();
             }
 
-            if (list[21] != "") Global.CrazyktvSongLangList = new List<string>(list[21].Split(','));
+            if (cfg["CrazyktvSongLangStr"] != "") Global.CrazyktvSongLangList = new List<string>(cfg["CrazyktvSongLangStr"].Split(','));
             if (Global.CrazyktvSongLangList.Count < 10) Global.CrazyktvSongLangList = new List<string>() { "國語", "台語", "粵語", "日語", "英語", "客語", "原住民語", "韓語", "兒歌", "其它" };
 
-            if (list[0] != "") Global.CrazyktvDatabaseFile = list[0];
+            if (cfg["CrazyktvDatabaseFile"] != "") Global.CrazyktvDatabaseFile = cfg["CrazyktvDatabaseFile"];
             SongMgrCfg_DBFile_TextBox.Text = Global.CrazyktvDatabaseFile;
 
-            if (list[1] != "") Global.SongMgrSupportFormat = list[1];
+            if (cfg["SongMgrSupportFormat"] != "") Global.SongMgrSupportFormat = cfg["SongMgrSupportFormat"];
             SongMgrCfg_SupportFormat_TextBox.Text = Global.SongMgrSupportFormat;
 
-            if (list[2] != "") Global.SongMgrDestFolder = list[2];
+            if (cfg["SongMgrDestFolder"] != "") Global.SongMgrDestFolder = cfg["SongMgrDestFolder"];
             SongMgrCfg_DestFolder_TextBox.Text = Global.SongMgrDestFolder;
             
-            if (list[4] != "") Global.SongMgrChorusMerge = list[4];
+            if (cfg["SongMgrChorusMerge"] != "") Global.SongMgrChorusMerge = cfg["SongMgrChorusMerge"];
             SongMgrCfg_CrtchorusMerge_CheckBox.Checked = bool.Parse(Global.SongMgrChorusMerge);
 
-            if (list[5] != "") Global.SongMgrMaxDigitCode = list[5];
+            if (cfg["SongMgrMaxDigitCode"] != "") Global.SongMgrMaxDigitCode = cfg["SongMgrMaxDigitCode"];
             SongMgrCfg_MaxDigitCode_ComboBox.DataSource = SongMgrCfg.GetMaxDigitCodeList();
             SongMgrCfg_MaxDigitCode_ComboBox.DisplayMember = "Display";
             SongMgrCfg_MaxDigitCode_ComboBox.ValueMember = "Value";
             SongMgrCfg_MaxDigitCode_ComboBox.SelectedValue = int.Parse(Global.SongMgrMaxDigitCode);
 
-            if (list[6] != "") { Global.SongMgrLangCode = list[6]; SongMgrCfg_LoadSongMgrLangCode(); } else { SongMgrCfg_RefreshSongMgrLangCode(); }
+            if (cfg["SongMgrLangCode"] != "") { Global.SongMgrLangCode = cfg["SongMgrLangCode"]; SongMgrCfg_LoadSongMgrLangCode(); } else { SongMgrCfg_RefreshSongMgrLangCode(); }
 
-            if (list[7] != "") Global.SongMgrSongType = list[7];
+            if (cfg["SongMgrSongType"] != "") Global.SongMgrSongType = cfg["SongMgrSongType"];
             SongMgrCfg_SongType_ListBox.DataSource = SongMgrCfg.GetSongTypeList();
             SongMgrCfg_SongType_ListBox.DisplayMember = "Display";
             SongMgrCfg_SongType_ListBox.ValueMember = "Value";
 
-            if (list[8] != "") Global.SongMgrSongInfoSeparate = list[8];
+            if (cfg["SongMgrSongInfoSeparate"] != "") Global.SongMgrSongInfoSeparate = cfg["SongMgrSongInfoSeparate"];
             SongMgrCfg_SongInfoSeparate_ComboBox.DataSource = SongMgrCfg.GetSongInfoSeparateList();
             SongMgrCfg_SongInfoSeparate_ComboBox.DisplayMember = "Display";
             SongMgrCfg_SongInfoSeparate_ComboBox.ValueMember = "Value";
             SongMgrCfg_SongInfoSeparate_ComboBox.SelectedValue = int.Parse(Global.SongMgrSongInfoSeparate);
 
-            if (list[9] != "") Global.SongMgrChorusSeparate = list[9];
+            if (cfg["SongMgrChorusSeparate"] != "") Global.SongMgrChorusSeparate = cfg["SongMgrChorusSeparate"];
             SongMgrCfg_CrtchorusSeparate_ComboBox.DataSource = SongMgrCfg.GetCrtchorusSeparateList();
             SongMgrCfg_CrtchorusSeparate_ComboBox.DisplayMember = "Display";
             SongMgrCfg_CrtchorusSeparate_ComboBox.ValueMember = "Value";
             SongMgrCfg_CrtchorusSeparate_ComboBox.SelectedValue = int.Parse(Global.SongMgrChorusSeparate);
 
-            if (list[10] != "") Global.SongAddDefaultSongLang = list[10];
+            if (cfg["SongAddDefaultSongLang"] != "") Global.SongAddDefaultSongLang = cfg["SongAddDefaultSongLang"];
             SongAdd_DefaultSongLang_ComboBox.DataSource = SongAdd.GetDefaultSongInfo("DefaultSongLang", false, false);
             SongAdd_DefaultSongLang_ComboBox.DisplayMember = "Display";
             SongAdd_DefaultSongLang_ComboBox.ValueMember = "Value";
             SongAdd_DefaultSongLang_ComboBox.SelectedValue = int.Parse(Global.SongAddDefaultSongLang);
 
-            if (list[11] != "") Global.SongAddDefaultSingerType = list[11];
+            if (cfg["SongAddDefaultSingerType"] != "") Global.SongAddDefaultSingerType = cfg["SongAddDefaultSingerType"];
             SongAdd_DefaultSingerType_ComboBox.DataSource = SongAdd.GetDefaultSongInfo("DefaultSingerType", false, false);
             SongAdd_DefaultSingerType_ComboBox.DisplayMember = "Display";
             SongAdd_DefaultSingerType_ComboBox.ValueMember = "Value";
             SongAdd_DefaultSingerType_ComboBox.SelectedValue = int.Parse(Global.SongAddDefaultSingerType);
 
-            if (list[12] != "") Global.SongAddDefaultSongTrack = list[12];
+            if (cfg["SongAddDefaultSongTrack"] != "") Global.SongAddDefaultSongTrack = cfg["SongAddDefaultSongTrack"];
             SongAdd_DefaultSongTrack_ComboBox.DataSource = SongAdd.GetDefaultSongInfo("DefaultSongTrack", false, false);
             SongAdd_DefaultSongTrack_ComboBox.DisplayMember = "Display";
             SongAdd_DefaultSongTrack_ComboBox.ValueMember = "Value";
             SongAdd_DefaultSongTrack_ComboBox.SelectedValue = int.Parse(Global.SongAddDefaultSongTrack);
 
-            if (list[13] != "") Global.SongAddDefaultSongType = list[13];
+            if (cfg["SongAddDefaultSongType"] != "") Global.SongAddDefaultSongType = cfg["SongAddDefaultSongType"];
             SongAdd_DefaultSongType_ComboBox.DataSource = SongAdd.GetDefaultSongInfo("DefaultSongType", false, false);
             SongAdd_DefaultSongType_ComboBox.DisplayMember = "Display";
             SongAdd_DefaultSongType_ComboBox.ValueMember = "Value";
             SongAdd_DefaultSongType_ComboBox.SelectedValue = int.Parse(Global.SongAddDefaultSongType);
 
-            if (list[14] != "") Global.SongAddDefaultSongVolume = list[14];
+            if (cfg["SongAddDefaultSongVolume"] != "") Global.SongAddDefaultSongVolume = cfg["SongAddDefaultSongVolume"];
             SongAdd_DefaultSongVolume_TextBox.Text = Global.SongAddDefaultSongVolume;
 
-            if (list[15] != "") Global.SongAddSpecialStr = list[15];
+            if (cfg["SongAddSpecialStr"] != "") Global.SongAddSpecialStr = cfg["SongAddSpecialStr"];
             SongAdd_SpecialStr_ListBox.DataSource = SongAdd.GetDefaultSongInfo("SpecialStr", false, false);
             SongAdd_SpecialStr_ListBox.DisplayMember = "Display";
             SongAdd_SpecialStr_ListBox.ValueMember = "Value";
 
-            if (list[16] != "") Global.SongMgrFolderStructure = list[16];
+            if (cfg["SongMgrFolderStructure"] != "") Global.SongMgrFolderStructure = cfg["SongMgrFolderStructure"];
             SongMgrCfg_FolderStructure_ComboBox.DataSource = SongMgrCfg.GetFolderStructureList();
             SongMgrCfg_FolderStructure_ComboBox.DisplayMember = "Display";
             SongMgrCfg_FolderStructure_ComboBox.ValueMember = "Value";
             SongMgrCfg_FolderStructure_ComboBox.SelectedValue = Global.SongMgrFolderStructure;
 
-            if (list[17] != "") Global.SongMgrFileStructure = list[17];
+            if (cfg["SongMgrFileStructure"] != "") Global.SongMgrFileStructure = cfg["SongMgrFileStructure"];
             SongMgrCfg_FileStructure_ComboBox.DataSource = SongMgrCfg.GetFileStructureList();
             SongMgrCfg_FileStructure_ComboBox.DisplayMember = "Display";
             SongMgrCfg_FileStructure_ComboBox.ValueMember = "Value";
             SongMgrCfg_FileStructure_ComboBox.SelectedValue = Global.SongMgrFileStructure;
 
-            if (list[18] != "") Global.SongMgrSongTrackMode = list[18];
+            if (cfg["SongMgrSongTrackMode"] != "") Global.SongMgrSongTrackMode = cfg["SongMgrSongTrackMode"];
             SongMgrCfg_SongTrackMode_CheckBox.Checked = bool.Parse(Global.SongMgrSongTrackMode);
 
-            if (list[19] != "") Global.SongAddSongIdentificationMode = list[19];
+            if (cfg["SongAddSongIdentificationMode"] != "") Global.SongAddSongIdentificationMode = cfg["SongAddSongIdentificationMode"];
             SongAdd_SongIdentificationMode_ComboBox.DataSource = SongAdd.GetSongIdentificationModeList();
             SongAdd_SongIdentificationMode_ComboBox.DisplayMember = "Display";
             SongAdd_SongIdentificationMode_ComboBox.ValueMember = "Value";
             SongAdd_SongIdentificationMode_ComboBox.SelectedValue = Global.SongAddSongIdentificationMode;
 
-            if (list[20] != "") Global.SongAddDupSongMode = list[20];
+            if (cfg["SongAddDupSongMode"] != "") Global.SongAddDupSongMode = cfg["SongAddDupSongMode"];
             SongAdd_DupSongMode_ComboBox.DataSource = SongAdd.GetDupSongModeList();
             SongAdd_DupSongMode_ComboBox.DisplayMember = "Display";
             SongAdd_DupSongMode_ComboBox.ValueMember = "Value";
             SongAdd_DupSongMode_ComboBox.SelectedValue = Global.SongAddDupSongMode;
 
-            if (list[22] != "")
+            if (cfg["CrazyktvSongLangKeyWord"] != "")
             {
-                Global.CrazyktvSongLangKeyWordList = new List<string>(list[22].Split('|'));
+                Global.CrazyktvSongLangKeyWordList = new List<string>(cfg["CrazyktvSongLangKeyWord"].Split('|'));
             }
             else
             {
@@ -369,110 +257,110 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (list[23] != "") Global.SongMgrBackupRemoveSong = list[23];
+            if (cfg["SongMgrBackupRemoveSong"] != "") Global.SongMgrBackupRemoveSong = cfg["SongMgrBackupRemoveSong"];
             SongMgrCfg_BackupRemoveSong_CheckBox.Checked = bool.Parse(Global.SongMgrBackupRemoveSong);
 
-            if (list[24] != "") Global.SongAddEngSongNameFormat = list[24];
+            if (cfg["SongAddEngSongNameFormat"] != "") Global.SongAddEngSongNameFormat = cfg["SongAddEngSongNameFormat"];
             SongAdd_EngSongNameFormat_CheckBox.Checked = bool.Parse(Global.SongAddEngSongNameFormat);
 
-            if (list[25] != "") Global.MainCfgAlwaysOnTop = list[25];
+            if (cfg["MainCfgAlwaysOnTop"] != "") Global.MainCfgAlwaysOnTop = cfg["MainCfgAlwaysOnTop"];
             MainCfg_AlwaysOnTop_CheckBox.Checked = bool.Parse(Global.MainCfgAlwaysOnTop);
 
-            if (!string.IsNullOrEmpty(list[26])) Global.CrazyktvSongDBVer = list[26];
+            if (!string.IsNullOrEmpty(cfg["CrazyktvSongDBVer"])) Global.CrazyktvSongDBVer = cfg["CrazyktvSongDBVer"];
 
-            if (list[27] != "") Global.MainCfgHideSongDBConverterTabPage = list[27];
+            if (cfg["MainCfgHideSongDBConverterTabPage"] != "") Global.MainCfgHideSongDBConverterTabPage = cfg["MainCfgHideSongDBConverterTabPage"];
             MainCfg_HideSongDBConvTab_CheckBox.Checked = bool.Parse(Global.MainCfgHideSongDBConverterTabPage);
 
-            if (list[28] != "") Global.MainCfgHideSongAddResultTabPage = list[28];
+            if (cfg["MainCfgHideSongAddResultTabPage"] != "") Global.MainCfgHideSongAddResultTabPage = cfg["MainCfgHideSongAddResultTabPage"];
             MainCfg_HideSongAddResultTab_CheckBox.Checked = bool.Parse(Global.MainCfgHideSongAddResultTabPage);
 
-            if (list[29] != "") Global.MainCfgHideSongLogTabPage = list[29];
+            if (cfg["MainCfgHideSongLogTabPage"] != "") Global.MainCfgHideSongLogTabPage = cfg["MainCfgHideSongLogTabPage"];
             MainCfg_HideSongLogTab_CheckBox.Checked = bool.Parse(Global.MainCfgHideSongLogTabPage);
 
-            if (list[30] != "") Global.MainCfgBackupRemoveSongDays = list[30];
+            if (cfg["MainCfgBackupRemoveSongDays"] != "") Global.MainCfgBackupRemoveSongDays = cfg["MainCfgBackupRemoveSongDays"];
             MainCfg_BackupRemoveSongDays_ComboBox.DataSource = MainCfg.GetBackupRemoveSongDaysList();
             MainCfg_BackupRemoveSongDays_ComboBox.DisplayMember = "Display";
             MainCfg_BackupRemoveSongDays_ComboBox.ValueMember = "Value";
             MainCfg_BackupRemoveSongDays_ComboBox.SelectedValue = Global.MainCfgBackupRemoveSongDays;
 
-            if (list[31] != "") Global.SingerMgrDefaultSingerDataTable = list[31];
+            if (cfg["SingerMgrDefaultSingerDataTable"] != "") Global.SingerMgrDefaultSingerDataTable = cfg["SingerMgrDefaultSingerDataTable"];
             SingerMgr_DefaultSingerDataTable_ComboBox.DataSource = SingerMgr.GetDefaultSingerDataTableList();
             SingerMgr_DefaultSingerDataTable_ComboBox.DisplayMember = "Display";
             SingerMgr_DefaultSingerDataTable_ComboBox.ValueMember = "Value";
 
             #if DEBUG
-                SingerMgr_DefaultSingerDataTable_ComboBox.SelectedValue = (Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 1 : 2;
+                SingerMgr_DefaultSingerDataTable_ComboBox.SelectedValue = (SingerTable.Default.IsLibrary) ? 1 : 2;
             #else
                 Global.SingerMgrDefaultSingerDataTable = "ktv_Singer";
                 SingerMgr_DefaultSingerDataTable_ComboBox.SelectedValue = 1;
                 SingerMgr_DefaultSingerDataTable_ComboBox.Enabled = false;
             #endif
 
-            if (list[32] != "") Global.DBVerEnableDBVerUpdate = list[32];
+            if (cfg["DBVerEnableDBVerUpdate"] != "") Global.DBVerEnableDBVerUpdate = cfg["DBVerEnableDBVerUpdate"];
             SongMaintenance_EnableDBVerUpdate_CheckBox.Checked = bool.Parse(Global.DBVerEnableDBVerUpdate);
 
-            if (list[33] != "") Global.MainCfgUIScale = list[33];
+            if (cfg["MainCfgUIScale"] != "") Global.MainCfgUIScale = cfg["MainCfgUIScale"];
             MainCfg_UIScale_ComboBox.DataSource = MainCfg.GetUIScaleList();
             MainCfg_UIScale_ComboBox.DisplayMember = "Display";
             MainCfg_UIScale_ComboBox.ValueMember = "Value";
             MainCfg_UIScale_ComboBox.SelectedValue = Global.MainCfgUIScale;
 
-            if (list[34] != "") Global.SongMaintenanceReplayGainVolume = list[34];
+            if (cfg["SongMaintenanceReplayGainVolume"] != "") Global.SongMaintenanceReplayGainVolume = cfg["SongMaintenanceReplayGainVolume"];
             SongMaintenance_ReplayGain_TextBox.Text = Global.SongMaintenanceReplayGainVolume;
 
-            if (list[35] != "") Global.SongAddEnableVolumeDetect = list[35];
+            if (cfg["SongAddEnableVolumeDetect"] != "") Global.SongAddEnableVolumeDetect = cfg["SongAddEnableVolumeDetect"];
             SongAdd_EnableVolumeDetect_CheckBox.Checked = bool.Parse(Global.SongAddEnableVolumeDetect);
 
-            if (list[36] != "") Global.SongAddUseCustomSongID = list[36];
+            if (cfg["SongAddUseCustomSongID"] != "") Global.SongAddUseCustomSongID = cfg["SongAddUseCustomSongID"];
             SongAdd_UseCustomSongID_CheckBox.Checked = bool.Parse(Global.SongAddUseCustomSongID);
 
-            if (list[37] != "") Global.MainCfgUIFont = list[37];
+            if (cfg["MainCfgUIFont"] != "") Global.MainCfgUIFont = cfg["MainCfgUIFont"];
             MainCfg_UIFont_ComboBox.DataSource = MainCfg.GetUIFontList();
             MainCfg_UIFont_ComboBox.DisplayMember = "Display";
             MainCfg_UIFont_ComboBox.ValueMember = "Value";
             MainCfg_UIFont_ComboBox.Text = Global.MainCfgUIFont;
 
-            if (list[38] != "") Global.MainCfgEnableUIScale = list[38];
+            if (cfg["MainCfgEnableUIScale"] != "") Global.MainCfgEnableUIScale = cfg["MainCfgEnableUIScale"];
             MainCfg_EnableUIScale_CheckBox.Checked = bool.Parse(Global.MainCfgEnableUIScale);
 
-            if (list[39] != "") Global.SongMgrCustomSingerTypeStructure = list[39];
+            if (cfg["SongMgrCustomSingerTypeStructure"] != "") Global.SongMgrCustomSingerTypeStructure = cfg["SongMgrCustomSingerTypeStructure"];
             SongMgrCfg_SetCustomSingerTypeStructureCbox();
 
-            if (list[40] != "") Global.MainCfgEnableAutoUpdate = list[40];
+            if (cfg["MainCfgEnableAutoUpdate"] != "") Global.MainCfgEnableAutoUpdate = cfg["MainCfgEnableAutoUpdate"];
             MainCfg_EnableAutoUpdate_CheckBox.Checked = bool.Parse(Global.MainCfgEnableAutoUpdate);
 
-            if (list[41] != "") Global.SongAddEnableConvToTC = list[41];
+            if (cfg["SongAddEnableConvToTC"] != "") Global.SongAddEnableConvToTC = cfg["SongAddEnableConvToTC"];
             SongAdd_EnableConvToTC_CheckBox.Checked = bool.Parse(Global.SongAddEnableConvToTC);
 
-            if (list[42] != "") Global.SongMgrEnableMonitorFolders = list[42];
+            if (cfg["SongMgrEnableMonitorFolders"] != "") Global.SongMgrEnableMonitorFolders = cfg["SongMgrEnableMonitorFolders"];
             SongMgrCfg_MonitorFolders_CheckBox.Checked = bool.Parse(Global.SongMgrEnableMonitorFolders);
 
-            if (list[43] != "") Global.SongMgrMonitorFoldersList = new List<string>(list[43].Split(','));
+            if (cfg["SongMgrMonitorFolders"] != "") Global.SongMgrMonitorFoldersList = new List<string>(cfg["SongMgrMonitorFolders"].Split(','));
 
-            if (list[44] != "") Global.SingerMgrSyncSongSinger = list[44];
+            if (cfg["SingerMgrSyncSongSinger"] != "") Global.SingerMgrSyncSongSinger = cfg["SingerMgrSyncSongSinger"];
             SingerMgr_EditSyncSongSinger_CheckBox.Checked = bool.Parse(Global.SingerMgrSyncSongSinger);
 
-            if (list[45] != "") Global.SongMgrSingerGroup = list[45];
+            if (cfg["SongMgrSingerGroup"] != "") Global.SongMgrSingerGroup = cfg["SongMgrSingerGroup"];
             SongMgrCfg_SingerGroup_ListBox.DataSource = SongMgrCfg.GetSingerGroupList();
             SongMgrCfg_SingerGroup_ListBox.DisplayMember = "Display";
             SongMgrCfg_SingerGroup_ListBox.ValueMember = "Value";
 
-            if (list[46] != "") Global.MainCfgHideApplyCashboxIdButton = list[46];
+            if (cfg["MainCfgHideApplyCashboxIdButton"] != "") Global.MainCfgHideApplyCashboxIdButton = cfg["MainCfgHideApplyCashboxIdButton"];
             MainCfg_HideApplyCashboxIdButton_CheckBox.Checked = bool.Parse(Global.MainCfgHideApplyCashboxIdButton);
 
-            if (list[47] != "") Global.MainCfgUICustomScale = list[47];
+            if (cfg["MainCfgUICustomScale"] != "") Global.MainCfgUICustomScale = cfg["MainCfgUICustomScale"];
             MainCfg_UIScale_TextBox.Text = Global.MainCfgUICustomScale;
 
-            if (list[48] != "") Global.MainCfgBackupDB = list[48];
+            if (cfg["MainCfgBackupDB"] != "") Global.MainCfgBackupDB = cfg["MainCfgBackupDB"];
             MainCfg_BackupDB_CheckBox.Checked = bool.Parse(Global.MainCfgBackupDB);
 
-            if (list[49] != "") Global.MainCfgBackupDBPath = list[49];
+            if (cfg["MainCfgBackupDBPath"] != "") Global.MainCfgBackupDBPath = cfg["MainCfgBackupDBPath"];
             MainCfg_BackupDB_TextBox.Text = Global.MainCfgBackupDBPath;
 
-            if (list[51] != "") Global.MainCfgPlayerCore = "1";
+            if (cfg["MainCfgPlayerCore"] != "") Global.MainCfgPlayerCore = "1";
             MainCfg_PlayerCore_RadioButton1.Checked = true;
 
-            if (list[52] != "") Global.MainCfgPlayerOutput = list[52];
+            if (cfg["MainCfgPlayerOutput"] != "") Global.MainCfgPlayerOutput = cfg["MainCfgPlayerOutput"];
             if (Global.MainCfgPlayerOutput == "1")
             {
                 MainCfg_PlayerOutput_RadioButton1.Checked = true;
@@ -482,25 +370,23 @@ namespace CrazyKTV_SongMgr
                 MainCfg_PlayerOutput_RadioButton2.Checked = true;
             }
 
-            if (list[53] != "") Global.MainCfgPlayerEnableAudioCompressor = list[53];
+            if (cfg["MainCfgPlayerEnableAudioCompressor"] != "") Global.MainCfgPlayerEnableAudioCompressor = cfg["MainCfgPlayerEnableAudioCompressor"];
             MainCfg_PlayerEnableAudioCompressor_CheckBox.Checked = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
 
-            if (list[54] != "") Global.MainCfgPlayerEnableAudioProcessor = list[54];
+            if (cfg["MainCfgPlayerEnableAudioProcessor"] != "") Global.MainCfgPlayerEnableAudioProcessor = cfg["MainCfgPlayerEnableAudioProcessor"];
             MainCfg_PlayerEnableAudioProcessor_CheckBox.Checked = bool.Parse(Global.MainCfgPlayerEnableAudioProcessor);
 
-            if (list[55] != "") Global.MainCfgPlayerDefaultVolume = list[55];
+            if (cfg["MainCfgPlayerDefaultVolume"] != "") Global.MainCfgPlayerDefaultVolume = cfg["MainCfgPlayerDefaultVolume"];
             MainCfg_PlayerDefaultVolume_TextBox.Text = Global.MainCfgPlayerDefaultVolume;
 
-            if (list[3] != "") Global.SongMgrSongAddMode = list[3];
+            if (cfg["SongMgrSongAddMode"] != "") Global.SongMgrSongAddMode = cfg["SongMgrSongAddMode"];
             SongMgrCfg_SongAddMode_ComboBox.DataSource = SongMgrCfg.GetSongAddModeList();
             SongMgrCfg_SongAddMode_ComboBox.DisplayMember = "Display";
             SongMgrCfg_SongAddMode_ComboBox.ValueMember = "Value";
             SongMgrCfg_SongAddMode_ComboBox.SelectedValue = int.Parse(Global.SongMgrSongAddMode);
 
             // 建立歌曲操作記錄資料表
-            Global.SongLogDT = new DataTable();
-            Global.SongLogDT.Columns.Add(new DataColumn("Display", typeof(string)));
-            Global.SongLogDT.Columns.Add(new DataColumn("Value", typeof(int)));
+            Global.SongLog.Reset();
 
             // 檢查解碼器登錄狀態
             RegistryKey regKey = Registry.ClassesRoot.OpenSubKey("CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\{B86F6BEE-E7C0-4D03-8D52-5B4430CF6C88}");
@@ -646,8 +532,8 @@ namespace CrazyKTV_SongMgr
             {
                 try
                 {
-                    CommonFunc.CompactAccessDB("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Global.CrazyktvDatabaseFile + ";", Global.CrazyktvDatabaseFile);
-                    CommonFunc.CompactAccessDB("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Global.CrazyktvSongMgrDatabaseFile + ";", Global.CrazyktvSongMgrDatabaseFile);
+                    CommonFunc.CompactAccessDB(SongLibraryStore.ConnectionString(Global.CrazyktvDatabaseFile), Global.CrazyktvDatabaseFile);
+                    CommonFunc.CompactAccessDB(SongLibraryStore.ConnectionString(Global.CrazyktvSongMgrDatabaseFile), Global.CrazyktvSongMgrDatabaseFile);
                     if (Global.MainCfgBackupDB == "True" && Directory.Exists(Global.MainCfgBackupDBPath))
                     {
                         try
@@ -758,37 +644,20 @@ namespace CrazyKTV_SongMgr
 
         private void MainForm_VisibleChanged(object sender, EventArgs e)
         {
-            if (Global.PlayerUpdateSongValueList.Count > 0 )
+            if (Global.PlayerTrackUpdate != null)
             {
-                int i = Convert.ToInt32(Global.PlayerUpdateSongValueList[1]);
-                switch (Global.PlayerUpdateSongValueList[0])
+                PlayerTrackUpdate update = Global.PlayerTrackUpdate;
+                int i = Convert.ToInt32(update.RowIndex);
+                switch (update.Source)
                 {
                     case "SongQuery":
-                        string OldSongId = SongQuery_DataGridView.Rows[i].Cells["Song_Id"].Value.ToString();
-                        string SongId = SongQuery_DataGridView.Rows[i].Cells["Song_Id"].Value.ToString();
-                        string SongLang = SongQuery_DataGridView.Rows[i].Cells["Song_Lang"].Value.ToString();
-                        string SongSingerType = SongQuery_DataGridView.Rows[i].Cells["Song_SingerType"].Value.ToString();
-                        string SongSinger = SongQuery_DataGridView.Rows[i].Cells["Song_Singer"].Value.ToString();
-                        string SongSongName = SongQuery_DataGridView.Rows[i].Cells["Song_SongName"].Value.ToString();
-                        string SongTrack = Global.PlayerUpdateSongValueList[2];
-                        string SongSongType = SongQuery_DataGridView.Rows[i].Cells["Song_SongType"].Value.ToString();
-                        string SongVolume = SongQuery_DataGridView.Rows[i].Cells["Song_Volume"].Value.ToString();
-                        string SongWordCount = SongQuery_DataGridView.Rows[i].Cells["Song_WordCount"].Value.ToString();
-                        string SongPlayCount = SongQuery_DataGridView.Rows[i].Cells["Song_PlayCount"].Value.ToString();
-                        string SongMB = SongQuery_DataGridView.Rows[i].Cells["Song_MB"].Value.ToString();
-                        string SongCreatDate = SongQuery_DataGridView.Rows[i].Cells["Song_CreatDate"].Value.ToString();
-                        string SongFileName = SongQuery_DataGridView.Rows[i].Cells["Song_FileName"].Value.ToString();
-                        string SongPath = SongQuery_DataGridView.Rows[i].Cells["Song_Path"].Value.ToString();
-                        string SongSpell = SongQuery_DataGridView.Rows[i].Cells["Song_Spell"].Value.ToString();
-                        string SongSpellNum = SongQuery_DataGridView.Rows[i].Cells["Song_SpellNum"].Value.ToString();
-                        string SongSongStroke = SongQuery_DataGridView.Rows[i].Cells["Song_SongStroke"].Value.ToString();
-                        string SongPenStyle = SongQuery_DataGridView.Rows[i].Cells["Song_PenStyle"].Value.ToString();
-                        string SongPlayState = SongQuery_DataGridView.Rows[i].Cells["Song_PlayState"].Value.ToString();
+                        SongRecord song = SongRecord.FromQueryGridRow(SongQuery_DataGridView.Rows[i]);
+                        string OldSongId = song.Id;
+                        song.OldId = song.Id;
+                        song.SingerType = SongQuery_DataGridView.Rows[i].Cells["Song_SingerType"].Value.ToString();
+                        song.Track = update.Track;
 
-                        List<string> UpdateList = new List<string>()
-                        {
-                            SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + OldSongId
-                        };
+                        List<SongRecord> UpdateList = new List<SongRecord>() { song };
 
                         SongQuery.CreateSongDataTable();
                         Common_SwitchSetUI(false);
@@ -821,13 +690,13 @@ namespace CrazyKTV_SongMgr
                         }
                         break;
                     case "SongQueryEdit":
-                        SongQuery_EditSongTrack_ComboBox.SelectedValue = Global.PlayerUpdateSongValueList[2];
+                        SongQuery_EditSongTrack_ComboBox.SelectedValue = update.Track;
                         break;
                     case "SongAdd":
-                        SongAdd_EditSongTrack_ComboBox.SelectedValue = Global.PlayerUpdateSongValueList[2];
+                        SongAdd_EditSongTrack_ComboBox.SelectedValue = update.Track;
                         break;
                 }
-                Global.PlayerUpdateSongValueList.Clear();
+                Global.PlayerTrackUpdate = null;
             }
         }
 

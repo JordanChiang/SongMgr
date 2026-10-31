@@ -1128,9 +1128,7 @@ namespace CrazyKTV_SongMgr
                                     catch
                                     {
                                         Global.TotalList[1]++;
-                                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "加入錢櫃資料時發生未知的錯誤: " + SongData;
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                        Global.SongLog.Add("加入錢櫃資料時發生未知的錯誤: " + SongData);
                                     }
                                 }
                                 break;
@@ -1156,9 +1154,7 @@ namespace CrazyKTV_SongMgr
                                     catch
                                     {
                                         Global.TotalList[1]++;
-                                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "更新錢櫃資料時發生未知的錯誤: " + SongData;
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                        Global.SongLog.Add("更新錢櫃資料時發生未知的錯誤: " + SongData);
                                     }
                                 }
                                 break;
@@ -1336,12 +1332,8 @@ namespace CrazyKTV_SongMgr
                 ReOldList.Sort();
                 ReNewList.Sort();
 
-                using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                using (SongLibraryStore store = SongLibraryStore.Open())
                 {
-                    OleDbCommand cmd = new OleDbCommand();
-                    string UpdateSqlStr = "update ktv_Song set Song_Id = @SongId where Song_Id = @OldSongId";
-                    cmd = new OleDbCommand(UpdateSqlStr, conn);
-
                     List<string> valuelist;
                     foreach (string str in ReOldList)
                     {
@@ -1349,33 +1341,17 @@ namespace CrazyKTV_SongMgr
                         string NextSongId = Cashbox.GetNextSongId(valuelist[2]);
                         try
                         {
-                            cmd.Parameters.AddWithValue("@SongId", NextSongId);
-                            cmd.Parameters.AddWithValue("@OldSongId", valuelist[0]);
-                            cmd.ExecuteNonQuery();
-                            cmd.Parameters.Clear();
-
-                            cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-                            cmd.Parameters.AddWithValue("@OldSongId", valuelist[1]);
-                            cmd.ExecuteNonQuery();
-                            cmd.Parameters.Clear();
+                            store.UpdateSong(new SongRecord { Id = NextSongId, OldId = valuelist[0] }, SongColumns.Id);
+                            store.UpdateSong(new SongRecord { Id = valuelist[0], OldId = valuelist[1] }, SongColumns.Id);
 
                             Global.TotalList[0]++;
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "已成功套用編號: " + valuelist[0] + " => " + NextSongId + " 及 " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")";
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("已成功套用編號: " + valuelist[0] + " => " + NextSongId + " 及 " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
                         }
                         catch
                         {
                             Global.TotalList[1]++;
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "分配編號時發生未知的錯誤: " + valuelist[0] + " => " + NextSongId + " 及 " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")";
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("分配編號時發生未知的錯誤: " + valuelist[0] + " => " + NextSongId + " 及 " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
                         }
-                        finally
-                        {
-                            cmd.Parameters.Clear();
-                        }
-
                         this.BeginInvoke((Action)delegate()
                         {
                             Cashbox_QueryStatus_Label.Text = "已成功將 " + Global.TotalList[0] + " 首歌曲變更為錢櫃編號,失敗 " + Global.TotalList[1] + " 首...";
@@ -1388,25 +1364,17 @@ namespace CrazyKTV_SongMgr
                     {
                         valuelist = new List<string>(str.Split('|'));
 
-                        cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-                        cmd.Parameters.AddWithValue("@OldSongId", valuelist[1]);
-
                         try
                         {
-                            cmd.ExecuteNonQuery();
+                            store.UpdateSong(new SongRecord { Id = valuelist[0], OldId = valuelist[1] }, SongColumns.Id);
                             Global.TotalList[0]++;
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "已成功套用編號: " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")";
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("已成功套用編號: " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
                         }
                         catch
                         {
                             Global.TotalList[1]++;
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "分配編號時發生未知的錯誤: " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")";
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("分配編號時發生未知的錯誤: " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
                         }
-                        cmd.Parameters.Clear();
 
                         this.BeginInvoke((Action)delegate()
                         {

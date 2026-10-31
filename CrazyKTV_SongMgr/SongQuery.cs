@@ -712,39 +712,26 @@ namespace CrazyKTV_SongMgr
 
         #region --- SongQuery 更新歌曲 ---
 
-        private void SongQuery_SongUpdate(List<string> UpdateList, DataTable UpdateDT, bool RefreshStatistics = true)
+        private void SongQuery_SongUpdate(List<SongRecord> UpdateList, DataTable UpdateDT, bool RefreshStatistics = true)
         {
             if (UpdateList.Count <= 0) return;
 
-            List<string> SongUpdateValueList = new List<string>();
-            List<string> updvaluelist;
+            List<SongRecord> SongUpdateValueList = new List<SongRecord>();
 
-            foreach (string UpdateStr in UpdateList)
+            foreach (SongRecord update in UpdateList)
             {
-                updvaluelist = new List<string>(UpdateStr.Split('|'));
+                string UpdateStr = update.ToLogString();
 
-                string OldSongId = updvaluelist[19];
-                string SongId = updvaluelist[0];
-                string SongLang = updvaluelist[1];
-                int SongSingerType = Convert.ToInt32(updvaluelist[2]);
-                string SongSinger = updvaluelist[3];
-                string SongSongName = updvaluelist[4];
-                int SongTrack = Convert.ToInt32(updvaluelist[5]);
-                string SongSongType = updvaluelist[6];
-                string SongVolume = updvaluelist[7];
-                string SongWordCount = updvaluelist[8];
-                string SongPlayCount = updvaluelist[9];
-                string SongMB = updvaluelist[10];
-                string SongCreatDate = updvaluelist[11];
-                string SongFileName = updvaluelist[12];
-                string SongPath = updvaluelist[13];
-                string SongSpell = updvaluelist[14];
-                string SongSpellNum = updvaluelist[15];
-                string SongSongStroke = updvaluelist[16];
-                string SongPenStyle = updvaluelist[17];
-                string SongPlayState = updvaluelist[18];
-
-                updvaluelist.Clear();
+                string OldSongId = update.OldId;
+                string SongId = update.Id;
+                string SongLang = update.Lang;
+                int SongSingerType = update.SingerTypeValue;
+                string SongSinger = update.Singer;
+                string SongSongName = update.SongName;
+                int SongTrack = update.TrackValue;
+                string SongSongType = update.SongType;
+                string SongFileName = update.FileName;
+                string SongPath = update.Path;
 
                 string DupSongData = "";
                 bool DuplicateSongStatus = false;
@@ -756,9 +743,7 @@ namespace CrazyKTV_SongMgr
                 {
                     SingerNameisEmpty = true;
 
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】歌手名稱空白: 階段1 [" + UpdateStr + "]";
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫查詢】歌手名稱空白: 階段1 [" + UpdateStr + "]");
                 }
 
                 // 重複歌曲判斷
@@ -913,9 +898,7 @@ namespace CrazyKTV_SongMgr
 
                 if (DuplicateSongStatus)
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】已有重複歌曲: " + DupSongData;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫查詢】已有重複歌曲: " + DupSongData);
 
                     lock(LockThis) { Global.TotalList[1]++; }
 
@@ -930,9 +913,7 @@ namespace CrazyKTV_SongMgr
                 {
                     SingerNameisEmpty = true;
 
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】歌手名稱空白: 階段2 [" + UpdateStr + "]";
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫查詢】歌手名稱空白: 階段2 [" + UpdateStr + "]");
 
                     lock (LockThis) { Global.TotalList[2]++; }
 
@@ -944,91 +925,30 @@ namespace CrazyKTV_SongMgr
 
                 if (!DuplicateSongStatus && !SingerNameisEmpty)
                 {
-                    if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
+                    if (LibraryPlacement.MovesFiles)
                     {
                         string SongSrcPath = Path.Combine(SongPath, SongFileName);
-                        string SongDestPath = CommonFunc.GetFileStructure(SongId, SongLang, SongSingerType, SongSinger, SongSongName, SongTrack, SongSongType, SongFileName, SongPath, false, "", true, false);
+                        SongRecord song = new SongRecord
+                        {
+                            Id = SongId, Lang = SongLang, SingerType = SongSingerType.ToString(), Singer = SongSinger, SongName = SongSongName,
+                            Track = SongTrack.ToString(), SongType = SongSongType, FileName = SongFileName, Path = SongPath,
+                        };
+                        string SongDestPath = LibraryPlacement.Destination(song, PlacementPurpose.Relocate);
                         SongPath = Path.GetDirectoryName(SongDestPath) + @"\";
                         SongFileName = Path.GetFileName(SongDestPath);
 
-                        if (File.Exists(SongSrcPath))
+                        string FailReason = null;
+                        switch (LibraryPlacement.Relocate(SongSrcPath, SongDestPath))
                         {
-                            if (!Directory.Exists(SongPath)) Directory.CreateDirectory(SongPath);
-
-                            if (File.Exists(SongDestPath))
-                            {
-                                if (Path.GetFullPath(SongSrcPath).ToLower() == Path.GetFullPath(SongDestPath).ToLower())
-                                {
-                                    try
-                                    {
-                                        FileAttributes attributes = File.GetAttributes(SongSrcPath);
-                                        if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                        {
-                                            attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                            File.SetAttributes(SongSrcPath, attributes);
-                                        }
-
-                                        File.Move(SongSrcPath, SongPath + "Temp_" + SongFileName);
-                                        File.Move(SongPath + "Temp_" + SongFileName, SongDestPath);
-                                    }
-                                    catch
-                                    {
-                                        MoveError = true;
-                                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】異動檔案時發生錯誤: " + SongSrcPath + " (檔案唯讀或正在使用)";
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-
-                                        lock (LockThis) { Global.TotalList[2]++; }
-
-                                        this.BeginInvoke((Action)delegate()
-                                        {
-                                            SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首...";
-                                        });
-                                    }
-                                }
-                                else
-                                {
-                                    MoveError = true;
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】異動檔案時發生錯誤: " + SongSrcPath + " (歌庫裡已存在該首歌曲的檔案)";
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-
-                                    lock (LockThis) { Global.TotalList[2]++; }
-
-                                    this.BeginInvoke((Action)delegate()
-                                    {
-                                        SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首...";
-                                    });
-                                }
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    File.Move(SongSrcPath, SongDestPath);
-                                }
-                                catch
-                                {
-                                    MoveError = true;
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】異動檔案時發生錯誤: " + SongSrcPath + " (檔案唯讀或正在使用)";
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-
-                                    lock (LockThis) { Global.TotalList[2]++; }
-
-                                    this.BeginInvoke((Action)delegate()
-                                    {
-                                        SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首...";
-                                    });
-                                }
-                            }
+                            case PlacementOutcome.SourceMissing: FailReason = " (來源檔案不存在)"; break;
+                            case PlacementOutcome.DestinationOccupied: FailReason = " (歌庫裡已存在該首歌曲的檔案)"; break;
+                            case PlacementOutcome.FileLocked: FailReason = " (檔案唯讀或正在使用)"; break;
                         }
-                        else
+
+                        if (FailReason != null)
                         {
                             MoveError = true;
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】異動檔案時發生錯誤: " + SongSrcPath + " (來源檔案不存在)";
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("【歌庫查詢】異動檔案時發生錯誤: " + SongSrcPath + FailReason);
 
                             lock (LockThis) { Global.TotalList[2]++; }
 
@@ -1039,7 +959,7 @@ namespace CrazyKTV_SongMgr
                         }
                     }
                 }
-                
+
                 if (MoveError || DuplicateSongStatus || SingerNameisEmpty)
                 {
                     if (Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLang)] == Convert.ToInt32(SongId))
@@ -1049,31 +969,30 @@ namespace CrazyKTV_SongMgr
 
                     this.BeginInvoke((Action)delegate()
                     {
-                        foreach (string str in Global.SongQueryDataGridViewSelectList)
+                        foreach (SongRecord restore in Global.SongQueryDataGridViewSelectList)
                         {
-                            List<string> RestoreSongDataList = new List<string>(str.Split('|'));
-                            if (RestoreSongDataList[0] == OldSongId)
+                            if (restore.Id == OldSongId)
                             {
                                 List<string> SongSongTypeList = new List<string>(Global.SongMgrSongType.Split(','));
-                                Global.SongQueryDataGridViewRestoreSelectList.Add(RestoreSongDataList[0]);
+                                Global.SongQueryDataGridViewRestoreSelectList.Add(restore.Id);
 
                                 int SelectedRowsCount = SongQuery_DataGridView.SelectedRows.Count;
                                 if (SelectedRowsCount == 1)
                                 {
-                                    SongQuery_EditSongId_TextBox.Text = RestoreSongDataList[0];
-                                    SongQuery_EditSongLang_ComboBox.SelectedValue = Global.CrazyktvSongLangList.IndexOf(RestoreSongDataList[1]) + 1;
-                                    SongQuery_EditSongCreatDate_DateTimePicker.Value = DateTime.Parse(RestoreSongDataList[11]);
-                                    SongQuery_EditSongSinger_TextBox.Text = RestoreSongDataList[3];
-                                    string SongSingerTypeStr = CommonFunc.GetSingerTypeStr(Convert.ToInt32(RestoreSongDataList[2]), 1, "null");
+                                    SongQuery_EditSongId_TextBox.Text = restore.Id;
+                                    SongQuery_EditSongLang_ComboBox.SelectedValue = Global.CrazyktvSongLangList.IndexOf(restore.Lang) + 1;
+                                    SongQuery_EditSongCreatDate_DateTimePicker.Value = DateTime.Parse(restore.CreatDate);
+                                    SongQuery_EditSongSinger_TextBox.Text = restore.Singer;
+                                    string SongSingerTypeStr = CommonFunc.GetSingerTypeStr(restore.SingerTypeValue, 1, "null");
                                     SongQuery_EditSongSingerType_ComboBox.SelectedValue = Convert.ToInt32(CommonFunc.GetSingerTypeStr(0, 3, SongSingerTypeStr)) + 1;
-                                    SongQuery_EditSongSongName_TextBox.Text = RestoreSongDataList[4];
-                                    SongQuery_EditSongSongType_ComboBox.SelectedValue = (SongSongType == "") ? 1 : SongSongTypeList.IndexOf(RestoreSongDataList[6]) + 2;
-                                    SongQuery_EditSongSpell_TextBox.Text = RestoreSongDataList[14];
-                                    SongQuery_EditSongWordCount_TextBox.Text = RestoreSongDataList[8];
-                                    SongQuery_EditSongSrcPath_TextBox.Text = RestoreSongDataList[19];
-                                    SongQuery_EditSongTrack_ComboBox.SelectedValue = RestoreSongDataList[5];
-                                    SongQuery_EditSongVolume_TextBox.Text = RestoreSongDataList[7];
-                                    SongQuery_EditSongPlayCount_TextBox.Text = RestoreSongDataList[9];
+                                    SongQuery_EditSongSongName_TextBox.Text = restore.SongName;
+                                    SongQuery_EditSongSongType_ComboBox.SelectedValue = (SongSongType == "") ? 1 : SongSongTypeList.IndexOf(restore.SongType) + 2;
+                                    SongQuery_EditSongSpell_TextBox.Text = restore.Spell;
+                                    SongQuery_EditSongWordCount_TextBox.Text = restore.WordCount;
+                                    SongQuery_EditSongSrcPath_TextBox.Text = restore.SrcPath;
+                                    SongQuery_EditSongTrack_ComboBox.SelectedValue = restore.Track;
+                                    SongQuery_EditSongVolume_TextBox.Text = restore.Volume;
+                                    SongQuery_EditSongPlayCount_TextBox.Text = restore.PlayCount;
                                 }
                                 break;
                             }
@@ -1082,114 +1001,57 @@ namespace CrazyKTV_SongMgr
                 }
                 else
                 {
-                    string SongUpdateValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + OldSongId;
-                    SongUpdateValueList.Add(SongUpdateValue);
+                    SongRecord updated = update.Clone();
+                    updated.SingerType = SongSingerType.ToString();
+                    updated.Track = SongTrack.ToString();
+                    updated.FileName = SongFileName;
+                    updated.Path = SongPath;
+                    SongUpdateValueList.Add(updated);
                 }
             }
 
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+            using (SongLibraryStore store = SongLibraryStore.Open())
             {
-                string sqlColumnStr = "Song_Id = @SongId, Song_Lang = @SongLang, Song_SingerType = @SongSingerType, Song_Singer = @SongSinger, Song_SongName = @SongSongName, Song_Track = @SongTrack, Song_SongType = @SongSongType, Song_Volume = @SongVolume, Song_WordCount = @SongWordCount, Song_PlayCount = @SongPlayCount, Song_MB = @SongMB, Song_CreatDate = @SongCreatDate, Song_FileName = @SongFileName, Song_Path = @SongPath, Song_Spell = @SongSpell, Song_SpellNum = @SongSpellNum, Song_SongStroke = @SongSongStroke, Song_PenStyle = @SongPenStyle, Song_PlayState = @SongPlayState";
-                string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @OldSongId";
-                using (OleDbCommand cmd = new OleDbCommand(SongUpdateSqlStr, conn))
+                foreach (SongRecord song in SongUpdateValueList)
                 {
-                    List<string> valuelist;
-                    List<string> dtvaluelist;
+                    string str = song.ToLogString();
 
-                    foreach (string str in SongUpdateValueList)
+                    try
                     {
-                        valuelist = new List<string>(str.Split('|'));
+                        store.UpdateSong(song, SongColumns.AllButReplayGain);
+                        Global.TotalList[0]++;
 
-                        cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-                        cmd.Parameters.AddWithValue("@SongLang", valuelist[1]);
-                        cmd.Parameters.AddWithValue("@SongSingerType", valuelist[2]);
-                        cmd.Parameters.AddWithValue("@SongSinger", valuelist[3]);
-                        cmd.Parameters.AddWithValue("@SongSongName", valuelist[4]);
-                        cmd.Parameters.AddWithValue("@SongTrack", valuelist[5]);
-                        cmd.Parameters.AddWithValue("@SongSongType", valuelist[6]);
-                        cmd.Parameters.AddWithValue("@SongVolume", valuelist[7]);
-                        cmd.Parameters.AddWithValue("@SongWordCount", valuelist[8]);
-                        cmd.Parameters.AddWithValue("@SongPlayCount", valuelist[9]);
-                        cmd.Parameters.AddWithValue("@SongMB", valuelist[10]);
-                        cmd.Parameters.AddWithValue("@SongCreatDate", valuelist[11]);
-                        cmd.Parameters.AddWithValue("@SongFileName", valuelist[12]);
-                        cmd.Parameters.AddWithValue("@SongPath", valuelist[13]);
-                        cmd.Parameters.AddWithValue("@SongSpell", valuelist[14]);
-                        cmd.Parameters.AddWithValue("@SongSpellNum", valuelist[15]);
-                        cmd.Parameters.AddWithValue("@SongSongStroke", valuelist[16]);
-                        cmd.Parameters.AddWithValue("@SongPenStyle", valuelist[17]);
-                        cmd.Parameters.AddWithValue("@SongPlayState", valuelist[18]);
-                        cmd.Parameters.AddWithValue("@OldSongId", valuelist[19]);
-
-                        try
+                        this.BeginInvoke((Action)delegate()
                         {
-                            cmd.ExecuteNonQuery();
-                            Global.TotalList[0]++;
+                            Global.SongQueryDataGridViewRestoreSelectList.Add(song.Id);
 
-                            this.BeginInvoke((Action)delegate()
+                            var query = from row in UpdateDT.AsEnumerable()
+                                        where row["Song_Id"].ToString() == song.OldId
+                                        select row;
+
+                            foreach (DataRow row in query)
                             {
-                                dtvaluelist = new List<string>(str.Split('|'));
-                                Global.SongQueryDataGridViewRestoreSelectList.Add(dtvaluelist[0]);
-
-                                var query = from row in UpdateDT.AsEnumerable()
-                                            where row["Song_Id"].ToString() == dtvaluelist[19]
-                                            select row;
-
-                                foreach (DataRow row in query)
-                                {
-                                    row["Song_Id"] = dtvaluelist[0];
-                                    row["Song_Lang"] = dtvaluelist[1];
-                                    row["Song_SingerType"] = dtvaluelist[2];
-                                    row["Song_Singer"] = dtvaluelist[3];
-                                    row["Song_SongName"] = dtvaluelist[4];
-                                    row["Song_Track"] = dtvaluelist[5];
-                                    row["Song_SongType"] = dtvaluelist[6];
-                                    row["Song_Volume"] = dtvaluelist[7];
-                                    row["Song_WordCount"] = dtvaluelist[8];
-                                    row["Song_PlayCount"] = dtvaluelist[9];
-                                    row["Song_MB"] = dtvaluelist[10];
-                                    row["Song_CreatDate"] = dtvaluelist[11];
-                                    row["Song_FileName"] = dtvaluelist[12];
-                                    row["Song_Path"] = dtvaluelist[13];
-                                    row["Song_Spell"] = dtvaluelist[14];
-                                    row["Song_SpellNum"] = dtvaluelist[15];
-                                    row["Song_SongStroke"] = dtvaluelist[16];
-                                    row["Song_PenStyle"] = dtvaluelist[17];
-                                    row["Song_PlayState"] = dtvaluelist[18];
-                                }
-
-                                dtvaluelist.Clear();
-                                SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首...";
-                            });
-
-                        }
-                        catch
-                        {
-                            Global.TotalList[2]++;
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】更新資料庫時發生錯誤: " + str;
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首...";
-                            });
-                        }
-                        cmd.Parameters.Clear();
-
-                        if (SongQuery.FavoriteDataIdList.IndexOf(valuelist[19]) >= 0)
-                        {
-                            string FavoriteUpdSqlStr = "update ktv_Favorite set Song_Id = @SongId where Song_Id = @OldSongId";
-
-                            using (OleDbCommand Fcmd = new OleDbCommand(FavoriteUpdSqlStr, conn))
-                            {
-                                Fcmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-                                Fcmd.Parameters.AddWithValue("@OldSongId", valuelist[19]);
-                                Fcmd.ExecuteNonQuery();
-                                Fcmd.Parameters.Clear();
+                                song.WriteTo(row, false);
                             }
-                        }
-                        valuelist.Clear();
+
+                            SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首...";
+                        });
+
+                    }
+                    catch
+                    {
+                        Global.TotalList[2]++;
+                        Global.SongLog.Add("【歌庫查詢】更新資料庫時發生錯誤: " + str);
+
+                        this.BeginInvoke((Action)delegate()
+                        {
+                            SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首...";
+                        });
+                    }
+
+                    if (SongQuery.FavoriteDataIdList.IndexOf(song.OldId) >= 0)
+                    {
+                        store.RenumberFavorite(song.OldId, song.Id);
                     }
                 }
             }
@@ -1207,12 +1069,12 @@ namespace CrazyKTV_SongMgr
 
             this.BeginInvoke((Action)delegate()
             {
-                if (Global.SongLogDT.Rows.Count > 0)
+                if (Global.SongLog.Count > 0)
                 {
-                    SongLog_TabPage.Text = "操作記錄 (" + Global.SongLogDT.Rows.Count + ")";
+                    SongLog_TabPage.Text = "操作記錄 (" + Global.SongLog.Count + ")";
                 }
 
-                if (SongQuery_QueryStatus_Label.Text == "") SongQuery_QueryStatus_Label.Text = (Global.SongMgrSongAddMode != "3") ? "已成功更新所選歌曲資料及檔案!" : "已成功更新所選歌曲資料!";
+                if (SongQuery_QueryStatus_Label.Text == "") SongQuery_QueryStatus_Label.Text = (Global.AddMode != SongAddMode.InPlace) ? "已成功更新所選歌曲資料及檔案!" : "已成功更新所選歌曲資料!";
             });
         }
 
@@ -1223,81 +1085,42 @@ namespace CrazyKTV_SongMgr
         private List<string> SongQuery_SongRemove(List<string> SongIdlist, List<string> SongFilelist)
         {
             List<string> RemoveSongIdlist = new List<string>();
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+            using (SongLibraryStore store = SongLibraryStore.Open())
             {
-                string SongRemoveSqlStr = "delete from ktv_Song where Song_Id = @SongId";
-                using (OleDbCommand cmd = new OleDbCommand(SongRemoveSqlStr, conn))
+                foreach (string SongId in SongIdlist)
                 {
-                    foreach (string SongId in SongIdlist)
+                    int i = SongIdlist.IndexOf(SongId);
+                    bool RemoveError = false;
+
+                    string str = SongFilelist[i];
+
+                    if (Global.AddMode != SongAddMode.InPlace && !SongQuery.QuerySameFileSong)
                     {
-                        int i = SongIdlist.IndexOf(SongId);
-                        bool RemoveError = false;
-
-                        string str = SongFilelist[i];
-
-                        if (Global.SongMgrSongAddMode != "3" && !SongQuery.QuerySameFileSong)
+                        if (!LibraryPlacement.Remove(str, Global.SongMgrBackupRemoveSong == "True"))
                         {
-                            if (File.Exists(str))
-                            {
-                                try
-                                {
-                                    FileAttributes attributes = File.GetAttributes(str);
-                                    if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                    {
-                                        attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                        File.SetAttributes(str, attributes);
-                                    }
-
-                                    if (Global.SongMgrBackupRemoveSong == "True")
-                                    {
-                                        string SongFileName = Path.GetFileName(str);
-                                        if (!Directory.Exists(Application.StartupPath + @"\SongMgr\RemoveSong")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\RemoveSong");
-                                        if (File.Exists(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName)) File.Delete(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                        File.Move(str, Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                        CommonFunc.SetFileTime(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName, DateTime.Now);
-                                    }
-                                    else
-                                    {
-                                        File.Delete(str);
-                                    }
-                                }
-                                catch
-                                {
-                                    RemoveError = true;
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫查詢】異動檔案時發生錯誤: " + str + " (唯讀或使用中)";
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                    this.BeginInvoke((Action)delegate()
-                                    {
-                                        SongQuery_QueryStatus_Label.Text = "異動檔案時發生錯誤,請參考操作記錄裡的內容!";
-                                    });
-                                }
-                            }
-                        }
-
-                        if (!RemoveError)
-                        {
-                            cmd.Parameters.AddWithValue("@SongId", SongIdlist[i]);
-                            cmd.ExecuteNonQuery();
-                            cmd.Parameters.Clear();
-                            RemoveSongIdlist.Add(SongIdlist[i]);
-
-                            if (SongQuery.FavoriteDataIdList.IndexOf(SongIdlist[i]) >= 0)
-                            {
-                                string FavoriteRemoveSqlStr = "delete from ktv_Favorite where Song_Id = @SongId";
-                                using (OleDbCommand Fcmd = new OleDbCommand(FavoriteRemoveSqlStr, conn))
-                                {
-                                    Fcmd.Parameters.AddWithValue("@SongId", SongIdlist[i]);
-                                    Fcmd.ExecuteNonQuery();
-                                    Fcmd.Parameters.Clear();
-                                }
-                            }
-
+                            RemoveError = true;
+                            Global.SongLog.Add("【歌庫查詢】異動檔案時發生錯誤: " + str + " (唯讀或使用中)");
                             this.BeginInvoke((Action)delegate()
                             {
-                                SongQuery_QueryStatus_Label.Text = (Global.SongMgrSongAddMode != "3") ? "已成功移除所選歌曲資料及檔案!" : "已成功移除所選歌曲資料!";
+                                SongQuery_QueryStatus_Label.Text = "異動檔案時發生錯誤,請參考操作記錄裡的內容!";
                             });
                         }
+                    }
+
+                    if (!RemoveError)
+                    {
+                        store.DeleteSong(SongIdlist[i]);
+                        RemoveSongIdlist.Add(SongIdlist[i]);
+
+                        if (SongQuery.FavoriteDataIdList.IndexOf(SongIdlist[i]) >= 0)
+                        {
+                            store.DeleteFavorite(SongIdlist[i]);
+                        }
+
+                        this.BeginInvoke((Action)delegate()
+                        {
+                            SongQuery_QueryStatus_Label.Text = (Global.AddMode != SongAddMode.InPlace) ? "已成功移除所選歌曲資料及檔案!" : "已成功移除所選歌曲資料!";
+                        });
                     }
                 }
             }
@@ -2326,11 +2149,11 @@ namespace CrazyKTV_SongMgr
                     }
                     else if (SelectedRowsCount == 1)
                     {
-                        List<string> list = new List<string>(Global.SongQueryDataGridViewSelectList[0].Split('|'));
-                        
+                        SongRecord selected = Global.SongQueryDataGridViewSelectList[0];
+
                         string SongLang = ((DataRowView)SongQuery_EditSongLang_ComboBox.SelectedItem)[0].ToString();
-                        SongQuery_EditSongId_TextBox.Text = (list[1] != SongLang) ? SongQuery.GetNextSongId(SongLang, false) : list[0];
-                        if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4") SongQuery_RefreshSongSrcPathTextBox();
+                        SongQuery_EditSongId_TextBox.Text = (selected.Lang != SongLang) ? SongQuery.GetNextSongId(SongLang, false) : selected.Id;
+                        if (LibraryPlacement.MovesFiles) SongQuery_RefreshSongSrcPathTextBox();
                     }
                 }
             }
@@ -2363,7 +2186,7 @@ namespace CrazyKTV_SongMgr
                 }
                 else if (SelectedRowsCount == 1)
                 {
-                    if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4") SongQuery_RefreshSongSrcPathTextBox();
+                    if (LibraryPlacement.MovesFiles) SongQuery_RefreshSongSrcPathTextBox();
                 }
             }
         }
@@ -2383,7 +2206,7 @@ namespace CrazyKTV_SongMgr
                     }
                     else if (SelectedRowsCount == 1)
                     {
-                        if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4") SongQuery_RefreshSongSrcPathTextBox();
+                        if (LibraryPlacement.MovesFiles) SongQuery_RefreshSongSrcPathTextBox();
                     }
                 }
             }
@@ -2407,7 +2230,7 @@ namespace CrazyKTV_SongMgr
                     List<string> SongSpellList = CommonFunc.GetSongNameSpell(SongSongName);
                     SongQuery_EditSongSpell_TextBox.Text = SongSpellList[0];
 
-                    if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4") SongQuery_RefreshSongSrcPathTextBox();
+                    if (LibraryPlacement.MovesFiles) SongQuery_RefreshSongSrcPathTextBox();
                 }
             }
         }
@@ -2427,7 +2250,7 @@ namespace CrazyKTV_SongMgr
                     }
                     else if (SelectedRowsCount == 1)
                     {
-                        if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4") SongQuery_RefreshSongSrcPathTextBox();
+                        if (LibraryPlacement.MovesFiles) SongQuery_RefreshSongSrcPathTextBox();
                     }
                 }
             }
@@ -2448,7 +2271,7 @@ namespace CrazyKTV_SongMgr
                     }
                     else if (SelectedRowsCount == 1)
                     {
-                        if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4") SongQuery_RefreshSongSrcPathTextBox();
+                        if (LibraryPlacement.MovesFiles) SongQuery_RefreshSongSrcPathTextBox();
                     }
                 }
             }
@@ -2463,29 +2286,36 @@ namespace CrazyKTV_SongMgr
 
                 if (SelectedRowsCount == 1)
                 {
-                    List<string> list = new List<string>(Global.SongQueryDataGridViewSelectList[0].Split('|'));
+                    SongRecord selected = Global.SongQueryDataGridViewSelectList[0];
 
-                    string SongFilePath = list[19];
+                    string SongFilePath = selected.SrcPath;
                     if (!File.Exists(SongFilePath))
                     {
                         SongQuery_QueryStatus_Label.Text = "檔案不存在...";
                     }
                     else
                     {
-                        string SongId = SongQuery_EditSongId_TextBox.Text;
-                        string SongLang = ((DataRowView)SongQuery_EditSongLang_ComboBox.SelectedItem)[0].ToString();
-                        string SongSinger = SongQuery_EditSongSinger_TextBox.Text;
-                        string SongSongName = SongQuery_EditSongSongName_TextBox.Text;
-                        string SongTrack = SongQuery_EditSongTrack_ComboBox.SelectedValue.ToString();
-                        string SongVolume = SongQuery_EditSongVolume_TextBox.Text;
-                        string SongReplayGain = list[20];
+                        PlayerRequest request = new PlayerRequest
+                        {
+                            Song = new SongRecord
+                            {
+                                Id = SongQuery_EditSongId_TextBox.Text,
+                                Lang = ((DataRowView)SongQuery_EditSongLang_ComboBox.SelectedItem)[0].ToString(),
+                                Singer = SongQuery_EditSongSinger_TextBox.Text,
+                                SongName = SongQuery_EditSongSongName_TextBox.Text,
+                                Track = SongQuery_EditSongTrack_ComboBox.SelectedValue.ToString(),
+                                Volume = SongQuery_EditSongVolume_TextBox.Text,
+                                ReplayGain = selected.ReplayGain,
+                            },
+                            FilePath = SongFilePath,
+                            RowIndex = "0",
+                            Source = "SongQueryEdit",
+                        };
 
-                        List<string> PlayerSongInfoList = new List<string>() { SongId, SongLang, SongSinger, SongSongName, SongTrack, SongVolume, SongReplayGain, SongFilePath, "0", "SongQueryEdit" };
-
-                        Global.PlayerUpdateSongValueList = new List<string>();
+                        Global.PlayerTrackUpdate = null;
                         if (Global.MainCfgPlayerCore == "1")
                         {
-                            DShowForm newPlayerForm = new DShowForm(this, PlayerSongInfoList);
+                            DShowForm newPlayerForm = new DShowForm(this, request);
                             newPlayerForm.Show();
                         }
                         this.Hide();
@@ -2528,7 +2358,7 @@ namespace CrazyKTV_SongMgr
             {
                 if (Global.SongQueryDataGridViewSelectList.Count <= 0) return;
                 int SelectedRowsCount = SongQuery_DataGridView.SelectedRows.Count;
-                List<string> UpdateList = new List<string>();
+                List<SongRecord> UpdateList = new List<SongRecord>();
 
                 SongQuery.CreateSongDataTable();
                 SongQuery_QueryStatus_Label.Text = "正在更新歌曲資料,請稍待...";
@@ -2555,7 +2385,6 @@ namespace CrazyKTV_SongMgr
                 string SongSongStroke;
                 string SongPenStyle;
                 string SongPlayState;
-                string SongSrcPath;
                 string CurrentRowSongId = "";
 
                 if (SelectedRowsCount > 1)
@@ -2623,7 +2452,7 @@ namespace CrazyKTV_SongMgr
                             if (SongTrack == "6")
                             {
                                 string FilePath = Path.Combine(SongPath, SongFileName);
-                                var task = Task.Factory.StartNew(() => CommonFunc.AutoDetectSongTrack(FilePath));
+                                var task = Task.Factory.StartNew(() => MediaProbe.DetectTrack(FilePath));
                                 SongTrack = task.Result;
                             }
                         }
@@ -2643,7 +2472,14 @@ namespace CrazyKTV_SongMgr
                             CurrentRowSongId = SongId;
                         }
 
-                        UpdateList.Add(SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + OldSongId);
+                        UpdateList.Add(new SongRecord
+                        {
+                            Id = SongId, Lang = SongLang, SingerType = SongSingerType, Singer = SongSinger, SongName = SongSongName,
+                            Track = SongTrack, SongType = SongSongType, Volume = SongVolume, WordCount = SongWordCount, PlayCount = SongPlayCount,
+                            MB = SongMB, CreatDate = SongCreatDate, FileName = SongFileName, Path = SongPath, Spell = SongSpell,
+                            SpellNum = SongSpellNum, SongStroke = SongSongStroke, PenStyle = SongPenStyle, PlayState = SongPlayState,
+                            OldId = OldSongId,
+                        });
                     }
                 }
                 else if (SelectedRowsCount == 1)
@@ -2683,7 +2519,7 @@ namespace CrazyKTV_SongMgr
                         if (SongTrack == "6")
                         {
                             string FilePath = Path.Combine(SongPath, SongFileName);
-                            var task = Task.Factory.StartNew(() => CommonFunc.AutoDetectSongTrack(FilePath));
+                            var task = Task.Factory.StartNew(() => MediaProbe.DetectTrack(FilePath));
                             SongTrack = task.Result;
                         }
 
@@ -2698,7 +2534,14 @@ namespace CrazyKTV_SongMgr
                         SongPenStyle = SongSpellList[3];
                         SongPlayState = row.Cells["Song_PlayState"].Value.ToString();
 
-                        UpdateList.Add(SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + OldSongId);
+                        UpdateList.Add(new SongRecord
+                        {
+                            Id = SongId, Lang = SongLang, SingerType = SongSingerType, Singer = SongSinger, SongName = SongSongName,
+                            Track = SongTrack, SongType = SongSongType, Volume = SongVolume, WordCount = SongWordCount, PlayCount = SongPlayCount,
+                            MB = SongMB, CreatDate = SongCreatDate, FileName = SongFileName, Path = SongPath, Spell = SongSpell,
+                            SpellNum = SongSpellNum, SongStroke = SongSongStroke, PenStyle = SongPenStyle, PlayState = SongPlayState,
+                            OldId = OldSongId,
+                        });
                     }
                 }
 
@@ -2725,33 +2568,11 @@ namespace CrazyKTV_SongMgr
 
                             if (SelectedRowsCount > 1)
                             {
-                                Global.SongQueryDataGridViewSelectList = new List<string>();
+                                Global.SongQueryDataGridViewSelectList = new List<SongRecord>();
 
                                 foreach (DataGridViewRow row in SongQuery_DataGridView.SelectedRows)
                                 {
-                                    SongId = row.Cells["Song_Id"].Value.ToString();
-                                    SongLang = row.Cells["Song_Lang"].Value.ToString();
-                                    SongSingerType = row.Cells["Song_SingerType"].Value.ToString();
-                                    SongSinger = row.Cells["Song_Singer"].Value.ToString();
-                                    SongSongName = row.Cells["Song_SongName"].Value.ToString();
-                                    SongTrack = row.Cells["Song_Track"].Value.ToString();
-                                    SongSongType = row.Cells["Song_SongType"].Value.ToString();
-                                    SongVolume = row.Cells["Song_Volume"].Value.ToString();
-                                    SongWordCount = row.Cells["Song_WordCount"].Value.ToString();
-                                    SongPlayCount = row.Cells["Song_PlayCount"].Value.ToString();
-                                    SongMB = row.Cells["Song_MB"].Value.ToString();
-                                    SongCreatDate = row.Cells["Song_CreatDate"].Value.ToString();
-                                    SongFileName = row.Cells["Song_FileName"].Value.ToString();
-                                    SongPath = row.Cells["Song_Path"].Value.ToString();
-                                    SongSpell = row.Cells["Song_Spell"].Value.ToString();
-                                    SongSpellNum = row.Cells["Song_SpellNum"].Value.ToString();
-                                    SongSongStroke = row.Cells["Song_SongStroke"].Value.ToString();
-                                    SongPenStyle = row.Cells["Song_PenStyle"].Value.ToString();
-                                    SongPlayState = row.Cells["Song_PlayState"].Value.ToString();
-                                    SongSrcPath = Path.Combine(SongPath, SongFileName);
-
-                                    string SelectValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + SongSrcPath;
-                                    Global.SongQueryDataGridViewSelectList.Add(SelectValue);
+                                    Global.SongQueryDataGridViewSelectList.Add(SongRecord.FromQueryGridRow(row));
                                 }
                             }
                             SongQuery_QueryStatus_Label.Text = "總共更新 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,失敗 " + Global.TotalList[2] + " 首。";
@@ -2819,18 +2640,22 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_RefreshSongSrcPathTextBox()
         {
-            string SongId = SongQuery_EditSongId_TextBox.Text;
-            string SongLang = ((DataRowView)SongQuery_EditSongLang_ComboBox.SelectedItem)[0].ToString();
             string SongSingerTypeStr = CommonFunc.GetSingerTypeStr(Convert.ToInt32(SongQuery_EditSongSingerType_ComboBox.SelectedValue) - 1, 3, "null");
-            int SongSingerType = Convert.ToInt32(CommonFunc.GetSingerTypeStr(0, 1, SongSingerTypeStr));
-            string SongSinger = SongQuery_EditSongSinger_TextBox.Text;
-            string SongSongName = SongQuery_EditSongSongName_TextBox.Text;
-            int SongTrack = Convert.ToInt32(SongQuery_EditSongTrack_ComboBox.SelectedValue);
             string SongSongType = ((DataRowView)SongQuery_EditSongSongType_ComboBox.SelectedItem)[0].ToString();
-            string SongFileName = SongQuery_DataGridView.CurrentRow.Cells["Song_FileName"].Value.ToString();
-            string SongPath = SongQuery_DataGridView.CurrentRow.Cells["Song_Path"].Value.ToString();
 
-            SongQuery_EditSongSrcPath_TextBox.Text = CommonFunc.GetFileStructure(SongId, SongLang, SongSingerType, SongSinger, SongSongName, SongTrack, (SongSongType != "無類別") ? SongSongType : "", SongFileName, SongPath, false, "", true, false);
+            SongRecord song = new SongRecord
+            {
+                Id = SongQuery_EditSongId_TextBox.Text,
+                Lang = ((DataRowView)SongQuery_EditSongLang_ComboBox.SelectedItem)[0].ToString(),
+                SingerType = Convert.ToInt32(CommonFunc.GetSingerTypeStr(0, 1, SongSingerTypeStr)).ToString(),
+                Singer = SongQuery_EditSongSinger_TextBox.Text,
+                SongName = SongQuery_EditSongSongName_TextBox.Text,
+                Track = Convert.ToInt32(SongQuery_EditSongTrack_ComboBox.SelectedValue).ToString(),
+                SongType = (SongSongType != "無類別") ? SongSongType : "",
+                FileName = SongQuery_DataGridView.CurrentRow.Cells["Song_FileName"].Value.ToString(),
+                Path = SongQuery_DataGridView.CurrentRow.Cells["Song_Path"].Value.ToString(),
+            };
+            SongQuery_EditSongSrcPath_TextBox.Text = LibraryPlacement.Destination(song, PlacementPurpose.Relocate);
         }
 
 

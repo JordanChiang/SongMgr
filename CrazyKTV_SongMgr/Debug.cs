@@ -411,9 +411,7 @@ namespace CrazyKTV_SongMgr
             {
                 foreach (string str in list)
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【記錄無資料歌手】未在預設歌手資料表的歌手: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【記錄無資料歌手】未在預設歌手資料表的歌手: " + str);
                 }
             }
         }
@@ -688,9 +686,7 @@ namespace CrazyKTV_SongMgr
                         catch
                         {
                             Global.TotalList[1]++;
-                            Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "更新欄位資料時發生未知的錯誤: " + value;
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                            Global.FailureSongLog.Add("更新欄位資料時發生未知的錯誤: " + value);
                         }
                         cmds[1].Parameters.Clear();
                     }
@@ -780,9 +776,7 @@ namespace CrazyKTV_SongMgr
                         catch
                         {
                             Global.TotalList[1]++;
-                            Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "更新欄位資料時發生未知的錯誤: " + value;
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                            Global.FailureSongLog.Add("更新欄位資料時發生未知的錯誤: " + value);
                         }
                         cmds[0].Parameters.Clear();
                     }
@@ -1029,9 +1023,7 @@ namespace CrazyKTV_SongMgr
                     catch
                     {
                         Global.TotalList[1]++;
-                        Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                        Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "更新資料時發生未知的錯誤: " + SongData;
-                        Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                        Global.FailureSongLog.Add("更新資料時發生未知的錯誤: " + SongData);
                     }
                     UpdCmd.Parameters.Clear();
                     valuelist.Clear();

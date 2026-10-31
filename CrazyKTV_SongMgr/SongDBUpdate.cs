@@ -109,7 +109,7 @@ namespace CrazyKTV_SongMgr
             // 檢查歌庫資料夾
             if (Directory.Exists(Global.SongMgrDestFolder)) SongMgrDestFolder = true;
 
-            if (Global.SongMgrSongAddMode == "3" || Global.SongMgrSongAddMode == "4")
+            if (Global.AddMode == SongAddMode.InPlace || Global.AddMode == SongAddMode.Monitor)
             {
                 if (!CrazyKTVDatabaseFile || !SongMgrDatabaseFile || Global.SongMgrDatabaseError || TB_ktv_AllSinger || TB_ktv_Version || !Col_Song_ReplayGain || Col_Song_MeanVolume || !Col_Langauage_KeyWord || Col_GodLiu)
                 { Global.SongMgrDBVerErrorUIStatus = false; } else { Global.CrazyktvDatabaseStatus = true; }
@@ -800,7 +800,7 @@ namespace CrazyKTV_SongMgr
                     }
                     else
                     {
-                        if (Global.SongMgrSongAddMode == "3" || Global.SongMgrSongAddMode == "4")
+                        if (Global.AddMode == SongAddMode.InPlace || Global.AddMode == SongAddMode.Monitor)
                         {
                             Global.SongMgrDBVerErrorUIStatus = true;
 
@@ -825,7 +825,7 @@ namespace CrazyKTV_SongMgr
                 }
                 else // 空白資料庫
                 {
-                    if (Global.SongMgrSongAddMode == "3" || Global.SongMgrSongAddMode == "4")
+                    if (Global.AddMode == SongAddMode.InPlace || Global.AddMode == SongAddMode.Monitor)
                     {
                         Global.SongMgrDBVerErrorUIStatus = true;
                     }

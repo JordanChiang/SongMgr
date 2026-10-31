@@ -413,7 +413,7 @@ namespace CrazyKTV_SongMgr
                 try
                 {
                     using (OleDbConnection conn = new OleDbConnection(
-                        "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Global.CrazyktvDatabaseFile))
+                        SongLibraryStore.ConnectionString(Global.CrazyktvDatabaseFile)))
                     {
                         conn.Open();
                         using (OleDbCommand cmd = new OleDbCommand(sql, conn))
@@ -495,14 +495,19 @@ namespace CrazyKTV_SongMgr
             string volume     = row.Cells[NV_COL_ORIGVOL].Value?.ToString() ?? "100";
             string replayGain = row.Cells[NV_COL_RGAIN].Value?.ToString()   ?? "";
 
-            var playerInfo = new List<string>
+            var playerInfo = new PlayerRequest
             {
-                songId, songLang, singer, songName,
-                track, volume, replayGain, filePath,
-                e.RowIndex.ToString(), "NormVol"
+                Song = new SongRecord
+                {
+                    Id = songId, Lang = songLang, Singer = singer, SongName = songName,
+                    Track = track, Volume = volume, ReplayGain = replayGain,
+                },
+                FilePath = filePath,
+                RowIndex = e.RowIndex.ToString(),
+                Source = "NormVol",
             };
 
-            Global.PlayerUpdateSongValueList = new List<string>();
+            Global.PlayerTrackUpdate = null;
             if (Global.MainCfgPlayerCore == "1")
             {
                 DShowForm playerForm = new DShowForm(this, playerInfo);
@@ -594,7 +599,7 @@ namespace CrazyKTV_SongMgr
                         }
                         else
                         {
-                            double dur = FFmpeg.GetFileDuration(filePath);
+                            double dur = MediaProbe.Duration(filePath);
                             seekArgs = (dur > 15)
                                 ? string.Format(System.Globalization.CultureInfo.InvariantCulture, "-ss 5 -t {0:F2}", Math.Max(dur - 10, 1))
                                 : "";
@@ -603,14 +608,10 @@ namespace CrazyKTV_SongMgr
                         try
                         {
                             // Use Song_Track + seek args (fast/full mode)
-                            FFmpeg.SongVolumeValue sv = FFmpeg.GetSongVolume(filePath, r.track, seekArgs);
+                            MediaProbe.SongVolumeValue sv = MediaProbe.MeasureGain(filePath, r.track, seekArgs);
                             if (sv.Success)
                             {
-                                sugVol = FFmpeg.CalSongVolume(baseVolume, sv.GainDB);
-                                // Clamp suggested volume to valid range [5, 100]
-                                int volClamped;
-                                if (int.TryParse(sugVol, out volClamped))
-                                    sugVol = Math.Max(5, Math.Min(100, volClamped)).ToString();
+                                sugVol = MediaProbe.SongVolume(baseVolume, sv.GainDB, VolumeRange.Normalize);
                             }
                             else
                             {
@@ -733,21 +734,12 @@ namespace CrazyKTV_SongMgr
                 int success = 0, fail = 0;
                 try
                 {
-                    using (OleDbConnection conn = new OleDbConnection(
-                        "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Global.CrazyktvDatabaseFile))
+                    using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
                     {
-                        conn.Open();
-                        const string sql = "UPDATE ktv_Song SET Song_Volume = @Vol WHERE Song_Id = @SongId";
-                        using (OleDbCommand cmd = new OleDbCommand(sql, conn))
+                        foreach (var item in updateList)
                         {
-                            foreach (var item in updateList)
-                            {
-                                cmd.Parameters.Clear();
-                                cmd.Parameters.AddWithValue("@Vol",    item.sugVol);
-                                cmd.Parameters.AddWithValue("@SongId", item.songId);
-                                try { cmd.ExecuteNonQuery(); success++; }
-                                catch { fail++; }
-                            }
+                            try { store.UpdateSong(new SongRecord { Id = item.songId, Volume = item.sugVol }, SongColumns.Volume); success++; }
+                            catch { fail++; }
                         }
                     }
                 }

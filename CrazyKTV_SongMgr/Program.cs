@@ -80,6 +80,22 @@ namespace CrazyKTV_SongMgr
         public static string SongMgrSupportFormat = ".avi;.flv;.dat;.mkv;.mp4;.mov;.mpeg;.mpg;.rmvb;.ts;.vob;.webm;.wmv";
         public static string SongMgrDestFolder = "";
         public static string SongMgrSongAddMode = "3";
+
+        /// <summary><see cref="SongMgrSongAddMode"/> as a name. The string stays the stored and bound form.</summary>
+        public static SongAddMode AddMode
+        {
+            get
+            {
+                switch (SongMgrSongAddMode)
+                {
+                    case "1": return SongAddMode.Move;
+                    case "2": return SongAddMode.Copy;
+                    case "3": return SongAddMode.InPlace;
+                    case "4": return SongAddMode.Monitor;
+                    default: return SongAddMode.Unknown;
+                }
+            }
+        }
         public static string SongMgrChorusMerge = "False";
         public static string SongMgrMaxDigitCode = "2";
         public static string SongMgrLangCode = "";
@@ -175,7 +191,7 @@ namespace CrazyKTV_SongMgr
         public static List<string> CashboxFullAnalysisSongList = new List<string>();
         public static List<string> CashboxHaveSongList = new List<string>();
 
-        public static List<string> SongDBConvValueList = new List<string>();
+        public static List<SongRecord> SongDBConvValueList = new List<SongRecord>();
         public static List<string> SongDBConvJetktvLangList = new List<string>();
         public static List<string> SongDBConvJetktvPathList = new List<string>();
         public static List<string> SongDBConvHK2SongPathList = new List<string>();
@@ -183,13 +199,13 @@ namespace CrazyKTV_SongMgr
         public static DataTable SongDT = new DataTable();
         public static DataTable SingerDT = new DataTable();
         public static DataTable AllSingerDT = new DataTable();
-        public static DataTable DuplicateSongDT = new DataTable();
-        public static DataTable FailureSongDT = new DataTable();
+        public static OperationLog DuplicateSongLog = new OperationLog();
+        public static OperationLog FailureSongLog = new OperationLog();
         public static DataTable SongSrcDT = new DataTable();
         public static DataTable SingerSrcDT = new DataTable();
         public static DataTable SongPathSrcDT = new DataTable();
         public static DataTable ExtensionSrcDT = new DataTable();
-        public static DataTable SongLogDT = new DataTable();
+        public static OperationLog SongLog = new OperationLog();
         public static DataTable FavoriteUserDT = new DataTable();
         public static DataTable CashboxNewSongDateDT = new DataTable();
 
@@ -204,28 +220,14 @@ namespace CrazyKTV_SongMgr
         public static bool SongQueryMultiEdit;
         public static List<bool> SongQueryMultiEditUpdateList = new List<bool>() { false, false, false, false, false, false, false, false };
 
-        /// <summary>
-        /// <para>0: SongId | 1: SongLang | 2: SongSingerType | 3: SongSinger</para>
-        /// <para>4: SongSongName | 5: SongTrack | 6: SongSongType | 7: SongVolume</para> 
-        /// <para>8: SongWordCount | 9: SongPlayCount | 10: SongMB | 11: SongCreatDate</para> 
-        /// <para>12: SongFileName | 13: SongPath | 14: SongSpell | 15: SongSpellNum</para> 
-        /// <para>16: SongSongStroke | 17: SongPenStyle | 18: SongPlayState | 19: SongSrcPath</para>
-        /// </summary>
-        public static List<string> SongQueryDataGridViewSelectList = new List<string>();
+        public static List<SongRecord> SongQueryDataGridViewSelectList = new List<SongRecord>();
         public static string SongQueryDataGridViewRestoreCurrentRow = "";
         public static List<string> SongQueryDataGridViewRestoreSelectList = new List<string>();
 
         public static bool SongAddMultiEdit;
         public static List<bool> SongAddMultiEditUpdateList = new List<bool>() { false, false, false, false, false, false, false, false };
 
-        /// <summary>
-        /// <para>0: SongId | 1: SongLang | 2: SongSingerType | 3: SongSinger</para>
-        /// <para>4: SongSongName | 5: SongTrack | 6: SongSongType | 7: SongVolume</para> 
-        /// <para>8: SongWordCount | 9: SongPlayCount | 10: SongMB | 11: SongCreatDate</para> 
-        /// <para>12: SongFileName | 13: SongPath | 14: SongSpell | 15: SongSpellNum</para> 
-        /// <para>16: SongSongStroke | 17: SongPenStyle | 18: SongPlayState | 19: SongSrcPath</para>
-        /// </summary>
-        public static List<string> SongAddDataGridViewSelectList = new List<string>();
+        public static List<SongRecord> SongAddDataGridViewSelectList = new List<SongRecord>();
         public static string SongAddDataGridViewRestoreCurrentRow = "";
         public static List<string> SongAddDataGridViewRestoreSelectList = new List<string>();
 
@@ -248,7 +250,8 @@ namespace CrazyKTV_SongMgr
         public static string CashboxDataGridViewRestoreCurrentRow = "";
         public static List<string> CashboxDataGridViewRestoreSelectList = new List<string>();
 
-        public static List<string> PlayerUpdateSongValueList = new List<string>();
+        /// <summary>Set by the player when the user picks another 伴唱 track; read when MainForm becomes visible again.</summary>
+        public static PlayerTrackUpdate PlayerTrackUpdate;
         public static List<string> PlayerRandomVideoList = new List<string>();
         public static bool PlayerInitialized = false;
 

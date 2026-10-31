@@ -252,21 +252,18 @@ namespace CrazyKTV_SongMgr
                     {
                         int i = SongQuery_DataGridView.CurrentCell.RowIndex;
 
-                        string SongId = SongQuery_DataGridView.Rows[i].Cells["Song_Id"].Value.ToString();
-                        string SongLang = SongQuery_DataGridView.Rows[i].Cells["Song_Lang"].Value.ToString();
-                        string SongSinger = SongQuery_DataGridView.Rows[i].Cells["Song_Singer"].Value.ToString();
-                        string SongSongName = SongQuery_DataGridView.Rows[i].Cells["Song_SongName"].Value.ToString();
-                        string SongTrack = SongQuery_DataGridView.Rows[i].Cells["Song_Track"].Value.ToString();
-                        string SongVolume = SongQuery_DataGridView.Rows[i].Cells["Song_Volume"].Value.ToString();
-                        string SongReplayGain = SongQuery_DataGridView.Rows[i].Cells["Song_ReplayGain"].Value.ToString();
-                        string SongFilePath = Path.Combine(SongPath, SongFileName);
+                        PlayerRequest request = new PlayerRequest
+                        {
+                            Song = SongRecord.ForPlayer(SongQuery_DataGridView.Rows[i]),
+                            FilePath = Path.Combine(SongPath, SongFileName),
+                            RowIndex = i.ToString(),
+                            Source = "SongQuery",
+                        };
 
-                        List<string> PlayerSongInfoList = new List<string>() { SongId, SongLang, SongSinger, SongSongName, SongTrack, SongVolume, SongReplayGain, SongFilePath, i.ToString(), "SongQuery" };
-
-                        Global.PlayerUpdateSongValueList = new List<string>();
+                        Global.PlayerTrackUpdate = null;
                         if (Global.MainCfgPlayerCore == "1")
                         {
-                            DShowForm newPlayerForm = new DShowForm(this, PlayerSongInfoList);
+                            DShowForm newPlayerForm = new DShowForm(this, request);
                             newPlayerForm.Show();
                         }
                         this.Hide();
@@ -281,7 +278,7 @@ namespace CrazyKTV_SongMgr
                     SongQuery_Query_Button_Click(new Button(), new EventArgs());
                     break;
                 case "刪除資料列":
-                    string MessageText = (Global.SongMgrSongAddMode != "3") ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
+                    string MessageText = (Global.AddMode != SongAddMode.InPlace) ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
                     if (MessageBox.Show(MessageText, "刪除提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         List<string> SongIdlist = new List<string>();
@@ -404,21 +401,18 @@ namespace CrazyKTV_SongMgr
                 }
                 else
                 {
-                    string SongId = SongQuery_DataGridView.Rows[i].Cells["Song_Id"].Value.ToString();
-                    string SongLang = SongQuery_DataGridView.Rows[i].Cells["Song_Lang"].Value.ToString();
-                    string SongSinger = SongQuery_DataGridView.Rows[i].Cells["Song_Singer"].Value.ToString();
-                    string SongSongName = SongQuery_DataGridView.Rows[i].Cells["Song_SongName"].Value.ToString();
-                    string SongTrack = SongQuery_DataGridView.Rows[i].Cells["Song_Track"].Value.ToString();
-                    string SongVolume = SongQuery_DataGridView.Rows[i].Cells["Song_Volume"].Value.ToString();
-                    string SongReplayGain = SongQuery_DataGridView.Rows[i].Cells["Song_ReplayGain"].Value.ToString();
-                    string SongFilePath = Path.Combine(SongPath, SongFileName);
+                    PlayerRequest request = new PlayerRequest
+                    {
+                        Song = SongRecord.ForPlayer(SongQuery_DataGridView.Rows[i]),
+                        FilePath = Path.Combine(SongPath, SongFileName),
+                        RowIndex = i.ToString(),
+                        Source = "SongQuery",
+                    };
 
-                    List<string> PlayerSongInfoList = new List<string>() { SongId, SongLang, SongSinger, SongSongName, SongTrack, SongVolume, SongReplayGain, SongFilePath, i.ToString(), "SongQuery" };
-
-                    Global.PlayerUpdateSongValueList = new List<string>();
+                    Global.PlayerTrackUpdate = null;
                     if (Global.MainCfgPlayerCore == "1")
                     {
-                        DShowForm newPlayerForm = new DShowForm(this, PlayerSongInfoList);
+                        DShowForm newPlayerForm = new DShowForm(this, request);
                         newPlayerForm.Show();
                     }
                     this.Hide();
@@ -457,7 +451,7 @@ namespace CrazyKTV_SongMgr
                     switch (e.KeyCode)
                     {
                         case Keys.Delete:
-                            string MessageText = (Global.SongMgrSongAddMode != "3") ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
+                            string MessageText = (Global.AddMode != SongAddMode.InPlace) ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
                             if (MessageBox.Show(MessageText, "刪除提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                             {
                                 List<string> SongIdlist = new List<string>();
@@ -564,33 +558,10 @@ namespace CrazyKTV_SongMgr
                         SongQuery_EditSongPlayCount_TextBox.Text = "";
                     }
                     
-                    Global.SongQueryDataGridViewSelectList = new List<string>();
+                    Global.SongQueryDataGridViewSelectList = new List<SongRecord>();
                     foreach (DataGridViewRow row in SongQuery_DataGridView.SelectedRows)
                     {
-                        string SongId = row.Cells["Song_Id"].Value.ToString();
-                        string SongLang = row.Cells["Song_Lang"].Value.ToString();
-                        int SongSingerType = Convert.ToInt32(row.Cells["Song_SingerType"].Value);
-                        string SongSinger = row.Cells["Song_Singer"].Value.ToString();
-                        string SongSongName = row.Cells["Song_SongName"].Value.ToString();
-                        int SongTrack = Convert.ToInt32(row.Cells["Song_Track"].Value);
-                        string SongSongType = row.Cells["Song_SongType"].Value.ToString();
-                        string SongVolume = row.Cells["Song_Volume"].Value.ToString();
-                        string SongWordCount = row.Cells["Song_WordCount"].Value.ToString();
-                        string SongPlayCount = row.Cells["Song_PlayCount"].Value.ToString();
-                        string SongMB = row.Cells["Song_MB"].Value.ToString();
-                        string SongCreatDate = row.Cells["Song_CreatDate"].Value.ToString();
-                        string SongFileName = row.Cells["Song_FileName"].Value.ToString();
-                        string SongPath = row.Cells["Song_Path"].Value.ToString();
-                        string SongSpell = row.Cells["Song_Spell"].Value.ToString();
-                        string SongSpellNum = row.Cells["Song_SpellNum"].Value.ToString();
-                        string SongSongStroke = row.Cells["Song_SongStroke"].Value.ToString();
-                        string SongPenStyle = row.Cells["Song_PenStyle"].Value.ToString();
-                        string SongPlayState = row.Cells["Song_PlayState"].Value.ToString();
-                        string SongReplayGain = row.Cells["Song_ReplayGain"].Value.ToString();
-                        string SongSrcPath = Path.Combine(SongPath, SongFileName);
-
-                        string SelectValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + SongSrcPath + "|" + SongReplayGain;
-                        Global.SongQueryDataGridViewSelectList.Add(SelectValue);
+                        Global.SongQueryDataGridViewSelectList.Add(SongRecord.FromQueryGridRow(row));
                     }
                 }
                 else if (SelectedRowsCount == 1)
@@ -614,46 +585,24 @@ namespace CrazyKTV_SongMgr
                     SongQuery_EditSongPlayCount_TextBox.Enabled = true;
                     SongQuery_EditApplyChanges_Button.Enabled = true;
 
-                    string SongId = SongQuery_DataGridView.SelectedRows[0].Cells["Song_Id"].Value.ToString();
-                    string SongLang = SongQuery_DataGridView.SelectedRows[0].Cells["Song_Lang"].Value.ToString();
-                    int SongSingerType = Convert.ToInt32(SongQuery_DataGridView.SelectedRows[0].Cells["Song_SingerType"].Value);
-                    string SongSinger = SongQuery_DataGridView.SelectedRows[0].Cells["Song_Singer"].Value.ToString();
-                    string SongSongName = SongQuery_DataGridView.SelectedRows[0].Cells["Song_SongName"].Value.ToString();
-                    int SongTrack = Convert.ToInt32(SongQuery_DataGridView.SelectedRows[0].Cells["Song_Track"].Value);
-                    string SongSongType = SongQuery_DataGridView.SelectedRows[0].Cells["Song_SongType"].Value.ToString();
-                    string SongVolume = SongQuery_DataGridView.SelectedRows[0].Cells["Song_Volume"].Value.ToString();
-                    string SongWordCount = SongQuery_DataGridView.SelectedRows[0].Cells["Song_WordCount"].Value.ToString();
-                    string SongPlayCount = SongQuery_DataGridView.SelectedRows[0].Cells["Song_PlayCount"].Value.ToString();
-                    string SongMB = SongQuery_DataGridView.SelectedRows[0].Cells["Song_MB"].Value.ToString();
-                    string SongCreatDate = SongQuery_DataGridView.SelectedRows[0].Cells["Song_CreatDate"].Value.ToString();
-                    string SongFileName = SongQuery_DataGridView.SelectedRows[0].Cells["Song_FileName"].Value.ToString();
-                    string SongPath = SongQuery_DataGridView.SelectedRows[0].Cells["Song_Path"].Value.ToString();
-                    string SongSpell = SongQuery_DataGridView.SelectedRows[0].Cells["Song_Spell"].Value.ToString();
-                    string SongSpellNum = SongQuery_DataGridView.SelectedRows[0].Cells["Song_SpellNum"].Value.ToString();
-                    string SongSongStroke = SongQuery_DataGridView.SelectedRows[0].Cells["Song_SongStroke"].Value.ToString();
-                    string SongPenStyle = SongQuery_DataGridView.SelectedRows[0].Cells["Song_PenStyle"].Value.ToString();
-                    string SongPlayState = SongQuery_DataGridView.SelectedRows[0].Cells["Song_PlayState"].Value.ToString();
-                    string SongReplayGain = SongQuery_DataGridView.SelectedRows[0].Cells["Song_ReplayGain"].Value.ToString();
-                    string SongSrcPath = Path.Combine(SongPath, SongFileName);
+                    SongRecord song = SongRecord.FromQueryGridRow(SongQuery_DataGridView.SelectedRows[0]);
 
-                    SongQuery_EditSongId_TextBox.Text = SongId;
-                    SongQuery_EditSongLang_ComboBox.SelectedValue = Global.CrazyktvSongLangList.IndexOf(SongLang) + 1;
-                    SongQuery_EditSongCreatDate_DateTimePicker.Value = DateTime.Parse(SongCreatDate);
-                    SongQuery_EditSongSinger_TextBox.Text = SongSinger;
-                    string SongSingerTypeStr = CommonFunc.GetSingerTypeStr(SongSingerType, 1, "null");
+                    SongQuery_EditSongId_TextBox.Text = song.Id;
+                    SongQuery_EditSongLang_ComboBox.SelectedValue = Global.CrazyktvSongLangList.IndexOf(song.Lang) + 1;
+                    SongQuery_EditSongCreatDate_DateTimePicker.Value = DateTime.Parse(song.CreatDate);
+                    SongQuery_EditSongSinger_TextBox.Text = song.Singer;
+                    string SongSingerTypeStr = CommonFunc.GetSingerTypeStr(song.SingerTypeValue, 1, "null");
                     SongQuery_EditSongSingerType_ComboBox.SelectedValue = Convert.ToInt32(CommonFunc.GetSingerTypeStr(0, 3, SongSingerTypeStr)) + 1;
-                    SongQuery_EditSongSongName_TextBox.Text = SongSongName;
-                    SongQuery_EditSongSongType_ComboBox.SelectedValue = (SongSongType == "") ? 1 : SongSongTypeList.IndexOf(SongSongType) + 2;
-                    SongQuery_EditSongSpell_TextBox.Text = SongSpell;
-                    SongQuery_EditSongWordCount_TextBox.Text = SongWordCount;
-                    SongQuery_EditSongSrcPath_TextBox.Text = SongSrcPath;
-                    SongQuery_EditSongTrack_ComboBox.SelectedValue = SongTrack;
-                    SongQuery_EditSongVolume_TextBox.Text = SongVolume;
-                    SongQuery_EditSongPlayCount_TextBox.Text = SongPlayCount;
+                    SongQuery_EditSongSongName_TextBox.Text = song.SongName;
+                    SongQuery_EditSongSongType_ComboBox.SelectedValue = (song.SongType == "") ? 1 : SongSongTypeList.IndexOf(song.SongType) + 2;
+                    SongQuery_EditSongSpell_TextBox.Text = song.Spell;
+                    SongQuery_EditSongWordCount_TextBox.Text = song.WordCount;
+                    SongQuery_EditSongSrcPath_TextBox.Text = song.SrcPath;
+                    SongQuery_EditSongTrack_ComboBox.SelectedValue = song.TrackValue;
+                    SongQuery_EditSongVolume_TextBox.Text = song.Volume;
+                    SongQuery_EditSongPlayCount_TextBox.Text = song.PlayCount;
 
-                    Global.SongQueryDataGridViewSelectList = new List<string>();
-                    string SelectValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + SongSrcPath + "|" + SongReplayGain;
-                    Global.SongQueryDataGridViewSelectList.Add(SelectValue);
+                    Global.SongQueryDataGridViewSelectList = new List<SongRecord>() { song };
                 }
             }
         }

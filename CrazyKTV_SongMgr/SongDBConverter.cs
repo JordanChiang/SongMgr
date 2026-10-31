@@ -354,7 +354,7 @@ namespace CrazyKTV_SongMgr
         private void SongDBConverter_ConvFromSrcDBTask(object DBType)
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-            Global.SongDBConvValueList = new List<string>();
+            Global.SongDBConvValueList = new List<SongRecord>();
             Global.TotalList = new List<int>() { 0, 0, 0, 0 };
             string SongSrcDBFile = SongDBConverter_SrcDBFile_TextBox.Text;
             string SongDestDBFile = SongDBConverter_DestDBFile_TextBox.Text;
@@ -383,52 +383,22 @@ namespace CrazyKTV_SongMgr
             }//);
 
             // 加入歌曲
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(SongDestDBFile, "");
-            OleDbCommand cmd = new OleDbCommand();
-            string sqlColumnStr = "Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_Track, Song_SongType, Song_Volume, Song_WordCount, Song_PlayCount, Song_MB, Song_CreatDate, Song_FileName, Song_Path, Song_Spell, Song_SpellNum, Song_SongStroke, Song_PenStyle, Song_PlayState";
-            string sqlValuesStr = "@SongId, @SongLang, @SongSingerType, @SongSinger, @SongSongName, @SongTrack, @SongSongType, @SongVolume, @SongWordCount, @SongPlayCount, @SongMB, @SongCreatDate, @SongFileName, @SongPath, @SongSpell, @SongSpellNum, @SongSongStroke, @SongPenStyle, @SongPlayState";
-            string SongDBConverterSqlStr = "insert into ktv_Song ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-            cmd = new OleDbCommand(SongDBConverterSqlStr, conn);
-            List<string> valuelist = new List<string>();
-
-            foreach (string str in Global.SongDBConvValueList)
+            SongLibraryStore store = SongLibraryStore.OpenFile(SongDestDBFile);
+            foreach (SongRecord song in Global.SongDBConvValueList)
             {
-                valuelist = new List<string>(str.Split('|'));
-
-                cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-                cmd.Parameters.AddWithValue("@SongLang", valuelist[1]);
-                cmd.Parameters.AddWithValue("@SongSingerType", valuelist[2]);
-                cmd.Parameters.AddWithValue("@SongSinger", valuelist[3]);
-                cmd.Parameters.AddWithValue("@SongSongName", valuelist[4]);
-                cmd.Parameters.AddWithValue("@SongTrack", valuelist[5]);
-                cmd.Parameters.AddWithValue("@SongSongType", valuelist[6]);
-                cmd.Parameters.AddWithValue("@SongVolume", valuelist[7]);
-                cmd.Parameters.AddWithValue("@SongWordCount", valuelist[8]);
-                cmd.Parameters.AddWithValue("@SongPlayCount", valuelist[9]);
-                cmd.Parameters.AddWithValue("@SongMB", valuelist[10]);
-                cmd.Parameters.AddWithValue("@SongCreatDate", valuelist[11]);
-                cmd.Parameters.AddWithValue("@SongFileName", valuelist[12]);
-                cmd.Parameters.AddWithValue("@SongPath", valuelist[13]);
-                cmd.Parameters.AddWithValue("@SongSpell", valuelist[14]);
-                cmd.Parameters.AddWithValue("@SongSpellNum", valuelist[15]);
-                cmd.Parameters.AddWithValue("@SongSongStroke", valuelist[16]);
-                cmd.Parameters.AddWithValue("@SongPenStyle", valuelist[17]);
-                cmd.Parameters.AddWithValue("@SongPlayState", valuelist[18]);
+                string str = song.ToConvertLogString();
 
                 try
                 {
-                    cmd.ExecuteNonQuery();
+                    store.InsertSong(song, SongColumns.AllButReplayGain);
                     Global.TotalList[3]++;
                 }
                 catch
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】寫入至資料庫時發生錯誤: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】寫入至資料庫時發生錯誤: " + str);
                     Global.TotalList[0]--;
                     Global.TotalList[2]++;
                 }
-                cmd.Parameters.Clear();
 
                 this.BeginInvoke((Action)delegate()
                 {
@@ -439,17 +409,10 @@ namespace CrazyKTV_SongMgr
             Global.SongDBConvValueList.Clear();
 
             // 加入歌手
-            OleDbCommand singercmd = new OleDbCommand();
-            sqlColumnStr = "Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle";
-            sqlValuesStr = "@SingerId, @SingerName, @SingerType, @SingerSpell, @SingerStrokes, @SingerSpellNum, @SingerPenStyle";
-            string SingerAddSqlStr = "insert into ktv_Singer ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-            singercmd = new OleDbCommand(SingerAddSqlStr, conn);
-
             List<string> NotExistsSingerId = new List<string>();
             NotExistsSingerId = CommonFunc.GetUnusedSingerId("ktv_Singer", SongDestDBFile);
             int MaxSingerId = CommonFunc.GetMaxSingerId("ktv_Singer", SongDestDBFile) + 1;
             string NextSingerId = "";
-            List<string> spelllist = new List<string>();
 
             DataTable dt = new DataTable();
             string SingerQuerySqlStr = "SELECT First(Song_Singer) AS Song_Singer, First(Song_SingerType) AS Song_SingerType, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING (((First(Song_SingerType))<>3) AND ((Count(Song_Singer))>0)) ORDER BY First(Song_SingerType), First(Song_Singer)";
@@ -471,33 +434,20 @@ namespace CrazyKTV_SongMgr
                         MaxSingerId++;
                     }
 
-                    valuelist = new List<string>()
+                    List<string> valuelist = new List<string>()
                     {
                         dt.Rows[i].Field<string>("Song_Singer"),
                         dt.Rows[i].Field<Int16>("Song_SingerType").ToString()
                     };
 
-                    spelllist = new List<string>(CommonFunc.GetSongNameSpell(valuelist[0]));
-
-                    singercmd.Parameters.AddWithValue("@SingerId", NextSingerId);
-                    singercmd.Parameters.AddWithValue("@SingerName", valuelist[0]);
-                    singercmd.Parameters.AddWithValue("@SingerType", valuelist[1]);
-                    singercmd.Parameters.AddWithValue("@SingerSpell", spelllist[0]);
-                    singercmd.Parameters.AddWithValue("@SingerStrokes", spelllist[2]);
-                    singercmd.Parameters.AddWithValue("@SingerSpellNum", spelllist[1]);
-                    singercmd.Parameters.AddWithValue("@SingerPenStyle", spelllist[3]);
-
                     try
                     {
-                        singercmd.ExecuteNonQuery();
+                        store.InsertSinger(SingerTable.Library, NextSingerId, valuelist[0], valuelist[1]);
                     }
                     catch
                     {
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】加入歌手至 ktv_Singer 時發生錯誤: " + valuelist[0];
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【歌庫轉換】加入歌手至 ktv_Singer 時發生錯誤: " + valuelist[0]);
                     }
-                    singercmd.Parameters.Clear();
                     
                     this.BeginInvoke((Action)delegate()
                     {
@@ -506,7 +456,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
             dt.Dispose();
-            conn.Close();
+            store.Dispose();
 
             this.BeginInvoke((Action)delegate()
             {

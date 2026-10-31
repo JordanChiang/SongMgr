@@ -44,7 +44,7 @@ namespace CrazyKTV_SongMgr
         {
             SongLog_ListBox.DataSource = null;
             SongLog_ListBox.Items.Clear();
-            Global.SongLogDT.Rows.Clear();
+            Global.SongLog.Clear();
             SongLog_TabPage.Text = "操作記錄";
             GC.Collect();
         }
@@ -308,9 +308,7 @@ namespace CrazyKTV_SongMgr
                 catch
                 {
                     // 剪貼簿被別的程式占用
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【複製到剪貼簿】無法完成複製到剪貼簿,因剪貼簿已被占用。";
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【複製到剪貼簿】無法完成複製到剪貼簿,因剪貼簿已被占用。");
                 }
             }
         }
@@ -412,11 +410,11 @@ namespace CrazyKTV_SongMgr
             Cashbox_Edit_GroupBox.Enabled = status;
             MainCfg_GroupBox.Enabled = status;
 
-            if (Global.SongLogDT.Rows.Count > 0)
+            if (Global.SongLog.Count > 0)
             {
                 if (status)
                 {
-                    SongLog_ListBox.DataSource = Global.SongLogDT;
+                    SongLog_ListBox.DataSource = Global.SongLog.Table;
                     SongLog_ListBox.DisplayMember = "Display";
                     SongLog_ListBox.ValueMember = "Value";
 
@@ -425,34 +423,34 @@ namespace CrazyKTV_SongMgr
                         MainCfg_HideSongLogTab_CheckBox.Checked = false;
                     }
                 }
-                SongLog_TabPage.Text = "操作記錄 (" + Global.SongLogDT.Rows.Count + ")";
+                SongLog_TabPage.Text = "操作記錄 (" + Global.SongLog.Count + ")";
             }
             else
             {
                 SongLog_TabPage.Text = "操作記錄";
             }
 
-            if (Global.DuplicateSongDT.Rows.Count > 0)
+            if (Global.DuplicateSongLog.Count > 0)
             {
                 if (status)
                 {
-                    SongAddResult_DuplicateSong_ListBox.DataSource = Global.DuplicateSongDT;
+                    SongAddResult_DuplicateSong_ListBox.DataSource = Global.DuplicateSongLog.Table;
                     SongAddResult_DuplicateSong_ListBox.DisplayMember = "Display";
                     SongAddResult_DuplicateSong_ListBox.ValueMember = "Value";
                 }
             }
 
-            if (Global.FailureSongDT.Rows.Count > 0)
+            if (Global.FailureSongLog.Count > 0)
             {
                 if (status)
                 {
-                    SongAddResult_FailureSong_ListBox.DataSource = Global.FailureSongDT;
+                    SongAddResult_FailureSong_ListBox.DataSource = Global.FailureSongLog.Table;
                     SongAddResult_FailureSong_ListBox.DisplayMember = "Display";
                     SongAddResult_FailureSong_ListBox.ValueMember = "Value";
                 }
             }
 
-            if (Global.DuplicateSongDT.Rows.Count > 0 | Global.FailureSongDT.Rows.Count > 0)
+            if (Global.DuplicateSongLog.Count > 0 | Global.FailureSongLog.Count > 0)
             {
                 if (status)
                 {
@@ -1324,51 +1322,36 @@ namespace CrazyKTV_SongMgr
                         });
                     }
 
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (SongLibraryStore store = SongLibraryStore.Open())
                     {
-                        string sqlColumnStr = "Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle";
-                        string sqlValuesStr = "@SingerId, @SingerName, @SingerType, @SingerSpell, @SingerStrokes, @SingerSpellNum, @SingerPenStyle";
-                        string SingerAddSqlStr = "insert into ktv_Singer ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-                        using (OleDbCommand cmd = new OleDbCommand(SingerAddSqlStr, conn))
+                        foreach (string AddStr in Addlist)
                         {
-                            foreach (string AddStr in Addlist)
+                            list = new List<string>(AddStr.Split('|'));
+                            switch (list[0])
                             {
-                                list = new List<string>(AddStr.Split('|'));
-                                switch (list[0])
+                                case "ktv_Singer":
+                                    store.InsertSinger(SingerTable.Library, list[1], list[2], list[3], list[4], list[5], list[6], list[7]);
+                                    lock (LockThis)
+                                    {
+                                        Global.TotalList[0]++;
+                                    }
+                                    break;
+                            }
+                            this.BeginInvoke((Action)delegate ()
+                            {
+                                switch (TooltipName)
                                 {
-                                    case "ktv_Singer":
-                                        cmd.Parameters.AddWithValue("@SingerId", list[1]);
-                                        cmd.Parameters.AddWithValue("@SingerName", list[2]);
-                                        cmd.Parameters.AddWithValue("@SingerType", list[3]);
-                                        cmd.Parameters.AddWithValue("@SingerSpell", list[4]);
-                                        cmd.Parameters.AddWithValue("@SingerStrokes", list[5]);
-                                        cmd.Parameters.AddWithValue("@SingerSpellNum", list[6]);
-                                        cmd.Parameters.AddWithValue("@SingerPenStyle", list[7]);
-
-                                        cmd.ExecuteNonQuery();
-                                        cmd.Parameters.Clear();
-                                        lock (LockThis)
-                                        {
-                                            Global.TotalList[0]++;
-                                        }
+                                    case "SongMaintenance":
+                                        SongMaintenance_Tooltip_Label.Text = "正在重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
+                                        break;
+                                    case "SingerMgr":
+                                        SingerMgr_Tooltip_Label.Text = "正在重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
                                         break;
                                 }
-                                this.BeginInvoke((Action)delegate ()
-                                {
-                                    switch (TooltipName)
-                                    {
-                                        case "SongMaintenance":
-                                            SongMaintenance_Tooltip_Label.Text = "正在重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
-                                            break;
-                                        case "SingerMgr":
-                                            SingerMgr_Tooltip_Label.Text = "正在重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
-                                            break;
-                                    }
-                                });
-                            }
-                            Addlist.Clear();
-                            Addlist = null;
+                            });
                         }
+                        Addlist.Clear();
+                        Addlist = null;
                     }
 
                     switch (TooltipName)
@@ -1484,46 +1467,31 @@ namespace CrazyKTV_SongMgr
                         });
                     }
 
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (SongLibraryStore store = SongLibraryStore.Open())
                     {
-                        string sqlColumnStr = "Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle";
-                        string sqlValuesStr = "@SingerId, @SingerName, @SingerType, @SingerSpell, @SingerStrokes, @SingerSpellNum, @SingerPenStyle";
-                        string SingerAddSqlStr = "insert into ktv_Singer ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-                        using (OleDbCommand cmd = new OleDbCommand(SingerAddSqlStr, conn))
+                        foreach (string AddStr in Addlist)
                         {
-                            foreach (string AddStr in Addlist)
+                            list = new List<string>(AddStr.Split('|'));
+
+                            switch (list[0])
                             {
-                                list = new List<string>(AddStr.Split('|'));
-
-                                switch (list[0])
+                                case "ktv_Singer":
+                                    store.InsertSinger(SingerTable.Library, list[1], list[2], list[3], list[4], list[5], list[6], list[7]);
+                                    lock (LockThis) { Global.TotalList[0]++; }
+                                    break;
+                            }
+                            this.BeginInvoke((Action)delegate ()
+                            {
+                                switch (TooltipName)
                                 {
-                                    case "ktv_Singer":
-                                        cmd.Parameters.AddWithValue("@SingerId", list[1]);
-                                        cmd.Parameters.AddWithValue("@SingerName", list[2]);
-                                        cmd.Parameters.AddWithValue("@SingerType", list[3]);
-                                        cmd.Parameters.AddWithValue("@SingerSpell", list[4]);
-                                        cmd.Parameters.AddWithValue("@SingerStrokes", list[5]);
-                                        cmd.Parameters.AddWithValue("@SingerSpellNum", list[6]);
-                                        cmd.Parameters.AddWithValue("@SingerPenStyle", list[7]);
-
-                                        cmd.ExecuteNonQuery();
-                                        cmd.Parameters.Clear();
-                                        lock (LockThis) { Global.TotalList[0]++; }
+                                    case "SongMaintenance":
+                                        SongMaintenance_Tooltip_Label.Text = "正在從合唱歌手重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
+                                        break;
+                                    case "SingerMgr":
+                                        SingerMgr_Tooltip_Label.Text = "正在從合唱歌手重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
                                         break;
                                 }
-                                this.BeginInvoke((Action)delegate ()
-                                {
-                                    switch (TooltipName)
-                                    {
-                                        case "SongMaintenance":
-                                            SongMaintenance_Tooltip_Label.Text = "正在從合唱歌手重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
-                                            break;
-                                        case "SingerMgr":
-                                            SingerMgr_Tooltip_Label.Text = "正在從合唱歌手重建第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
-                                            break;
-                                    }
-                                });
-                            }
+                            });
                         }
                     }
                     Addlist.Clear();
@@ -1543,13 +1511,13 @@ namespace CrazyKTV_SongMgr
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
             if (Global.SongMgrBackupRemoveSong == "True")
             {
-                if (Directory.Exists(Application.StartupPath + @"\SongMgr\RemoveSong"))
+                if (Directory.Exists(LibraryPlacement.RemoveSongFolder))
                 {
                     List<string> RemoveFileList = new List<string>();
                     List<string> SupportFormat = new List<string>();
                     SupportFormat = new List<string>(Global.SongMgrSupportFormat.Split(';'));
                     
-                    DirectoryInfo dir = new DirectoryInfo(Application.StartupPath + @"\SongMgr\RemoveSong");
+                    DirectoryInfo dir = new DirectoryInfo(LibraryPlacement.RemoveSongFolder);
                     FileInfo[] Files = dir.GetFiles("*", SearchOption.AllDirectories).Where(p => SupportFormat.Contains(p.Extension.ToLower())).ToArray();
 
                     foreach (FileInfo fi in Files)
@@ -1572,9 +1540,7 @@ namespace CrazyKTV_SongMgr
                         }
                         catch
                         {
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【刪除備份移除歌曲】無法完成刪除,因檔案已被占用。";
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("【刪除備份移除歌曲】無法完成刪除,因檔案已被占用。");
                         }
                     }
                     RemoveFileList.Clear();
@@ -1609,7 +1575,7 @@ namespace CrazyKTV_SongMgr
             SongAdd_DefaultSongInfo_GroupBox.Visible = true;
             SongAdd_Add_Button.Enabled = false;
             SongAdd_Tooltip_Label.Text = "";
-            SongAdd_DragDrop_Label.Visible = (Global.SongMgrSongAddMode != "4") ? true : false;
+            SongAdd_DragDrop_Label.Visible = (Global.AddMode != SongAddMode.Monitor) ? true : false;
 
 
             SingerMgr_DataGridView.DataSource = null;
@@ -1788,36 +1754,8 @@ namespace CrazyKTV_SongMgr
 
         public static string LoadConfigXmlFile(string ConfigFile, string ConfigName, Stream stream, bool isStream)
         {
-            string Value = "";
-            try
-            {
-                XElement rootElement;
-
-                if (isStream)
-                {
-                    stream.Position = 0;
-                    rootElement = XElement.Load(stream);
-                }
-                else
-                {
-                    rootElement = XElement.Load(ConfigFile);
-                }
-
-                var Query = from childNode in rootElement.Elements("setting")
-                            where (string)childNode.Attribute("Name") == ConfigName
-                            select childNode;
-
-                foreach (XElement childNode in Query)
-                {
-                    Value = childNode.Value;
-                }
-            }
-            catch
-            {
-                Path.GetFileName(ConfigFile);
-                MessageBox.Show("【" + Path.GetFileName(ConfigFile) + "】設定檔內容有錯誤,請刪除後再執行。");
-            }
-            return Value;
+            SettingsFile file = isStream ? SettingsFile.Load(stream, ConfigFile) : SettingsFile.Load(ConfigFile);
+            return file[ConfigName];
         }
 
         public static void SaveConfigXmlFile(string ConfigFile, string ConfigName, string ConfigValue)
@@ -2009,9 +1947,7 @@ namespace CrazyKTV_SongMgr
             }
             catch
             {
-                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【壓縮並修復資料庫】無法完成資料庫壓縮並修復,因資料庫已由其它使用者開啟。";
-                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                Global.SongLog.Add("【壓縮並修復資料庫】無法完成資料庫壓縮並修復,因資料庫已由其它使用者開啟。");
             }
             finally
             {
@@ -2387,25 +2323,37 @@ namespace CrazyKTV_SongMgr
 
             if (Global.PhoneticsWordList.Count == 0)
             {
-                Global.PhoneticsWordList = new List<string>();
-                Global.PhoneticsSpellList = new List<string>();
-                Global.PhoneticsStrokesList = new List<string>();
-                Global.PhoneticsPenStyleList = new List<string>();
-
-                string SongPhoneticsQuerySqlStr = "select * from ktv_Phonetics";
-
-                using (DataTable PhoneticsDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
+                // 歌曲分析 runs in parallel: load the 注音 table once, and publish the lists only when complete.
+                lock (LockThis)
                 {
-                    var query = from row in PhoneticsDT.AsEnumerable()
-                                where row.Field<Int16>("SortIdx") < 2
-                                select row;
-
-                    foreach (DataRow row in query)
+                    if (Global.PhoneticsWordList.Count == 0)
                     {
-                        Global.PhoneticsWordList.Add(row["Word"].ToString());
-                        Global.PhoneticsSpellList.Add((row["Spell"].ToString()).Substring(0, 1));
-                        Global.PhoneticsStrokesList.Add(row["Strokes"].ToString());
-                        Global.PhoneticsPenStyleList.Add((row["PenStyle"].ToString()).Substring(0, 1));
+                        List<string> WordList = new List<string>();
+                        List<string> SpellList_ = new List<string>();
+                        List<string> StrokesList = new List<string>();
+                        List<string> PenStyleList = new List<string>();
+
+                        string SongPhoneticsQuerySqlStr = "select * from ktv_Phonetics";
+
+                        using (DataTable PhoneticsDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
+                        {
+                            var query = from row in PhoneticsDT.AsEnumerable()
+                                        where row.Field<Int16>("SortIdx") < 2
+                                        select row;
+
+                            foreach (DataRow row in query)
+                            {
+                                WordList.Add(row["Word"].ToString());
+                                SpellList_.Add((row["Spell"].ToString()).Substring(0, 1));
+                                StrokesList.Add(row["Strokes"].ToString());
+                                PenStyleList.Add((row["PenStyle"].ToString()).Substring(0, 1));
+                            }
+                        }
+
+                        Global.PhoneticsSpellList = SpellList_;
+                        Global.PhoneticsStrokesList = StrokesList;
+                        Global.PhoneticsPenStyleList = PenStyleList;
+                        Global.PhoneticsWordList = WordList;
                     }
                 }
             }
@@ -2626,182 +2574,6 @@ namespace CrazyKTV_SongMgr
 
         #endregion
 
-        #region --- CommonFunc 取得檔案結構 ---
-
-        public static string GetFileStructure(string SongId, string SongLang, int SongSingerType, string SongSinger, string SongSongName, int SongTrack, string SongSongType, string SongFileName, string SongPath, bool RebuildSongStructure, string RebuildSongPath, bool DetectMultiSongPath, bool UpdateStructure)
-        {
-            if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
-            {
-                string SongSingerStr = SongSinger;
-                string SingerTypeStr = CommonFunc.GetSingerTypeStr(SongSingerType, 2, "null");
-                string CrtchorusSeparate;
-                string SongInfoSeparate;
-                if (Global.SongMgrChorusSeparate == "1") { CrtchorusSeparate = "&"; } else { CrtchorusSeparate = "+"; }
-                if (Global.SongMgrSongInfoSeparate == "1") { SongInfoSeparate = "_"; } else { SongInfoSeparate = "-"; }
-                string SongTrackStr = CommonFunc.GetSongTrackStr(SongTrack, 1, "null");
-                string SongSrcPath = Path.Combine(SongPath, SongFileName);
-                string SongExtension = Path.GetExtension(SongSrcPath);
-
-                if (SongSingerType == 3) SongSingerStr = Regex.Replace(SongSinger, "[&+]", CrtchorusSeparate, RegexOptions.IgnoreCase);
-
-                switch (Global.SongMgrFolderStructure)
-                {
-                    case "1":
-                        if (Global.SongMgrChorusMerge == "True" && SongSingerType == 3)
-                        {
-                            if (!RebuildSongStructure && DetectMultiSongPath && GetParentDirectoryPath(SongPath, 2) != Global.SongMgrDestFolder && !UpdateStructure)
-                            {
-                                SongPath = GetParentDirectoryPath(SongPath, 2) + @"\" + SongLang + @"\" + SingerTypeStr + @"\";
-                            }
-                            else
-                            {
-                                if (UpdateStructure)
-                                {
-                                    SongPath = SongPath.Substring(0, SongPath.IndexOf(SongLang) - 1) + @"\" + SongLang + @"\" + SingerTypeStr + @"\";
-                                }
-                                else
-                                {
-                                    SongPath = ((!RebuildSongStructure) ? Global.SongMgrDestFolder : RebuildSongPath) + @"\" + SongLang + @"\" + SingerTypeStr + @"\";
-                                }
-                                
-                            }
-                        }
-                        else
-                        {
-                            string fSongSingerStr = SongSingerStr;
-                            Regex r = new Regex(@"\.$");
-                            if (r.IsMatch(fSongSingerStr)) fSongSingerStr = Regex.Replace(fSongSingerStr, @"\.$", "", RegexOptions.IgnoreCase);
-
-                            if (!RebuildSongStructure && DetectMultiSongPath && GetParentDirectoryPath(SongPath, 3) != Global.SongMgrDestFolder && !UpdateStructure)
-                            {
-                                SongPath = GetParentDirectoryPath(SongPath, 3) + @"\" + SongLang + @"\" + SingerTypeStr + @"\" + fSongSingerStr + @"\";
-                            }
-                            else
-                            {
-                                if (UpdateStructure)
-                                {
-                                    SongPath = SongPath.Substring(0, SongPath.IndexOf(SongLang) - 1) + @"\" + SongLang + @"\" + SingerTypeStr + @"\" + fSongSingerStr + @"\";
-                                }
-                                else
-                                {
-                                    SongPath = ((!RebuildSongStructure) ? Global.SongMgrDestFolder : RebuildSongPath) + @"\" + SongLang + @"\" + SingerTypeStr + @"\" + fSongSingerStr + @"\";
-                                }
-                            }
-                        }
-                        break;
-                    case "2":
-                        if (!RebuildSongStructure && DetectMultiSongPath && GetParentDirectoryPath(SongPath, 2) != Global.SongMgrDestFolder && !UpdateStructure)
-                        {
-                            SongPath = GetParentDirectoryPath(SongPath, 2) + @"\" + SongLang + @"\" + SingerTypeStr + @"\";
-                        }
-                        else
-                        {
-                            if (UpdateStructure)
-                            {
-                                SongPath = SongPath.Substring(0, SongPath.IndexOf(SongLang) - 1) + @"\" + SongLang + @"\" + SingerTypeStr + @"\";
-                            }
-                            else
-                            {
-                                SongPath = ((!RebuildSongStructure) ? Global.SongMgrDestFolder : RebuildSongPath) + @"\" + SongLang + @"\" + SingerTypeStr + @"\";
-                            }
-                        }
-                        break;
-                    case "3":
-                        if (!RebuildSongStructure && DetectMultiSongPath && GetParentDirectoryPath(SongPath, 1) != Global.SongMgrDestFolder && !UpdateStructure)
-                        {
-                            SongPath = GetParentDirectoryPath(SongPath, 1) + @"\" + SongLang + @"\";
-                        }
-                        else
-                        {
-                            if (UpdateStructure)
-                            {
-                                SongPath = SongPath.Substring(0, SongPath.IndexOf(SongLang) - 1) + @"\" + SongLang + @"\";
-                            }
-                            else
-                            {
-                                SongPath = ((!RebuildSongStructure) ? Global.SongMgrDestFolder : RebuildSongPath) + @"\" + SongLang + @"\";
-                            }
-                        }
-                        break;
-                }
-
-                switch (Global.SongMgrFileStructure)
-                {
-                    case "1":
-                        switch (Global.SongMgrFolderStructure)
-                        {
-                            case "1":
-                            case "2":
-                                if (SongSongType == "")
-                                {
-                                    SongFileName = SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                else
-                                {
-                                    SongFileName = SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongSongType + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                break;
-                            case "3":
-                                if (SongSongType == "")
-                                {
-                                    SongFileName = SingerTypeStr + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                else
-                                {
-                                    SongFileName = SingerTypeStr + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongSongType + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                break;
-                        }
-                        break;
-                    case "2":
-                        switch (Global.SongMgrFolderStructure)
-                        {
-                            case "1":
-                            case "2":
-                                if (SongSongType == "")
-                                {
-                                    SongFileName = SongSongName + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                else
-                                {
-                                    SongFileName = SongSongName + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongSongType + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                break;
-                            case "3":
-                                if (SongSongType == "")
-                                {
-                                    SongFileName = SongId + SongInfoSeparate + SingerTypeStr + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                else
-                                {
-                                    SongFileName = SongId + SongInfoSeparate + SingerTypeStr + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongSongType + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                break;
-                        }
-                        break;
-                    case "3":
-                        switch (Global.SongMgrFolderStructure)
-                        {
-                            case "1":
-                            case "2":
-                                if (SongSongType == "")
-                                {
-                                    SongFileName = SongId + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                else
-                                {
-                                    SongFileName = SongId + SongInfoSeparate + SongSingerStr + SongInfoSeparate + SongSongName + SongInfoSeparate + SongSongType + SongInfoSeparate + SongTrackStr + SongExtension;
-                                }
-                                break;
-                        }
-                        break;
-                }
-            }
-            return Path.Combine(SongPath, SongFileName);
-        }
-
-        #endregion
-
         #region --- CommonFunc 判斷是否為最愛用戶編號 ---
 
         public static bool IsUserId(String str)
@@ -2959,7 +2731,7 @@ namespace CrazyKTV_SongMgr
 
             Parallel.ForEach(SingerTypeList, (SingerTypeValue, loopState) =>
             {
-                SingerTypeCount[SingerTypeList.IndexOf(SingerTypeValue)] = (Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? SingerMgr.SingerTypeList.Count(x => x == SingerTypeValue.ToString()) : SingerMgr.AllSingerTypeList.Count(x => x == SingerTypeValue.ToString());
+                SingerTypeCount[SingerTypeList.IndexOf(SingerTypeValue)] = (SingerTable.Default.IsLibrary) ? SingerMgr.SingerTypeList.Count(x => x == SingerTypeValue.ToString()) : SingerMgr.AllSingerTypeList.Count(x => x == SingerTypeValue.ToString());
             });
 
             for (int i = 0; i < SingerTypeCount.Count - 1; i++)
@@ -3320,64 +3092,6 @@ namespace CrazyKTV_SongMgr
             WindowsIdentity identity = WindowsIdentity.GetCurrent();
             WindowsPrincipal principal = new WindowsPrincipal(identity);
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
-        }
-
-        #endregion
-
-        #region --- CommonFunc 自動偵測聲道 ---
-
-        public static string AutoDetectSongTrack(string SongFilePath)
-        {
-            int AudioCount = 0;
-            string SongTrack;
-            string ffprobePath = Application.StartupPath + @"\Tools\ffprobe.exe";
-
-            ProcessStartInfo processStartInfo = new ProcessStartInfo(ffprobePath)
-            {
-                Arguments = (char)34 + SongFilePath + (char)34 + " -show_entries stream=index,codec_type -of compact=p=0 -v 0",
-                CreateNoWindow = true,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                StandardOutputEncoding = Encoding.UTF8
-            };
-
-            using (Process process = new Process())
-            {
-                process.StartInfo = processStartInfo;
-                process.Start();
-                process.WaitForExit();
-
-                string line;
-                while ((line = process.StandardOutput.ReadLine()) != null)
-                {
-                    Regex r = new Regex(@"\w+=audio");
-                    if (r.IsMatch(line)) AudioCount += 1;
-                }
-            }
-
-            if (AudioCount != 0)
-            {
-                switch (AudioCount)
-                {
-                    case 1:
-                        SongTrack = "1";
-                        break;
-                    case 2:
-                        SongTrack = (Global.SongMgrSongTrackMode == "True") ? "2" : "1";
-                        break;
-                    case 3:
-                        SongTrack = "3";
-                        break;
-                    default:
-                        SongTrack = "0";
-                        break;
-                }
-            }
-            else
-            {
-                SongTrack = "0";
-            }
-            return SongTrack;
         }
 
         #endregion

@@ -402,9 +402,7 @@ namespace CrazyKTV_SongMgr
             {
                 foreach (string str in list)
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【記錄無資料歌手】未在預設歌手資料表的歌手: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【記錄無資料歌手】未在預設歌手資料表的歌手: " + str);
                 }
             }
         }
@@ -487,9 +485,7 @@ namespace CrazyKTV_SongMgr
             {
                 foreach (string str in list)
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【記錄無拼音字】未在拼音資料表的文字: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【記錄無拼音字】未在拼音資料表的文字: " + str);
                 }
             }
             list.Clear();

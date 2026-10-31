@@ -188,7 +188,7 @@ namespace CrazyKTV_SongMgr
             {
                 try
                 {
-                    string DatabaseFile = (Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile;
+                    string DatabaseFile = SingerTable.Default.DatabaseFile;
                     using (DataTable dt = CommonFunc.GetOleDbDataTable(DatabaseFile, SingerQuerySqlStr, ""))
                     {
                         if (dt.Rows.Count == 0)
@@ -300,22 +300,10 @@ namespace CrazyKTV_SongMgr
             if (UpdateList.Count <= 0) return;
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
 
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+            using (SongLibraryStore songStore = SongLibraryStore.Open())
             {
-                using (OleDbConnection singerconn = CommonFunc.OleDbOpenConn((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile, ""))
+                using (SongLibraryStore singerStore = SongLibraryStore.Open(SingerTable.Default))
                 {
-                    string sqlColumnStr = "Singer_Id = @SingerId, Singer_Name = @SingerName, Singer_Type = @SingerType, Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle";
-                    string AllSingerUpdateSqlStr = "update ktv_AllSinger set " + sqlColumnStr + " where Singer_Id = @OldSingerId";
-                    string SingerUpdateSqlStr = "update ktv_Singer set " + sqlColumnStr + " where Singer_Id = @OldSingerId";
-                    string SongSingerUpdateSqlStr = "update ktv_Song set Song_Singer = @SongSinger, Song_SingerType = @SongSingerType, Song_FileName = @SongFileName, Song_Path = @SongPath where Song_Id = @SongId";
-
-                    OleDbCommand[] SingerUpdateCmds =
-                    {
-                        new OleDbCommand(SingerUpdateSqlStr, singerconn),
-                        new OleDbCommand(AllSingerUpdateSqlStr, singerconn),
-                        new OleDbCommand(SongSingerUpdateSqlStr, conn)
-                    };
-
                     List<string> valuelist;
                     List<string> dtvaluelist;
 
@@ -323,25 +311,14 @@ namespace CrazyKTV_SongMgr
                     {
                         valuelist = new List<string>(str.Split('|'));
 
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@SingerId", valuelist[0]);
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@SingerName", valuelist[1]);
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@SingerType", valuelist[2]);
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@SingerSpell", valuelist[3]);
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@SingerStrokes", valuelist[4]);
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@SingerSpellNum", valuelist[5]);
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@SingerPenStyle", valuelist[6]);
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.AddWithValue("@OldSingerId", valuelist[7]);
-
                         try
                         {
-                            SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].ExecuteNonQuery();
+                            singerStore.UpdateSinger(SingerTable.Default, valuelist[7], valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4], valuelist[5], valuelist[6]);
                             lock (LockThis) { Global.TotalList[0]++; }
                         }
                         catch
                         {
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌手管理】更新" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "歌庫" : "預設") + "歌手資料表時發生錯誤: " + str;
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("【歌手管理】更新" + ((SingerTable.Default.IsLibrary) ? "歌庫" : "預設") + "歌手資料表時發生錯誤: " + str);
                             lock (LockThis) { Global.TotalList[1]++; }
 
                             this.BeginInvoke((Action)delegate ()
@@ -437,69 +414,31 @@ namespace CrazyKTV_SongMgr
                                         if (SyncThisSong)
                                         {
                                             bool MoveError = false;
-                                            if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
+                                            if (LibraryPlacement.MovesFiles)
                                             {
-                                                string SongDestPath = CommonFunc.GetFileStructure(SongId, SongLang, Convert.ToInt32(SongSingerType), SongSinger, SongSongName, SongTrack, SongSongType, OldSongFileName, OldSongPath, false, "", true, false);
+                                                SongRecord song = new SongRecord
+                                                {
+                                                    Id = SongId, Lang = SongLang, SingerType = SongSingerType, Singer = SongSinger, SongName = SongSongName,
+                                                    Track = SongTrack.ToString(), SongType = SongSongType, FileName = OldSongFileName, Path = OldSongPath,
+                                                };
+                                                string SongDestPath = LibraryPlacement.Destination(song, PlacementPurpose.Relocate);
                                                 SongPath = Path.GetDirectoryName(SongDestPath) + @"\";
                                                 SongFileName = Path.GetFileName(SongDestPath);
 
-                                                if (File.Exists(SongSrcPath))
+                                                switch (LibraryPlacement.Relocate(SongSrcPath, SongDestPath))
                                                 {
-                                                    if (!Directory.Exists(SongPath)) Directory.CreateDirectory(SongPath);
-
-                                                    if (File.Exists(SongDestPath))
-                                                    {
-                                                        if (Path.GetFullPath(SongSrcPath).ToLower() == Path.GetFullPath(SongDestPath).ToLower())
-                                                        {
-                                                            try
-                                                            {
-                                                                FileAttributes attributes = File.GetAttributes(SongSrcPath);
-                                                                if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                                                {
-                                                                    attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                                                    File.SetAttributes(SongSrcPath, attributes);
-                                                                }
-
-                                                                File.Move(SongSrcPath, SongPath + "Temp_" + SongFileName);
-                                                                File.Move(SongPath + "Temp_" + SongFileName, SongDestPath);
-                                                            }
-                                                            catch
-                                                            {
-                                                                MoveError = true;
-                                                                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌手管理】異動檔案時發生錯誤: " + SongSrcPath + " (檔案唯讀或正在使用)";
-                                                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                                            }
-                                                        }
-                                                        else
-                                                        {
-                                                            MoveError = true;
-                                                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌手管理】異動檔案時發生錯誤: " + SongSrcPath + " (歌庫裡已存在該首歌曲的檔案)";
-                                                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        try
-                                                        {
-                                                            File.Move(SongSrcPath, SongDestPath);
-                                                        }
-                                                        catch
-                                                        {
-                                                            MoveError = true;
-                                                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌手管理】異動檔案時發生錯誤: " + SongSrcPath + " (檔案唯讀或正在使用)";
-                                                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                                        }
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    MoveError = true;
-                                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌手管理】異動檔案時發生錯誤: " + SongSrcPath + " (檔案不存在)";
-                                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                                    case PlacementOutcome.SourceMissing:
+                                                        MoveError = true;
+                                                        Global.SongLog.Add("【歌手管理】異動檔案時發生錯誤: " + SongSrcPath + " (檔案不存在)");
+                                                        break;
+                                                    case PlacementOutcome.DestinationOccupied:
+                                                        MoveError = true;
+                                                        Global.SongLog.Add("【歌手管理】異動檔案時發生錯誤: " + SongSrcPath + " (歌庫裡已存在該首歌曲的檔案)");
+                                                        break;
+                                                    case PlacementOutcome.FileLocked:
+                                                        MoveError = true;
+                                                        Global.SongLog.Add("【歌手管理】異動檔案時發生錯誤: " + SongSrcPath + " (檔案唯讀或正在使用)");
+                                                        break;
                                                 }
                                             }
 
@@ -530,15 +469,11 @@ namespace CrazyKTV_SongMgr
                                 {
                                     synclist = new List<string>(syncstr.Split('|'));
 
-                                    SingerUpdateCmds[2].Parameters.AddWithValue("@SongSinger", synclist[0]);
-                                    SingerUpdateCmds[2].Parameters.AddWithValue("@SongSingerType", synclist[1]);
-                                    SingerUpdateCmds[2].Parameters.AddWithValue("@SongFileName", synclist[2]);
-                                    SingerUpdateCmds[2].Parameters.AddWithValue("@SongPath", synclist[3]);
-                                    SingerUpdateCmds[2].Parameters.AddWithValue("@SongId", synclist[4]);
+                                    SongRecord sync = new SongRecord { Singer = synclist[0], SingerType = synclist[1], FileName = synclist[2], Path = synclist[3], Id = synclist[4] };
 
                                     try
                                     {
-                                        SingerUpdateCmds[2].ExecuteNonQuery();
+                                        songStore.UpdateSong(sync, SongColumns.Singer | SongColumns.SingerType | SongColumns.FileName | SongColumns.Path);
                                         lock (LockThis) { Global.TotalList[2]++; }
 
                                         this.BeginInvoke((Action)delegate ()
@@ -548,9 +483,7 @@ namespace CrazyKTV_SongMgr
                                     }
                                     catch
                                     {
-                                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌手管理】同步歌曲的歌手資料時發生錯誤: " + syncstr;
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                        Global.SongLog.Add("【歌手管理】同步歌曲的歌手資料時發生錯誤: " + syncstr);
                                         lock (LockThis) { Global.TotalList[3]++; }
 
                                         this.BeginInvoke((Action)delegate ()
@@ -558,7 +491,6 @@ namespace CrazyKTV_SongMgr
                                             SingerMgr_Tooltip_Label.Text = "已成功更新 " + Global.TotalList[0] + " 位歌手資料,失敗 " + Global.TotalList[1] + " 位,同步歌曲 " + Global.TotalList[2] + " 首,失敗 " + Global.TotalList[3] + " 首...";
                                         });
                                     }
-                                    SingerUpdateCmds[2].Parameters.Clear();
                                     synclist.Clear();
                                     synclist = null;
                                 }
@@ -596,7 +528,6 @@ namespace CrazyKTV_SongMgr
                             dtvaluelist.Clear();
                             dtvaluelist = null;
                         });
-                        SingerUpdateCmds[(Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? 0 : 1].Parameters.Clear();
                         valuelist.Clear();
                         valuelist = null;
                     }
@@ -605,7 +536,7 @@ namespace CrazyKTV_SongMgr
 
             this.BeginInvoke((Action)delegate()
             {
-                if (Global.SongLogDT.Rows.Count > 0) SongLog_TabPage.Text = "操作記錄 (" + Global.SongLogDT.Rows.Count + ")";
+                if (Global.SongLog.Count > 0) SongLog_TabPage.Text = "操作記錄 (" + Global.SongLog.Count + ")";
             });
         }
 
@@ -617,18 +548,13 @@ namespace CrazyKTV_SongMgr
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile, "");
-            string SingerRemoveSqlStr = "delete from " + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger") + " where Singer_Id = @SingerId";
-            OleDbCommand cmd = new OleDbCommand(SingerRemoveSqlStr, conn);
-
+            SongLibraryStore store = SongLibraryStore.Open(SingerTable.Default);
             foreach (string str in (List<string>)SingerIdlist)
             {
-                cmd.Parameters.AddWithValue("@SingerId", str);
-                cmd.ExecuteNonQuery();
-                cmd.Parameters.Clear();
+                store.DeleteSinger(SingerTable.Default, str);
                 lock (LockThis) { Global.TotalList[0]++; }
             }
-            conn.Close();
+            store.Dispose();
         }
 
         #endregion
@@ -681,59 +607,39 @@ namespace CrazyKTV_SongMgr
             string SingerName = (string)SingerAddName;
             string SingerType = Global.CrazyktvSingerTypeList.IndexOf((string)SingerAddType).ToString();
 
-            int SingerExists = (Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? SingerMgr.SingerLowCaseList.IndexOf(SingerName.ToLower()) : SingerMgr.AllSingerLowCaseList.IndexOf(SingerName.ToLower());
+            int SingerExists = (SingerTable.Default.IsLibrary) ? SingerMgr.SingerLowCaseList.IndexOf(SingerName.ToLower()) : SingerMgr.AllSingerLowCaseList.IndexOf(SingerName.ToLower());
 
             if (SingerExists >= 0)
             {
                 this.BeginInvoke((Action)delegate()
                 {
-                    SingerMgr_Tooltip_Label.Text = "歌手【" + SingerName + "】已在" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "歌庫" : "預設") + "歌手資料庫裡!";
+                    SingerMgr_Tooltip_Label.Text = "歌手【" + SingerName + "】已在" + ((SingerTable.Default.IsLibrary) ? "歌庫" : "預設") + "歌手資料庫裡!";
                 });
             }
             else
             {
-                int MaxAllSingerId = CommonFunc.GetMaxSingerId((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger", (Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile) + 1;
+                int MaxAllSingerId = CommonFunc.GetMaxSingerId(SingerTable.Default.Name, SingerTable.Default.DatabaseFile) + 1;
                 List<string> NotExistsAllSingerId = new List<string>();
-                NotExistsAllSingerId = CommonFunc.GetUnusedSingerId((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger", (Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile);
+                NotExistsAllSingerId = CommonFunc.GetUnusedSingerId(SingerTable.Default.Name, SingerTable.Default.DatabaseFile);
 
                 string SingerId = "";
                 SingerId = (NotExistsAllSingerId.Count > 0) ? NotExistsAllSingerId[0] : MaxAllSingerId.ToString();
 
-                List<string> spelllist = new List<string>();
-                spelllist = CommonFunc.GetSongNameSpell(SingerName);
-
-                OleDbConnection conn = CommonFunc.OleDbOpenConn((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile, "");
-                OleDbCommand singercmd = new OleDbCommand();
-
-                string sqlColumnStr = "Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle";
-                string sqlValuesStr = "@SingerId, @SingerName, @SingerType, @SingerSpell, @SingerStrokes, @SingerSpellNum, @SingerPenStyle";
-                string SingerAddSqlStr = "insert into " + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger") + " ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-                singercmd = new OleDbCommand(SingerAddSqlStr, conn);
-
-                singercmd.Parameters.AddWithValue("@SingerId", SingerId);
-                singercmd.Parameters.AddWithValue("@SingerName", SingerName);
-                singercmd.Parameters.AddWithValue("@SingerType", SingerType);
-                singercmd.Parameters.AddWithValue("@SingerSpell", spelllist[0]);
-                singercmd.Parameters.AddWithValue("@SingerStrokes", spelllist[2]);
-                singercmd.Parameters.AddWithValue("@SingerSpellNum", spelllist[1]);
-                singercmd.Parameters.AddWithValue("@SingerPenStyle", spelllist[3]);
+                SongLibraryStore store = SongLibraryStore.Open(SingerTable.Default);
 
                 try
                 {
-                    singercmd.ExecuteNonQuery();
+                    store.InsertSinger(SingerTable.Default, SingerId, SingerName, SingerType);
                     this.BeginInvoke((Action)delegate()
                     {
-                        SingerMgr_Tooltip_Label.Text = "已成功將歌手【" + SingerName + "】加入至" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "歌庫" : "預設") + "歌手資料表。";
+                        SingerMgr_Tooltip_Label.Text = "已成功將歌手【" + SingerName + "】加入至" + ((SingerTable.Default.IsLibrary) ? "歌庫" : "預設") + "歌手資料表。";
                     });
                 }
                 catch
                 {
-                    Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "加入歌手至資料庫時發生錯誤: " + SingerName;
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                    Global.FailureSongLog.Add("加入歌手至資料庫時發生錯誤: " + SingerName);
                 }
-                singercmd.Parameters.Clear();
-                conn.Close();
+                store.Dispose();
             }
         }
 
@@ -746,25 +652,25 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
 
             string sqlColumnStr = "Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle";
-            string SingerQuerySqlStr = "select " + sqlColumnStr + " from " + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger") + " order by Singer_Type, Singer_Name";
-            DataTable dt = CommonFunc.GetOleDbDataTable((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile, SingerQuerySqlStr, "");
+            string SingerQuerySqlStr = "select " + sqlColumnStr + " from " + SingerTable.Default.Name + " order by Singer_Type, Singer_Name";
+            DataTable dt = CommonFunc.GetOleDbDataTable(SingerTable.Default.DatabaseFile, SingerQuerySqlStr, "");
 
             if (dt.Rows.Count > 0)
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {
-                    list.Add(((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger") + "," + row["Singer_Id"].ToString() + "," + row["Singer_Name"].ToString() + "," + row["Singer_Type"].ToString() + "," + row["Singer_Spell"].ToString() + "," + row["Singer_Strokes"].ToString() + "," + row["Singer_SpellNum"].ToString() + "," + row["Singer_PenStyle"].ToString());
+                    list.Add(SingerTable.Default.Name + "," + row["Singer_Id"].ToString() + "," + row["Singer_Name"].ToString() + "," + row["Singer_Type"].ToString() + "," + row["Singer_Spell"].ToString() + "," + row["Singer_Strokes"].ToString() + "," + row["Singer_SpellNum"].ToString() + "," + row["Singer_PenStyle"].ToString());
                 }
             }
 
             if (!Directory.Exists(Application.StartupPath + @"\SongMgr\Backup")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\Backup");
-            StreamWriter sw = new StreamWriter(Application.StartupPath + @"\SongMgr\Backup\" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "Singer.txt" : "SingerAll.txt"));
+            StreamWriter sw = new StreamWriter(Application.StartupPath + @"\SongMgr\Backup\" + ((SingerTable.Default.IsLibrary) ? "Singer.txt" : "SingerAll.txt"));
             foreach (string str in list)
             {
                 sw.WriteLine(str);
             }
 
-            SingerMgr_Tooltip_Label.Text = @"已將歌手資料匯出至【SongMgr\Backup\" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "Singer.txt" : "SingerAll.txt") + "】檔案。";
+            SingerMgr_Tooltip_Label.Text = @"已將歌手資料匯出至【SongMgr\Backup\" + ((SingerTable.Default.IsLibrary) ? "Singer.txt" : "SingerAll.txt") + "】檔案。";
             sw.Close();
             list.Clear();
             dt.Dispose();
@@ -772,7 +678,7 @@ namespace CrazyKTV_SongMgr
 
         private void SingerMgr_SingerImport_Button_Click(object sender, EventArgs e)
         {
-            if (File.Exists(Application.StartupPath + @"\SongMgr\Backup\" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "Singer.txt" : "SingerAll.txt")))
+            if (File.Exists(Application.StartupPath + @"\SongMgr\Backup\" + ((SingerTable.Default.IsLibrary) ? "Singer.txt" : "SingerAll.txt")))
             {
                 if (SingerMgr_Tooltip_Label.Text == "歌手資料備份檔案不存在!") SingerMgr_Tooltip_Label.Text = "";
                 if (MessageBox.Show("你確定要重置並匯入歌手資料嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
@@ -812,25 +718,16 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
             List<string> Addlist = new List<string>();
 
-            OleDbConnection conn = new OleDbConnection();
-            OleDbCommand singercmd = new OleDbCommand();
+            SongLibraryStore store = SongLibraryStore.Open(SingerTable.Default);
+            store.DeleteAllSingers(SingerTable.Default);
 
-            conn = CommonFunc.OleDbOpenConn((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? Global.CrazyktvDatabaseFile : Global.CrazyktvSongMgrDatabaseFile, "");
-            string TruncateSqlStr = "delete * from " + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger");
-            singercmd = new OleDbCommand(TruncateSqlStr, conn);
-            singercmd.ExecuteNonQuery();
-
-            StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "Singer.txt" : "SingerAll.txt"), Encoding.UTF8);
+            StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\" + ((SingerTable.Default.IsLibrary) ? "Singer.txt" : "SingerAll.txt"), Encoding.UTF8);
             while (!sr.EndOfStream)
             {
                 Addlist.Add(sr.ReadLine());
             }
             sr.Close();
 
-            string sqlColumnStr = "Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle";
-            string sqlValuesStr = "@SingerId, @SingerName, @SingerType, @SingerSpell, @SingerStrokes, @SingerSpellNum, @SingerPenStyle";
-            string SingerAddSqlStr = "insert into " + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "ktv_Singer" : "ktv_AllSinger") + " ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-            singercmd = new OleDbCommand(SingerAddSqlStr, conn);
 
             foreach (string AddStr in Addlist)
             {
@@ -841,16 +738,7 @@ namespace CrazyKTV_SongMgr
                 {
                     case "ktv_Singer":
                     case "ktv_AllSinger":
-                        singercmd.Parameters.AddWithValue("@SingerId", singerid);
-                        singercmd.Parameters.AddWithValue("@SingerName", list[2]);
-                        singercmd.Parameters.AddWithValue("@SingerType", list[3]);
-                        singercmd.Parameters.AddWithValue("@SingerSpell", list[4]);
-                        singercmd.Parameters.AddWithValue("@SingerStrokes", list[5]);
-                        singercmd.Parameters.AddWithValue("@SingerSpellNum", list[6]);
-                        singercmd.Parameters.AddWithValue("@SingerPenStyle", list[7]);
-
-                        singercmd.ExecuteNonQuery();
-                        singercmd.Parameters.Clear();
+                        store.InsertSinger(SingerTable.Default, singerid, list[2], list[3], list[4], list[5], list[6], list[7]);
                         lock (LockThis)
                         {
                             Global.TotalList[0]++;
@@ -862,7 +750,7 @@ namespace CrazyKTV_SongMgr
                     SingerMgr_Tooltip_Label.Text = "正在匯入第 " + Global.TotalList[0] + " 位歌手資料,請稍待...";
                 });
             }
-            conn.Close();
+            store.Dispose();
         }
 
         #endregion
@@ -1177,12 +1065,12 @@ namespace CrazyKTV_SongMgr
                         OldSingerName = row.Cells["Singer_Name"].Value.ToString();
                         SingerName = SingerMgr_EditSingerName_TextBox.Text;
 
-                        int SingerExists = (Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? SingerMgr.SingerLowCaseList.IndexOf(SingerName.ToLower()) : SingerMgr.AllSingerLowCaseList.IndexOf(SingerName.ToLower());
+                        int SingerExists = (SingerTable.Default.IsLibrary) ? SingerMgr.SingerLowCaseList.IndexOf(SingerName.ToLower()) : SingerMgr.AllSingerLowCaseList.IndexOf(SingerName.ToLower());
                         if (SingerExists >= 0)
                         {
-                            if (SingerId != ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? SingerMgr.SingerIdList[SingerExists] : SingerMgr.AllSingerIdList[SingerExists]))
+                            if (SingerId != ((SingerTable.Default.IsLibrary) ? SingerMgr.SingerIdList[SingerExists] : SingerMgr.AllSingerIdList[SingerExists]))
                             {
-                                SingerMgr_Tooltip_Label.Text = "歌手【" + SingerName + "】已在" + ((Global.SingerMgrDefaultSingerDataTable == "ktv_Singer") ? "歌庫" : "預設") + "歌手資料庫裡!";
+                                SingerMgr_Tooltip_Label.Text = "歌手【" + SingerName + "】已在" + ((SingerTable.Default.IsLibrary) ? "歌庫" : "預設") + "歌手資料庫裡!";
                                 return;
                             }
                         }

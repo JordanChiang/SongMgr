@@ -209,9 +209,7 @@ namespace CrazyKTV_SongMgr
                                 {
                                     Global.TotalList[2]++;
                                 }
-                                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【拼音校正】更新資料庫時發生錯誤: " + str;
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                Global.SongLog.Add("【拼音校正】更新資料庫時發生錯誤: " + str);
                             }
                             cmd.Parameters.Clear();
                             
@@ -271,9 +269,7 @@ namespace CrazyKTV_SongMgr
                                 {
                                     Global.TotalList[2]++;
                                 }
-                                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【拼音校正】更新資料庫時發生錯誤: " + str;
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                Global.SongLog.Add("【拼音校正】更新資料庫時發生錯誤: " + str);
                             }
                             cmd.Parameters.Clear();
 
@@ -306,26 +302,16 @@ namespace CrazyKTV_SongMgr
                             });
                         }
 
-                        OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-                        OleDbCommand cmd = new OleDbCommand();
-                        string sqlColumnStr = "Song_Spell = @SongSpell, Song_SpellNum = @SongSpellNum, Song_SongStroke = @SongSongStroke, Song_PenStyle = @SongPenStyle";
-                        string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-                        cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+                        SongLibraryStore store = SongLibraryStore.Open();
                         List<string> valuelist = new List<string>();
 
                         foreach (string str in list)
                         {
                             valuelist = new List<string>(str.Split('|'));
 
-                            cmd.Parameters.AddWithValue("@SongSpell", valuelist[2]);
-                            cmd.Parameters.AddWithValue("@SongSpellNum", valuelist[3]);
-                            cmd.Parameters.AddWithValue("@SongSongStroke", valuelist[4]);
-                            cmd.Parameters.AddWithValue("@SongPenStyle", valuelist[5]);
-                            cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-
                             try
                             {
-                                cmd.ExecuteNonQuery();
+                                store.UpdateSong(new SongRecord { Id = valuelist[0], Spell = valuelist[2], SpellNum = valuelist[3], SongStroke = valuelist[4], PenStyle = valuelist[5] }, SongColumns.Spell | SongColumns.SpellNum | SongColumns.SongStroke | SongColumns.PenStyle);
                                 lock (LockThis)
                                 {
                                     Global.TotalList[0]++;
@@ -337,18 +323,15 @@ namespace CrazyKTV_SongMgr
                                 {
                                     Global.TotalList[1]++;
                                 }
-                                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【拼音校正】更新資料庫時發生錯誤: " + str;
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                Global.SongLog.Add("【拼音校正】更新資料庫時發生錯誤: " + str);
                             }
-                            cmd.Parameters.Clear();
 
                             this.BeginInvoke((Action)delegate()
                             {
                                 SongMaintenance_Tooltip_Label.Text = "正在更新第 " + Global.TotalList[0] + " 首歌曲的拼音資料,請稍待...";
                             });
                         }
-                        conn.Close();
+                        store.Dispose();
                         list.Clear();
                     }
                     break;
@@ -402,7 +385,6 @@ namespace CrazyKTV_SongMgr
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
             List<string> list = new List<string>();
-            string ffprobePath = Application.StartupPath + @"\Tools\ffprobe.exe";
 
             var query = from row in Global.SongDT.AsEnumerable()
                          where row.Field<byte>("Song_Track").Equals(1) ||
@@ -413,32 +395,10 @@ namespace CrazyKTV_SongMgr
             {
                 foreach (DataRow row in query)
                 {
-                    int AudioCount = 0;
                     string SongFilePath = Path.Combine(row.Field<string>("Song_Path"), row.Field<string>("Song_FileName"));
                     if (File.Exists(SongFilePath))
                     {
-                        ProcessStartInfo processStartInfo = new ProcessStartInfo(ffprobePath)
-                        {
-                            Arguments = (char)34 + SongFilePath + (char)34 + " -show_entries stream=index,codec_type -of compact=p=0 -v 0",
-                            CreateNoWindow = true,
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            StandardOutputEncoding = Encoding.UTF8
-                        };
-
-                        using (Process process = new Process())
-                        {
-                            process.StartInfo = processStartInfo;
-                            process.Start();
-                            process.WaitForExit();
-
-                            string line;
-                            while ((line = process.StandardOutput.ReadLine()) != null)
-                            {
-                                Regex r = new Regex(@"\w+=audio");
-                                if (r.IsMatch(line)) AudioCount += 1;
-                            }
-                        }
+                        int AudioCount = MediaProbe.AudioStreamCount(SongFilePath);
 
                         if (AudioCount == 2)
                         {
@@ -456,9 +416,7 @@ namespace CrazyKTV_SongMgr
                     else
                     {
                         Global.TotalList[3]++;
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【互換雙音軌聲道對映】歌曲檔案不存在: " + SongFilePath;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【互換雙音軌聲道對映】歌曲檔案不存在: " + SongFilePath);
                     }
                     
                     Global.TotalList[2]++;
@@ -471,96 +429,81 @@ namespace CrazyKTV_SongMgr
             
             if (list.Count > 0)
             {
-                using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                using (SongLibraryStore store = SongLibraryStore.Open())
                 {
-                    string sqlColumnStr = "Song_Track = @SongTrack, Song_FileName = @SongFileName";
-                    string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-                    using (OleDbCommand cmd = new OleDbCommand(SongUpdateSqlStr, conn))
+                    List<string> valuelist = new List<string>();
+                    foreach (string str in list)
                     {
-                        List<string> valuelist = new List<string>();
-                        foreach (string str in list)
+                        lock (LockThis) { Global.TotalList[0]++; }
+                        this.BeginInvoke((Action)delegate ()
                         {
-                            lock (LockThis) { Global.TotalList[0]++; }
-                            this.BeginInvoke((Action)delegate ()
+                            SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首雙音軌歌曲的聲道資料,失敗 " + Global.TotalList[1] + " 首,請稍待...";
+                        });
+
+                        valuelist = new List<string>(str.Split('|'));
+
+                        string SongFilePath = Path.Combine(valuelist[2], valuelist[3]);
+                        string SongFileName = Path.GetFileName(SongFilePath);
+                        string DestFileName = SongFileName;
+
+                        Regex vrRegex = new Regex(@"_vr[\.|_]", RegexOptions.IgnoreCase);
+                        Regex vlRegex = new Regex(@"_vl[\.|_]", RegexOptions.IgnoreCase);
+
+                        if (vrRegex.IsMatch(SongFileName.ToLower()))
+                        {
+                            DestFileName = Regex.Replace(DestFileName, @"_vr[\.|_]", delegate (Match match)
                             {
-                                SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首雙音軌歌曲的聲道資料,失敗 " + Global.TotalList[1] + " 首,請稍待...";
-                            });
-
-                            valuelist = new List<string>(str.Split('|'));
-
-                            string SongFilePath = Path.Combine(valuelist[2], valuelist[3]);
-                            string SongFileName = Path.GetFileName(SongFilePath);
-                            string DestFileName = SongFileName;
-
-                            Regex vrRegex = new Regex(@"_vr[\.|_]", RegexOptions.IgnoreCase);
-                            Regex vlRegex = new Regex(@"_vl[\.|_]", RegexOptions.IgnoreCase);
-
-                            if (vrRegex.IsMatch(SongFileName.ToLower()))
+                                return Regex.Replace(match.Value, "_vr", "_VL", RegexOptions.IgnoreCase);
+                            }, RegexOptions.IgnoreCase);
+                        }
+                        else if (vlRegex.IsMatch(SongFileName.ToLower()))
+                        {
+                            DestFileName = Regex.Replace(DestFileName, @"_vl[\.|_]", delegate (Match match)
                             {
-                                DestFileName = Regex.Replace(DestFileName, @"_vr[\.|_]", delegate (Match match)
-                                {
-                                    return Regex.Replace(match.Value, "_vr", "_VL", RegexOptions.IgnoreCase);
-                                }, RegexOptions.IgnoreCase);
+                                return Regex.Replace(match.Value, "_vl", "_VR", RegexOptions.IgnoreCase);
+                            }, RegexOptions.IgnoreCase);
+                        }
+                        
+                        bool MoveError = false;
+                        if ( DestFileName != SongFileName)
+                        {
+                            string SongDir = Path.GetDirectoryName(SongFilePath);
+                            string DestFilePath = Path.Combine(valuelist[2], DestFileName);
+
+                            if (File.Exists(DestFilePath))
+                            {
+                                MoveError = true;
+                                Global.SongLog.Add("【互換雙音軌聲道對映】目的檔案已存在: " + DestFilePath );
+                                lock (LockThis) { Global.TotalList[1]++; }
                             }
-                            else if (vlRegex.IsMatch(SongFileName.ToLower()))
+                            else
                             {
-                                DestFileName = Regex.Replace(DestFileName, @"_vl[\.|_]", delegate (Match match)
-                                {
-                                    return Regex.Replace(match.Value, "_vl", "_VR", RegexOptions.IgnoreCase);
-                                }, RegexOptions.IgnoreCase);
-                            }
-                            
-                            bool MoveError = false;
-                            if ( DestFileName != SongFileName)
-                            {
-                                string SongDir = Path.GetDirectoryName(SongFilePath);
-                                string DestFilePath = Path.Combine(valuelist[2], DestFileName);
-
-                                if (File.Exists(DestFilePath))
-                                {
-                                    MoveError = true;
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【互換雙音軌聲道對映】目的檔案已存在: " + DestFilePath ;
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                    lock (LockThis) { Global.TotalList[1]++; }
-                                }
-                                else
-                                {
-                                    try
-                                    {
-                                        File.Move(SongFilePath, DestFilePath);
-                                        valuelist[3] = DestFileName;
-                                    }
-                                    catch
-                                    {
-                                        MoveError = true;
-                                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【互換雙音軌聲道對映】異動檔案時發生錯誤: " + SongFilePath + " (檔案唯讀或正在使用)";
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                        lock (LockThis) { Global.TotalList[1]++; }
-                                    }
-                                }
-                            }
-
-                            if (!MoveError)
-                            {
-                                cmd.Parameters.AddWithValue("@SongTrack", valuelist[0]);
-                                cmd.Parameters.AddWithValue("@SongFileName", valuelist[3]);
-                                cmd.Parameters.AddWithValue("@SongId", valuelist[1]);
-
                                 try
                                 {
-                                    cmd.ExecuteNonQuery();
+                                    File.Move(SongFilePath, DestFilePath);
+                                    valuelist[3] = DestFileName;
                                 }
                                 catch
                                 {
+                                    MoveError = true;
+                                    Global.SongLog.Add("【互換雙音軌聲道對映】異動檔案時發生錯誤: " + SongFilePath + " (檔案唯讀或正在使用)");
                                     lock (LockThis) { Global.TotalList[1]++; }
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【互換雙音軌聲道對映】更新資料庫時發生錯誤: " + str;
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
                                 }
-                                cmd.Parameters.Clear();
                             }
+                        }
+
+                        if (!MoveError)
+                        {
+                            try
+                            {
+                                store.UpdateSong(new SongRecord { Id = valuelist[1], Track = valuelist[0], FileName = valuelist[3] }, SongColumns.Track | SongColumns.FileName);
+                            }
+                            catch
+                            {
+                                lock (LockThis) { Global.TotalList[1]++; }
+                                Global.SongLog.Add("【互換雙音軌聲道對映】更新資料庫時發生錯誤: " + str);
+                            }
+
                         }
                     }
                 }
@@ -617,23 +560,16 @@ namespace CrazyKTV_SongMgr
                 });
             }
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-            OleDbCommand cmd = new OleDbCommand();
-            string sqlColumnStr = "Song_Volume = @SongVolume";
-            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+            SongLibraryStore store = SongLibraryStore.Open();
             List<string> valuelist = new List<string>();
 
             foreach (string str in list)
             {
                 valuelist = new List<string>(str.Split('|'));
 
-                cmd.Parameters.AddWithValue("@SongVolume", valuelist[0]);
-                cmd.Parameters.AddWithValue("@SongId", valuelist[1]);
-
                 try
                 {
-                    cmd.ExecuteNonQuery();
+                    store.UpdateSong(new SongRecord { Id = valuelist[1], Volume = valuelist[0] }, SongColumns.Volume);
                     lock (LockThis)
                     {
                         Global.TotalList[0]++;
@@ -645,18 +581,15 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.TotalList[1]++;
                     }
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【變更歌曲音量】更新資料庫時發生錯誤: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【變更歌曲音量】更新資料庫時發生錯誤: " + str);
                 }
-                cmd.Parameters.Clear();
 
                 this.BeginInvoke((Action)delegate()
                 {
                     SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首歌曲的音量資料,請稍待...";
                 });
             }
-            conn.Close();
+            store.Dispose();
             list.Clear();
         }
 
@@ -763,9 +696,7 @@ namespace CrazyKTV_SongMgr
                         str += row["Song_SongName"].ToString() + "|";
                         str += row["Song_Lang"].ToString();
 
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【編碼位數轉換】此首歌曲的語系資料不正確: " + str;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【編碼位數轉換】此首歌曲的語系資料不正確: " + str);
                     }
 
                     this.BeginInvoke((Action)delegate()
@@ -775,25 +706,16 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-            OleDbCommand cmd = new OleDbCommand();
-            string sqlColumnStr = "Song_Id = @SongId";
-            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @OldSongId and Song_SongName = @SongSongName and Song_Lang = @SongLang";
-            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+            SongLibraryStore store = SongLibraryStore.Open();
             List<string> valuelist = new List<string>();
 
             foreach (string str in list)
             {
                 valuelist = new List<string>(str.Split('|'));
 
-                cmd.Parameters.AddWithValue("@SongId", valuelist[1]);
-                cmd.Parameters.AddWithValue("@OldSongId", valuelist[0]);
-                cmd.Parameters.AddWithValue("@SongSongName", valuelist[2]);
-                cmd.Parameters.AddWithValue("@SongLang", valuelist[3]);
-
                 try
                 {
-                    cmd.ExecuteNonQuery();
+                    store.RenumberSong(valuelist[0], valuelist[1], valuelist[2], valuelist[3]);
                     lock (LockThis)
                     {
                         Global.TotalList[2]++;
@@ -805,18 +727,15 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.TotalList[3]++;
                     }
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【編碼位數轉換】更新資料庫時發生錯誤: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【編碼位數轉換】更新資料庫時發生錯誤: " + str);
                 }
-                cmd.Parameters.Clear();
 
                 this.BeginInvoke((Action)delegate()
                 {
                     SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[2] + " 首歌曲的歌曲編號,請稍待...";
                 });
             }
-            conn.Close();
+            store.Dispose();
             list.Clear();
         }
 
@@ -912,9 +831,7 @@ namespace CrazyKTV_SongMgr
                         str += row["Song_SongName"].ToString() + "|";
                         str += row["Song_Lang"].ToString();
 
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【編碼位數轉換】此首歌曲的語系資料不正確: " + str;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【編碼位數轉換】此首歌曲的語系資料不正確: " + str);
                     }
 
                     this.BeginInvoke((Action)delegate()
@@ -924,25 +841,16 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-            OleDbCommand cmd = new OleDbCommand();
-            string sqlColumnStr = "Song_Id = @SongId";
-            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @OldSongId and Song_SongName = @SongSongName and Song_Lang = @SongLang";
-            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+            SongLibraryStore store = SongLibraryStore.Open();
             List<string> valuelist = new List<string>();
 
             foreach (string str in list)
             {
                 valuelist = new List<string>(str.Split('|'));
 
-                cmd.Parameters.AddWithValue("@SongId", valuelist[1]);
-                cmd.Parameters.AddWithValue("@OldSongId", valuelist[0]);
-                cmd.Parameters.AddWithValue("@SongSongName", valuelist[2]);
-                cmd.Parameters.AddWithValue("@SongLang", valuelist[3]);
-
                 try
                 {
-                    cmd.ExecuteNonQuery();
+                    store.RenumberSong(valuelist[0], valuelist[1], valuelist[2], valuelist[3]);
                     lock (LockThis)
                     {
                         Global.TotalList[0]++;
@@ -954,18 +862,15 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.TotalList[1]++;
                     }
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【編碼位數轉換】更新資料庫時發生錯誤: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【編碼位數轉換】更新資料庫時發生錯誤: " + str);
                 }
-                cmd.Parameters.Clear();
 
                 this.BeginInvoke((Action)delegate()
                 {
                     SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首歌曲的歌曲編號,請稍待...";
                 });
             }
-            conn.Close();
+            store.Dispose();
             list.Clear();
         }
 
@@ -1121,18 +1026,12 @@ namespace CrazyKTV_SongMgr
             
             try
             {
-                OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
+                SongLibraryStore store = SongLibraryStore.Open();
                 
                 // Use batch commits every 500 records to avoid Access database limitations
                 const int BATCH_SIZE = 500;
-                OleDbTransaction transaction = conn.BeginTransaction();
+                store.BeginTransaction();
                 
-                OleDbCommand cmd = new OleDbCommand();
-                cmd.Connection = conn;
-                cmd.Transaction = transaction;
-                string sqlColumnStr = "Song_Path = @SongPath";
-                string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-                cmd.CommandText = SongUpdateSqlStr;
                 List<string> valuelist = new List<string>();
 
                 int updateCount = 0;
@@ -1143,12 +1042,9 @@ namespace CrazyKTV_SongMgr
                 {
                     valuelist = new List<string>(str.Split('|'));
 
-                    cmd.Parameters.AddWithValue("@SongPath", valuelist[0]);
-                    cmd.Parameters.AddWithValue("@SongId", valuelist[1]);
-
                     try
                     {
-                        int rowsAffected = cmd.ExecuteNonQuery();
+                        int rowsAffected = store.UpdateSong(new SongRecord { Id = valuelist[1], Path = valuelist[0] }, SongColumns.Path);
                         lock (LockThis)
                         {
                             Global.TotalList[0]++;
@@ -1159,12 +1055,11 @@ namespace CrazyKTV_SongMgr
                         // Commit in batches to avoid Access database limitations
                         if (batchCount >= BATCH_SIZE)
                         {
-                            transaction.Commit();
+                            store.Commit();
                             totalCommitted += batchCount;
                              
                             // Start new transaction for next batch
-                            transaction = conn.BeginTransaction();
-                            cmd.Transaction = transaction;
+                            store.BeginTransaction();
                             batchCount = 0;
                         }                        
                        
@@ -1181,14 +1076,11 @@ namespace CrazyKTV_SongMgr
                         {
                             Global.TotalList[1]++;
                         }
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【變更歌曲路徑】更新資料庫時發生錯誤: " + str + " - " + ex.Message;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【變更歌曲路徑】更新資料庫時發生錯誤: " + str + " - " + ex.Message);
                         
                         // Debug: Log the actual error
                         System.Diagnostics.Debug.WriteLine($"[SongPathChange] ERROR updating Song_Id={valuelist[1]}: {ex.Message}");
                     }
-                    cmd.Parameters.Clear();
 
                     this.BeginInvoke((Action)delegate()
                     {
@@ -1201,12 +1093,12 @@ namespace CrazyKTV_SongMgr
                 {
                     if (hasError)
                     {
-                        transaction.Rollback();
+                        store.Rollback();
                         System.Diagnostics.Debug.WriteLine($"[SongPathChange] Last batch rolled back due to errors ({batchCount} records)");
                     }
                     else
                     {
-                        transaction.Commit();
+                        store.Commit();
                         totalCommitted += batchCount;
                         System.Diagnostics.Debug.WriteLine($"[SongPathChange] Last batch committed: {batchCount} records (Total committed: {totalCommitted})");
                     }
@@ -1214,7 +1106,7 @@ namespace CrazyKTV_SongMgr
                 
                 System.Diagnostics.Debug.WriteLine($"[SongPathChange] All transactions completed. Total records committed: {totalCommitted}");
 
-                conn.Close();
+                store.Dispose();
                 
                 // Debug: Final database update summary
                 System.Diagnostics.Debug.WriteLine($"[SongPathChange] Database update complete. Success: {Global.TotalList[0]}, Failed: {Global.TotalList[1]}");
@@ -1223,9 +1115,7 @@ namespace CrazyKTV_SongMgr
             {
                 System.Diagnostics.Debug.WriteLine($"[SongPathChange] CRITICAL ERROR in database update: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[SongPathChange] Stack trace: {ex.StackTrace}");
-                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【變更歌曲路徑】資料庫連線錯誤: " + ex.Message;
-                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                Global.SongLog.Add("【變更歌曲路徑】資料庫連線錯誤: " + ex.Message);
                 
                 // Try to rollback if transaction exists
                 try
@@ -1323,9 +1213,7 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
             List<string> Addlist = new List<string>();
 
-            OleDbConnection conn = new OleDbConnection();
-            OleDbCommand cmd = new OleDbCommand();
-            conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
+            SongLibraryStore store = SongLibraryStore.Open();
 
             StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\PlayCount.txt", Encoding.UTF8);
             while (!sr.EndOfStream)
@@ -1333,10 +1221,6 @@ namespace CrazyKTV_SongMgr
                 Addlist.Add(sr.ReadLine());
             }
             sr.Close();
-
-            string sqlColumnStr = "Song_PlayCount = @SongPlayCount";
-            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
 
             foreach (string AddStr in Addlist)
             {
@@ -1355,10 +1239,7 @@ namespace CrazyKTV_SongMgr
                             foreach (DataRow row in query)
                             {
                                 string SongId = row["Song_Id"].ToString();
-                                cmd.Parameters.AddWithValue("@SongPlayCount", list[4]);
-                                cmd.Parameters.AddWithValue("@SongId", SongId);
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
+                                store.UpdateSong(new SongRecord { Id = SongId, PlayCount = list[4] }, SongColumns.PlayCount);
                                 lock (LockThis)
                                 {
                                     Global.TotalList[0]++;
@@ -1373,7 +1254,7 @@ namespace CrazyKTV_SongMgr
                     SongMaintenance_Tooltip_Label.Text = "正在匯入第 " + Global.TotalList[0] + " 首歌曲的播放次數資料,請稍待...";
                 });
             }
-            conn.Close();
+            store.Dispose();
         }
 
 
@@ -1420,23 +1301,16 @@ namespace CrazyKTV_SongMgr
                 });
             }
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-            OleDbCommand cmd = new OleDbCommand();
-            string sqlColumnStr = "Song_PlayCount = @SongPlayCount";
-            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+            SongLibraryStore store = SongLibraryStore.Open();
             List<string> valuelist = new List<string>();
 
             foreach (string str in list)
             {
                 valuelist = new List<string>(str.Split('|'));
 
-                cmd.Parameters.AddWithValue("@SongPlayCount", valuelist[0]);
-                cmd.Parameters.AddWithValue("@SongId", valuelist[1]);
-
                 try
                 {
-                    cmd.ExecuteNonQuery();
+                    store.UpdateSong(new SongRecord { Id = valuelist[1], PlayCount = valuelist[0] }, SongColumns.PlayCount);
                     lock (LockThis)
                     {
                         Global.TotalList[0]++;
@@ -1448,18 +1322,15 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.TotalList[1]++;
                     }
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【重置播放次數】更新資料庫時發生錯誤: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【重置播放次數】更新資料庫時發生錯誤: " + str);
                 }
-                cmd.Parameters.Clear();
 
                 this.BeginInvoke((Action)delegate()
                 {
                     SongMaintenance_Tooltip_Label.Text = "正在重置第 " + Global.TotalList[0] + " 首歌曲的播放次數資料,請稍待...";
                 });
             }
-            conn.Close();
+            store.Dispose();
             list.Clear();
         }
 
@@ -1517,23 +1388,16 @@ namespace CrazyKTV_SongMgr
                 });
             }
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-            OleDbCommand cmd = new OleDbCommand();
-            string sqlColumnStr = "Song_WordCount = @SongWordCount";
-            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+            SongLibraryStore store = SongLibraryStore.Open();
             List<string> valuelist = new List<string>();
 
             foreach (string str in list)
             {
                 valuelist = new List<string>(str.Split('|'));
 
-                cmd.Parameters.AddWithValue("@SongWordCount", valuelist[0]);
-                cmd.Parameters.AddWithValue("@SongId", valuelist[1]);
-
                 try
                 {
-                    cmd.ExecuteNonQuery();
+                    store.UpdateSong(new SongRecord { Id = valuelist[1], WordCount = valuelist[0] }, SongColumns.WordCount);
                     lock (LockThis)
                     {
                         Global.TotalList[0]++;
@@ -1545,18 +1409,15 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.TotalList[1]++;
                     }
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【字數校正】更新資料庫時發生錯誤: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【字數校正】更新資料庫時發生錯誤: " + str);
                 }
-                cmd.Parameters.Clear();
 
                 this.BeginInvoke((Action)delegate()
                 {
                     SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首歌曲的字數資料,請稍待...";
                 });
             }
-            conn.Close();
+            store.Dispose();
             list.Clear();
         }
 
@@ -1622,16 +1483,12 @@ namespace CrazyKTV_SongMgr
                 try
                 {
                     Directory.Delete(dir);
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【移除空資料夾】以下為已移除的空資料夾: " + dir;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【移除空資料夾】以下為已移除的空資料夾: " + dir);
                     lock (LockThis) { Global.TotalList[0]++; }
                 }
                 catch
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【移除空資料夾】無法移除因資料夾已被占用: " + dir;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【移除空資料夾】無法移除因資料夾已被占用: " + dir);
                 }
 
                 string prevDir = dir.Substring(0, dir.LastIndexOf("\\"));
@@ -1733,9 +1590,7 @@ namespace CrazyKTV_SongMgr
             {
                 foreach (string file in UnusedFileList)
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【偵測歌庫多餘檔案】以下為偵測到的多餘檔案: " + file;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【偵測歌庫多餘檔案】以下為偵測到的多餘檔案: " + file);
                 }
             }
             UnusedFileList.Clear();
@@ -2058,7 +1913,7 @@ namespace CrazyKTV_SongMgr
 
                         var tasks = new List<Task>()
                         {
-                            Task.Factory.StartNew(() => SongMaintenance_RebuildSongStructureTask(RebuildSongPath, Global.SongMgrSongAddMode))
+                            Task.Factory.StartNew(() => SongMaintenance_RebuildSongStructureTask(RebuildSongPath, Global.AddMode))
                         };                        ;
 
                         Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
@@ -2086,7 +1941,7 @@ namespace CrazyKTV_SongMgr
         }
 
 
-        private void SongMaintenance_RebuildSongStructureTask(string RebuildSongPath, string RebuildMode)
+        private void SongMaintenance_RebuildSongStructureTask(string RebuildSongPath, SongAddMode RebuildMode)
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
             Global.TotalList = new List<int>() { 0, 0, 0, 0 };
@@ -2114,17 +1969,13 @@ namespace CrazyKTV_SongMgr
                 if (SongSingerType < 0 | SongSingerType > 10)
                 {
                     SongSingerType = 10;
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構重建】此首歌曲歌手類別數值錯誤,已自動將其數值改為10: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫結構重建】此首歌曲歌手類別數值錯誤,已自動將其數值改為10: " + SongId + "|" + SongSongName);
                 }
 
                 if (SongTrack < 0 | SongTrack > 5)
                 {
                     SongTrack = 0;
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構重建】此首歌曲聲道數值錯誤,已自動將其數值改為0: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫結構重建】此首歌曲聲道數值錯誤,已自動將其數值改為0: " + SongId + "|" + SongSongName);
                 }
 
                 // 重建歌檔
@@ -2133,7 +1984,12 @@ namespace CrazyKTV_SongMgr
 
                 if (!HasInvalidChar)
                 {
-                    SongDestPath = CommonFunc.GetFileStructure(SongId, SongLang, SongSingerType, SongSinger, SongSongName, SongTrack, SongSongType, SongFileName, SongPath, true, RebuildSongPath, false, false);
+                    SongRecord song = new SongRecord
+                    {
+                        Id = SongId, Lang = SongLang, SingerType = SongSingerType.ToString(), Singer = SongSinger, SongName = SongSongName,
+                        Track = SongTrack.ToString(), SongType = SongSongType, FileName = SongFileName, Path = SongPath,
+                    };
+                    SongDestPath = LibraryPlacement.Destination(song, PlacementPurpose.Rebuild, RebuildSongPath);
                     SongPath = Path.GetDirectoryName(SongDestPath) + @"\";
                     SongFileName = Path.GetFileName(SongDestPath);
                 }
@@ -2141,34 +1997,13 @@ namespace CrazyKTV_SongMgr
                 bool FileIOError = false;
                 if (File.Exists(SongSrcPath) & !HasInvalidChar)
                 {
-                    if (!Directory.Exists(SongPath)) Directory.CreateDirectory(SongPath);
-
-                    try
+                    if (RebuildMode == SongAddMode.Move || RebuildMode == SongAddMode.Copy)
                     {
-                        switch (RebuildMode)
+                        if (LibraryPlacement.Overwrite(SongSrcPath, SongDestPath, RebuildMode == SongAddMode.Copy) != PlacementOutcome.Placed)
                         {
-                            case "1":
-                                FileAttributes attributes = File.GetAttributes(SongSrcPath);
-                                if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                {
-                                    attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                    File.SetAttributes(SongSrcPath, attributes);
-                                }
-
-                                if (File.Exists(SongDestPath)) File.Delete(SongDestPath);
-                                File.Move(SongSrcPath, SongDestPath);
-                                break;
-                            case "2":
-                                File.Copy(SongSrcPath, SongDestPath, true);
-                                break;
+                            FileIOError = true;
+                            Global.SongLog.Add("【歌庫結構重建】檔案處理發生錯誤: " + SongSrcPath + " (唯讀或使用中)");
                         }
-                    }
-                    catch
-                    {
-                        FileIOError = true;
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構重建】檔案處理發生錯誤: " + SongSrcPath + " (唯讀或使用中)";
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
                     }
                 }
                 else
@@ -2176,15 +2011,11 @@ namespace CrazyKTV_SongMgr
                     FileIOError = true;
                     if (HasInvalidChar)
                     {
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構重建】檔案處理發生錯誤: " + SongId + "|" + SongLang + "|" + SongSinger + "|" + SongSongName + "|" + SongSongType + " (含有非法字元)";
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【歌庫結構重建】檔案處理發生錯誤: " + SongId + "|" + SongLang + "|" + SongSinger + "|" + SongSongName + "|" + SongSongType + " (含有非法字元)");
                     }
                     else
                     {
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構重建】此首歌曲檔案不存在,已自動忽略重建檔案: " + SongId + "|" + SongSrcPath;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【歌庫結構重建】此首歌曲檔案不存在,已自動忽略重建檔案: " + SongId + "|" + SongSrcPath);
                     }
                     lock (LockThis) { Global.TotalList[1]++; }
                 }
@@ -2202,11 +2033,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-            OleDbCommand cmd = new OleDbCommand();
-            string sqlColumnStr = "Song_Id = @SongId, Song_SingerType = @SongSingerType, Song_Track = @SongTrack, Song_FileName = @SongFileName, Song_Path = @SongPath";
-            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+            SongLibraryStore store = SongLibraryStore.Open();
 
             List<string> valuelist = new List<string>();
 
@@ -2214,30 +2041,20 @@ namespace CrazyKTV_SongMgr
             {
                 valuelist = new List<string>(str.Split('|'));
 
-                cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-                cmd.Parameters.AddWithValue("@SongSingerType", valuelist[1]);
-                cmd.Parameters.AddWithValue("@SongTrack", valuelist[2]);
-                cmd.Parameters.AddWithValue("@SongFileName", valuelist[3]);
-                cmd.Parameters.AddWithValue("@SongPath", valuelist[4]);
-                cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-
                 try
                 {
-                    cmd.ExecuteNonQuery();
+                    store.UpdateSong(new SongRecord { Id = valuelist[0], SingerType = valuelist[1], Track = valuelist[2], FileName = valuelist[3], Path = valuelist[4] }, SongColumns.Id | SongColumns.SingerType | SongColumns.Track | SongColumns.FileName | SongColumns.Path);
                     lock (LockThis) { Global.TotalList[3]++; }
                 }
                 catch
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】寫入重建檔案路徑至資料庫時發生錯誤: " + valuelist[0] + "|" + valuelist[3] + "|" + valuelist[4];
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】寫入重建檔案路徑至資料庫時發生錯誤: " + valuelist[0] + "|" + valuelist[3] + "|" + valuelist[4]);
                     lock (LockThis)
                     {
                         Global.TotalList[0]--;
                         Global.TotalList[2]++;
                     }
                 }
-                cmd.Parameters.Clear();
 
                 this.BeginInvoke((Action)delegate()
                 {
@@ -2245,7 +2062,7 @@ namespace CrazyKTV_SongMgr
                 });
             }
             RebuildSongFileValueList.Clear();
-            conn.Close();
+            store.Dispose();
         }
 
 
@@ -3771,9 +3588,7 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.TotalList[1]++;
                     }
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【自訂語系】更新資料庫時發生錯誤: " + str;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【自訂語系】更新資料庫時發生錯誤: " + str);
                 }
                 cmd.Parameters.Clear();
             }
@@ -3851,78 +3666,63 @@ namespace CrazyKTV_SongMgr
                     }
                     else
                     {
-                        FFmpeg.SongVolumeValue result = FFmpeg.GetSongVolume(file);
+                        MediaProbe.SongVolumeValue result = MediaProbe.MeasureGain(file);
                         GainDB = result.GainDB;
                         NativeMethods.SystemSleepManagement.ResetSleepTimer(false);
                     }
-                    SongVolume = FFmpeg.CalSongVolume(basevolume, GainDB);
+                    SongVolume = MediaProbe.SongVolume(basevolume, GainDB);
                     lock (LockThis) list.Add(SongVolume + "|" + GainDB.ToString() + "|" + row["Song_Id"].ToString());
                 });
 
                 if (list.Count > 0)
                 {
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (SongLibraryStore store = SongLibraryStore.Open())
                     {
                         int mCount = 0;
                         int lCount = 0;
 
-                        string sqlColumnStr = "Song_Volume = @SongVolume, Song_ReplayGain = @SongReplayGain";
-                        string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-                        using (OleDbCommand cmd = new OleDbCommand(SongUpdateSqlStr, conn))
+                        List<string> valuelist = new List<string>();
+
+                        foreach (string str in list)
                         {
-                            List<string> valuelist = new List<string>();
+                            valuelist = new List<string>(str.Split('|'));
 
-                            foreach (string str in list)
+                            if (Convert.ToInt32(valuelist[0]) > VolumeRange.Library.Max)
                             {
-                                valuelist = new List<string>(str.Split('|'));
-
-                                if (Convert.ToInt32(valuelist[0]) > 100)
-                                {
-                                    valuelist[0] = "100";
-                                    mCount++;
-                                }
-                                else if (Convert.ToInt32(valuelist[0]) < 10)
-                                {
-                                    valuelist[0] = "10";
-                                    lCount++;
-                                }
-
-                                cmd.Parameters.AddWithValue("@SongVolume", valuelist[0]);
-                                cmd.Parameters.AddWithValue("@SongReplayGain", valuelist[1]);
-                                cmd.Parameters.AddWithValue("@SongId", valuelist[2]);
-
-                                try
-                                {
-                                    cmd.ExecuteNonQuery();
-                                    lock (LockThis) Global.TotalList[0]++;
-                                }
-                                catch
-                                {
-                                    lock (LockThis) Global.TotalList[1]++;
-
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【音量平衡】更新資料庫時發生錯誤: " + str;
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                }
-                                cmd.Parameters.Clear();
-                                valuelist.Clear();
-                                valuelist = null;
-
-                                this.BeginInvoke((Action)delegate ()
-                                {
-                                    SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首歌曲的音量資料,請稍待...";
-                                });
+                                valuelist[0] = VolumeRange.Library.Max.ToString();
+                                mCount++;
                             }
-                            list.Clear();
-                            list = null;
-                        }
+                            else if (Convert.ToInt32(valuelist[0]) < VolumeRange.Library.Min)
+                            {
+                                valuelist[0] = VolumeRange.Library.Min.ToString();
+                                lCount++;
+                            }
 
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【音量平衡】檢測到 " + mCount.ToString() + " 首音量大於 100 的歌曲,已自動變更為 100。";
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【音量平衡】檢測到 " + lCount.ToString() + " 首音量小於 10 的歌曲,已自動變更為 10。";
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            try
+                            {
+                                store.UpdateSong(new SongRecord { Id = valuelist[2], Volume = valuelist[0], ReplayGain = valuelist[1] }, SongColumns.Volume | SongColumns.ReplayGain);
+                                lock (LockThis) Global.TotalList[0]++;
+                            }
+                            catch
+                            {
+                                lock (LockThis) Global.TotalList[1]++;
+
+                                Global.SongLog.Add("【音量平衡】更新資料庫時發生錯誤: " + str);
+                            }
+
+                            valuelist.Clear();
+                            valuelist = null;
+
+                            this.BeginInvoke((Action)delegate ()
+                            {
+                                SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首歌曲的音量資料,請稍待...";
+                            });
+                        }
+                        list.Clear();
+                        list = null;
+
+                        Global.SongLog.Add("【音量平衡】檢測到 " + mCount.ToString() + " 首音量大於 100 的歌曲,已自動變更為 100。");
+                        Global.SongLog.Add("【音量平衡】檢測到 " + lCount.ToString() + " 首音量小於 10 的歌曲,已自動變更為 10。");
                     }
                 }
                 NativeMethods.SystemSleepManagement.ResotreSleep();
@@ -3976,26 +3776,19 @@ namespace CrazyKTV_SongMgr
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
             if (File.Exists(Global.CrazyktvDatabaseFile))
             {
-                using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                using (SongLibraryStore store = SongLibraryStore.Open())
                 {
-                    string sqlColumnStr = "Song_ReplayGain = null";
-                    string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr;
-                    using (OleDbCommand cmd = new OleDbCommand(SongUpdateSqlStr, conn))
+                    try
                     {
-                        try
-                        {
-                            cmd.ExecuteNonQuery();
-                            lock (LockThis) Global.TotalList[0]++;
-                        }
-                        catch
-                        {
-                            lock (LockThis) Global.TotalList[1]++;
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【音量平衡】更新資料庫時發生錯誤！";
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                        }
-                        cmd.Parameters.Clear();
+                        store.ClearAllReplayGain();
+                        lock (LockThis) Global.TotalList[0]++;
                     }
+                    catch
+                    {
+                        lock (LockThis) Global.TotalList[1]++;
+                        Global.SongLog.Add("【音量平衡】更新資料庫時發生錯誤！");
+                    }
+
                 }
             }
         }
@@ -4053,7 +3846,7 @@ namespace CrazyKTV_SongMgr
                     });
 
                     string file = Path.Combine(row["Song_Path"].ToString(), row["Song_FileName"].ToString());
-                    bool status = FFmpeg.VerifyFile(file);
+                    bool status = MediaProbe.VerifyFile(file);
                     NativeMethods.SystemSleepManagement.ResetSleepTimer(false);
 
                     if (!status)
@@ -4070,9 +3863,7 @@ namespace CrazyKTV_SongMgr
                 {
                     foreach (string songid in badlist)
                     {
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【檔案完整性】這首歌曲的檔案可能有問題: " + songid;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【檔案完整性】這首歌曲的檔案可能有問題: " + songid);
                     }
                     badlist.Clear();
                     badlist = null;

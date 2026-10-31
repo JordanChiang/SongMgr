@@ -57,7 +57,7 @@ namespace CrazyKTV_SongMgr
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
         }
 
-        public DShowForm(Form ParentForm, List<string> PlayerSongInfoList)
+        internal DShowForm(Form ParentForm, PlayerRequest request)
         {
             InitializeComponent();
             this.Load += DShowForm_Load;
@@ -67,16 +67,16 @@ namespace CrazyKTV_SongMgr
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
             this.Owner = ParentForm;
-            SongId = PlayerSongInfoList[0];
-            SongLang = PlayerSongInfoList[1];
-            SongSinger = PlayerSongInfoList[2];
-            SongSongName = PlayerSongInfoList[3];
-            SongTrack = PlayerSongInfoList[4];
-            SongVolume = PlayerSongInfoList[5];
-            SongReplayGain = PlayerSongInfoList[6];
-            SongFilePath = PlayerSongInfoList[7];
-            dvRowIndex = PlayerSongInfoList[8];
-            UpdateDataGridView = PlayerSongInfoList[9];
+            SongId = request.Song.Id;
+            SongLang = request.Song.Lang;
+            SongSinger = request.Song.Singer;
+            SongSongName = request.Song.SongName;
+            SongTrack = request.Song.Track;
+            SongVolume = request.Song.Volume;
+            SongReplayGain = request.Song.ReplayGain;
+            SongFilePath = request.FilePath;
+            dvRowIndex = request.RowIndex;
+            UpdateDataGridView = request.Source;
 
             this.Text = "【" + SongLang + "】" + SongSinger + " - " + SongSongName;
 
@@ -473,16 +473,9 @@ namespace CrazyKTV_SongMgr
         {
             try
             {
-                using (System.Data.OleDb.OleDbConnection conn = new System.Data.OleDb.OleDbConnection("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Global.CrazyktvDatabaseFile))
+                using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
                 {
-                    conn.Open();
-                    string sql = "UPDATE ktv_Song SET Song_Volume = @Volume WHERE Song_Id = @SongId";
-                    using (System.Data.OleDb.OleDbCommand cmd = new System.Data.OleDb.OleDbCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Volume", Player_VolumeSlider.TrackBarValue.ToString());
-                        cmd.Parameters.AddWithValue("@SongId", SongId);
-                        cmd.ExecuteNonQuery();
-                    }
+                    store.UpdateSong(new SongRecord { Id = SongId, Volume = Player_VolumeSlider.TrackBarValue.ToString() }, SongColumns.Volume);
                 }
                 
                 SongVolume = Player_VolumeSlider.TrackBarValue.ToString();
@@ -593,7 +586,7 @@ namespace CrazyKTV_SongMgr
             SongTrack = UpdateSongTrack;
             Player_UpdateChannel_Button.Enabled = false;
             Player_CurrentChannelValue_Label.Text = "伴唱";
-            Global.PlayerUpdateSongValueList = new List<string>() { UpdateDataGridView, dvRowIndex, SongTrack };
+            Global.PlayerTrackUpdate = new PlayerTrackUpdate { Source = UpdateDataGridView, RowIndex = dvRowIndex, Track = SongTrack };
         }
 
         private void Player_PlayControl_Button_Click(object sender, EventArgs e)

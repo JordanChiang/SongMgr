@@ -76,9 +76,7 @@ namespace CrazyKTV_SongMgr
             {
                 if (Convert.ToInt32(Global.SongSrcDT.Rows[i]["Song_Type"]) > 9)
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲語系類別並未定義,已自動將其數值改為其它: " + SongId + "|" + SongLang;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲語系類別並未定義,已自動將其數值改為其它: " + SongId + "|" + SongLang);
                     SongLang = "其它";
                 }
                 else
@@ -121,9 +119,7 @@ namespace CrazyKTV_SongMgr
                                     catch
                                     {
                                         SongSingerType = "10";
-                                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌手類別數值錯誤,已自動將其數值改為10: " + SongId + "|" + SongSongName;
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                        Global.SongLog.Add("【歌庫轉換】此首歌曲歌手類別數值錯誤,已自動將其數值改為10: " + SongId + "|" + SongSongName);
                                     }
                                 }
                                 break;
@@ -179,9 +175,7 @@ namespace CrazyKTV_SongMgr
             {
                 if (str == "")
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】已忽略轉換此首歌曲,因為此首歌曲資料不全: " + SongId + "|" + SongLang + "|" + SongSongName + "|" + SongSinger;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】已忽略轉換此首歌曲,因為此首歌曲資料不全: " + SongId + "|" + SongLang + "|" + SongSongName + "|" + SongSinger);
                     lock (LockThis) Global.TotalList[1]++;
                     ConvStatus = false;
                     break;
@@ -193,9 +187,7 @@ namespace CrazyKTV_SongMgr
                 if (SongSingerType == "")
                 {
                     SongSingerType = "10";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌手類別數值為空值,已自動將其數值改為10: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲歌手類別數值為空值,已自動將其數值改為10: " + SongId + "|" + SongSongName);
                 }
 
                 string SongTrack = "";
@@ -205,17 +197,13 @@ namespace CrazyKTV_SongMgr
                     if (SongTrack == "3")
                     {
                         SongTrack = "0";
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌曲聲道數值為3立體聲,已自動將其數值改為0: " + SongId + "|" + SongSongName;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【歌庫轉換】此首歌曲歌曲聲道數值為3立體聲,已自動將其數值改為0: " + SongId + "|" + SongSongName);
                     }
                 }
                 else
                 {
                     SongTrack = "0";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌曲聲道數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲歌曲聲道數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName);
                 }
 
                 string SongVolume = "";
@@ -226,9 +214,7 @@ namespace CrazyKTV_SongMgr
                 else
                 {
                     SongVolume = "100";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌曲音量數值為空值,已自動將其數值改為100: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲歌曲音量數值為空值,已自動將其數值改為100: " + SongId + "|" + SongSongName);
                 }
                 
                 string SongPlayCount = "";
@@ -239,9 +225,7 @@ namespace CrazyKTV_SongMgr
                 else
                 {
                     SongPlayCount = "0";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲點播次數數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲點播次數數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName);
                 }
 
                 string SongCreatDate = "";
@@ -252,9 +236,7 @@ namespace CrazyKTV_SongMgr
                 else
                 {
                     SongCreatDate = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲加歌日期數值為空值,已自動將其數值改為現在日期: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲加歌日期數值為空值,已自動將其數值改為現在日期: " + SongId + "|" + SongSongName);
                 }
 
                 string SongPlayState = "0";
@@ -287,7 +269,13 @@ namespace CrazyKTV_SongMgr
                 SongSongStroke = SongSpellList[2];
                 SongPenStyle = SongSpellList[3];
 
-                string SongDBConvValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState;
+                SongRecord SongDBConvValue = new SongRecord
+                {
+                    Id = SongId, Lang = SongLang, SingerType = SongSingerType, Singer = SongSinger, SongName = SongSongName,
+                    Track = SongTrack, SongType = SongSongType, Volume = SongVolume, WordCount = SongWordCount, PlayCount = SongPlayCount,
+                    MB = SongMB.ToString(), CreatDate = SongCreatDate, FileName = SongFileName, Path = SongPath, Spell = SongSpell,
+                    SpellNum = SongSpellNum, SongStroke = SongSongStroke, PenStyle = SongPenStyle, PlayState = SongPlayState,
+                };
                 Global.SongDBConvValueList.Add(SongDBConvValue);
 
                 lock (LockThis)
@@ -314,9 +302,7 @@ namespace CrazyKTV_SongMgr
                 SongLang = GetSongInfo("SongLang", Global.SongSrcDT.Rows[i]["Song_Type"].ToString());
                 if (SongLang == "")
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲語系類別並未定義,已自動將其數值改為其它: " + SongId + "|" + SongLang;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲語系類別並未定義,已自動將其數值改為其它: " + SongId + "|" + SongLang);
                     SongLang = "其它";
                 }
             }
@@ -356,9 +342,7 @@ namespace CrazyKTV_SongMgr
                                 catch
                                 {
                                     SongSingerType = "10";
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌手類別數值錯誤,已自動將其數值改為10: " + SongId + "|" + SongSongName;
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                    Global.SongLog.Add("【歌庫轉換】此首歌曲歌手類別數值錯誤,已自動將其數值改為10: " + SongId + "|" + SongSongName);
                                 }
                             }
                             break;
@@ -413,9 +397,7 @@ namespace CrazyKTV_SongMgr
             {
                 if (str == "")
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】已忽略轉換此首歌曲,因為此首歌曲資料不全: " + SongId + "|" + SongLang + "|" + SongSongName + "|" + SongSinger;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】已忽略轉換此首歌曲,因為此首歌曲資料不全: " + SongId + "|" + SongLang + "|" + SongSongName + "|" + SongSinger);
                     lock (LockThis) Global.TotalList[1]++;
                     ConvStatus = false;
                     break;
@@ -427,9 +409,7 @@ namespace CrazyKTV_SongMgr
                 if (SongSingerType == "")
                 {
                     SongSingerType = "10";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌手類別數值為空值,已自動將其數值改為10: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲歌手類別數值為空值,已自動將其數值改為10: " + SongId + "|" + SongSongName);
                 }
 
                 string SongTrack = "";
@@ -439,17 +419,13 @@ namespace CrazyKTV_SongMgr
                     if (SongTrack == "3")
                     {
                         SongTrack = "0";
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌曲聲道數值為3立體聲,已自動將其數值改為0: " + SongId + "|" + SongSongName;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【歌庫轉換】此首歌曲歌曲聲道數值為3立體聲,已自動將其數值改為0: " + SongId + "|" + SongSongName);
                     }
                 }
                 else
                 {
                     SongTrack = "0";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌曲聲道數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲歌曲聲道數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName);
                 }
 
                 string SongVolume = "";
@@ -460,9 +436,7 @@ namespace CrazyKTV_SongMgr
                 else
                 {
                     SongVolume = "100";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲歌曲音量數值為空值,已自動將其數值改為100: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲歌曲音量數值為空值,已自動將其數值改為100: " + SongId + "|" + SongSongName);
                 }
 
                 string SongPlayCount = "";
@@ -473,9 +447,7 @@ namespace CrazyKTV_SongMgr
                 else
                 {
                     SongPlayCount = "0";
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲點播次數數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲點播次數數值為空值,已自動將其數值改為0: " + SongId + "|" + SongSongName);
                 }
 
                 string SongCreatDate = "";
@@ -486,9 +458,7 @@ namespace CrazyKTV_SongMgr
                 else
                 {
                     SongCreatDate = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫轉換】此首歌曲加歌日期數值為空值,已自動將其數值改為現在日期: " + SongId + "|" + SongSongName;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【歌庫轉換】此首歌曲加歌日期數值為空值,已自動將其數值改為現在日期: " + SongId + "|" + SongSongName);
                 }
 
                 string SongPlayState = "0";
@@ -521,7 +491,13 @@ namespace CrazyKTV_SongMgr
                 SongSongStroke = SongSpellList[2];
                 SongPenStyle = SongSpellList[3];
 
-                string SongDBConvValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState;
+                SongRecord SongDBConvValue = new SongRecord
+                {
+                    Id = SongId, Lang = SongLang, SingerType = SongSingerType, Singer = SongSinger, SongName = SongSongName,
+                    Track = SongTrack, SongType = SongSongType, Volume = SongVolume, WordCount = SongWordCount, PlayCount = SongPlayCount,
+                    MB = SongMB.ToString(), CreatDate = SongCreatDate, FileName = SongFileName, Path = SongPath, Spell = SongSpell,
+                    SpellNum = SongSpellNum, SongStroke = SongSongStroke, PenStyle = SongPenStyle, PlayState = SongPlayState,
+                };
                 Global.SongDBConvValueList.Add(SongDBConvValue);
 
                 lock (LockThis)

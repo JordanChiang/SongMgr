@@ -87,9 +87,7 @@ namespace CrazyKTV_SongMgr
             catch
             {
                 // 剪貼簿被別的程式占用
-                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【複製到剪貼簿】無法完成複製到剪貼簿,因剪貼簿已被占用。";
-                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                Global.SongLog.Add("【複製到剪貼簿】無法完成複製到剪貼簿,因剪貼簿已被占用。");
             }
         }
 

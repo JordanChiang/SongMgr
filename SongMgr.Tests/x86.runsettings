@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app and Jet OLEDB 4.0 are 32-bit only, so the tests run in an x86 testhost. -->
+<RunSettings>
+  <RunConfiguration>
+    <TargetPlatform>x86</TargetPlatform>
+    <EnvironmentVariables>
+      <DOTNET_ROOT_X86>C:\Program Files (x86)\dotnet</DOTNET_ROOT_X86>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

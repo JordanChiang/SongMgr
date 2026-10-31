@@ -16,7 +16,7 @@ namespace CrazyKTV_SongMgr
         {
             if (!Global.CrazyktvDatabaseStatus) return;
 
-            if (Global.SongMgrSongAddMode != "4")
+            if (Global.AddMode != SongAddMode.Monitor)
             {
                 if (SongMgrCfg_TabControl.TabPages.IndexOf(SongMgrCfg_MonitorFolders_TabPage) >= 0)
                 {
@@ -25,7 +25,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (Global.SongMgrSongAddMode == "4" && Global.SongMgrEnableMonitorFolders == "True")
+            if (Global.AddMode == SongAddMode.Monitor && Global.SongMgrEnableMonitorFolders == "True")
             {
                 Global.TimerStartTime = DateTime.Now;
                 DateTime TimerStartTime = DateTime.Now;
@@ -101,19 +101,14 @@ namespace CrazyKTV_SongMgr
 
                 System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongMonitor_CheckCurSongTask] DB check complete. RemoveCount: {RemoveSongIdList.Count}, ExistingFileCount: {FileList.Count}");
 
-                OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-                OleDbCommand cmd = new OleDbCommand();
-                string SongRemoveSqlStr = "delete from ktv_Song where Song_Id = @SongId";
-                cmd = new OleDbCommand(SongRemoveSqlStr, conn);
+                SongLibraryStore store = SongLibraryStore.Open();
 
                 if (RemoveSongIdList.Count > 0)
                 {
                     foreach (string str in RemoveSongIdList)
                     {
                         List<string> list = new List<string>(str.Split('|'));
-                        cmd.Parameters.AddWithValue("@SongId", list[0]);
-                        cmd.ExecuteNonQuery();
-                        cmd.Parameters.Clear();
+                        store.DeleteSong(list[0]);
 
                         Global.MTotalList[0]++;
 
@@ -126,13 +121,11 @@ namespace CrazyKTV_SongMgr
 
                         lock (LockThis)
                         {
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫監視】檔案不存在: " + list[0] + "|" + list[1];
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("【歌庫監視】檔案不存在: " + list[0] + "|" + list[1]);
                         }
                     }
                 }
-                conn.Close();
+                store.Dispose();
 
                 this.BeginInvoke((Action)delegate()
                 {
@@ -163,9 +156,7 @@ namespace CrazyKTV_SongMgr
                                 {
                                     NewFileList.Add(fFullName);
 
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫監視】偵測到新檔: " + fFullName;
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                    Global.SongLog.Add("【歌庫監視】偵測到新檔: " + fFullName);
                                 }
                             }
                         }
@@ -251,7 +242,7 @@ namespace CrazyKTV_SongMgr
                 System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongMonitor_SwitchSongMonitorWatcher] Start execution");
                 if (!Global.CrazyktvDatabaseStatus) return;
 
-                if (Global.SongMgrSongAddMode == "4" && Global.SongMgrEnableMonitorFolders == "True")
+                if (Global.AddMode == SongAddMode.Monitor && Global.SongMgrEnableMonitorFolders == "True")
                 {
                     bool EnableSongMonitor = false;
                     for (int i = 0; i < Global.SongMgrMonitorFoldersList.Count; i++)
@@ -560,17 +551,12 @@ namespace CrazyKTV_SongMgr
                 List<int> CountList = new List<int>() { Global.SongMonitorDeletedList.Count, Global.SongMonitorCreatedList.Count };
                 if (Global.SongMonitorDeletedList.Count > 0)
                 {
-                    OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-                    OleDbCommand cmd = new OleDbCommand();
-                    string SongRemoveSqlStr = "delete from ktv_Song where Song_Id = @SongId";
-                    cmd = new OleDbCommand(SongRemoveSqlStr, conn);
+                    SongLibraryStore store = SongLibraryStore.Open();
 
                     foreach (string str in Global.SongMonitorDeletedList)
                     {
                         List<string> list = new List<string>(str.Split('|'));
-                        cmd.Parameters.AddWithValue("@SongId", list[0]);
-                        cmd.ExecuteNonQuery();
-                        cmd.Parameters.Clear();
+                        store.DeleteSong(list[0]);
 
                         Global.MTotalList[0]++;
 
@@ -583,13 +569,11 @@ namespace CrazyKTV_SongMgr
 
                         lock (LockThis)
                         {
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫監視】檔案已刪除: " + list[0] + "|" + list[1];
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("【歌庫監視】檔案已刪除: " + list[0] + "|" + list[1]);
                         }
                     }
                     Global.SongMonitorDeletedList.Clear();
-                    conn.Close();
+                    store.Dispose();
                 }
 
                 if (Global.SongMonitorCreatedList.Count > 0)
@@ -616,9 +600,7 @@ namespace CrazyKTV_SongMgr
                     {
                         lock (LockThis)
                         {
-                            Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫監視】偵測到新檔: " + filepath;
-                            Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                            Global.SongLog.Add("【歌庫監視】偵測到新檔: " + filepath);
                         }
                     }
                     Global.SongMonitorCreatedList.Clear();

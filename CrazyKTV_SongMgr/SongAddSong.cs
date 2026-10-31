@@ -29,7 +29,7 @@ namespace CrazyKTV_SongMgr
         public static List<string> AllSingerDataTypeList;
 
         public static DataTable DupSongAddDT;
-        public static List<string> SongAddValueList;
+        public static List<SongRecord> SongAddValueList;
         public static List<string> ChorusSingerList;
 
         public static void CreateSongDataTable()
@@ -81,13 +81,8 @@ namespace CrazyKTV_SongMgr
             }
             AllSingerDataLowCaseList = AllSingerDataList.ConvertAll(str => str.ToLower());
 
-            Global.DuplicateSongDT = new DataTable();
-            Global.DuplicateSongDT.Columns.Add(new DataColumn("Display", typeof(string)));
-            Global.DuplicateSongDT.Columns.Add(new DataColumn("Value", typeof(int)));
-
-            Global.FailureSongDT = new DataTable();
-            Global.FailureSongDT.Columns.Add(new DataColumn("Display", typeof(string)));
-            Global.FailureSongDT.Columns.Add(new DataColumn("Value", typeof(int)));
+            Global.DuplicateSongLog.Reset();
+            Global.FailureSongLog.Reset();
 
             DupSongAddDT = new DataTable();
             DupSongAddDT.Columns.Add("Song_AddStatus", typeof(string));
@@ -162,9 +157,7 @@ namespace CrazyKTV_SongMgr
                         lock (LockThis)
                         {
                             Global.TotalList[1]++;
-                            Global.DuplicateSongDT.Rows.Add(Global.DuplicateSongDT.NewRow());
-                            Global.DuplicateSongDT.Rows[Global.DuplicateSongDT.Rows.Count - 1][0] = SongAddDT.Rows[i].Field<string>("Song_SrcPath");
-                            Global.DuplicateSongDT.Rows[Global.DuplicateSongDT.Rows.Count - 1][1] = Global.DuplicateSongDT.Rows.Count;
+                            Global.DuplicateSongLog.Add(SongAddDT.Rows[i].Field<string>("Song_SrcPath"));
                         }
                         break;
                     case "2":
@@ -228,9 +221,7 @@ namespace CrazyKTV_SongMgr
                             lock (LockThis)
                             {
                                 Global.TotalList[1]++;
-                                Global.DuplicateSongDT.Rows.Add(Global.DuplicateSongDT.NewRow());
-                                Global.DuplicateSongDT.Rows[Global.DuplicateSongDT.Rows.Count - 1][0] = SongAddDT.Rows[i].Field<string>("Song_SrcPath");
-                                Global.DuplicateSongDT.Rows[Global.DuplicateSongDT.Rows.Count - 1][1] = Global.DuplicateSongDT.Rows.Count;
+                                Global.DuplicateSongLog.Add(SongAddDT.Rows[i].Field<string>("Song_SrcPath"));
                             }
                         }
                         break;
@@ -273,9 +264,7 @@ namespace CrazyKTV_SongMgr
                 {
                     SingerNameisEmpty = true;
 
-                    Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "歌手名稱空白: 階段1 [" + SongData + "]";
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                    Global.FailureSongLog.Add("歌手名稱空白: 階段1 [" + SongData + "]");
                 }
 
                 // 判斷是否要加入歌手資料至歌手資料庫
@@ -466,9 +455,14 @@ namespace CrazyKTV_SongMgr
                 SongPath = Path.GetDirectoryName(SongSrcPath) + @"\";
                 SongFileName = Path.GetFileName(SongSrcPath);
 
-                if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
+                if (LibraryPlacement.MovesFiles)
                 {
-                    string SongDestPath = CommonFunc.GetFileStructure(SongId, SongLang, SongSingerType, SongSinger, SongSongName, SongTrack, SongSongType, SongFileName, SongPath, false, "", false, false);
+                    SongRecord song = new SongRecord
+                    {
+                        Id = SongId, Lang = SongLang, SingerType = SongSingerType.ToString(), Singer = SongSinger, SongName = SongSongName,
+                        Track = SongTrack.ToString(), SongType = SongSongType, FileName = SongFileName, Path = SongPath,
+                    };
+                    string SongDestPath = LibraryPlacement.Destination(song, PlacementPurpose.Add);
                     SongPath = Path.GetDirectoryName(SongDestPath) + @"\";
                     SongFileName = Path.GetFileName(SongDestPath);
                 }
@@ -476,94 +470,31 @@ namespace CrazyKTV_SongMgr
                 if (SongSinger.Length > 60)
                 {
                     Global.TotalList[2]++;
-                    Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "歌手名稱超過60字元: " + SongSrcPath;
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                    Global.FailureSongLog.Add("歌手名稱超過60字元: " + SongSrcPath);
                 }
                 else if (SongSongName.Length > 80)
                 {
                     Global.TotalList[2]++;
-                    Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "歌曲名稱超過80字元: " + SongSrcPath;
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                    Global.FailureSongLog.Add("歌曲名稱超過80字元: " + SongSrcPath);
                 }
                 // SingerName bug
                 else if (SongSinger == "")
                 {
                     SingerNameisEmpty = true;
 
-                    Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "歌手名稱空白: 階段2 [" + SongData + "]";
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                    Global.FailureSongLog.Add("歌手名稱空白: 階段2 [" + SongData + "]");
                 }
                 else
                 {
                     bool FileIOError = false;
-                    if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
+                    if (LibraryPlacement.MovesFiles)
                     {
                         string SongDestPath = Path.Combine(SongPath, SongFileName);
-
-                        if (!Directory.Exists(SongPath))
-                        {
-                            Directory.CreateDirectory(SongPath);
-                        }
-                        try
-                        {
-                            switch (Global.SongMgrSongAddMode)
-                            {
-                                case "1":
-                                    if (File.Exists(SongDestPath))
-                                    {
-                                        FileAttributes attributes = File.GetAttributes(SongDestPath);
-                                        if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                        {
-                                            attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                            File.SetAttributes(SongDestPath, attributes);
-                                        }
-
-                                        if (Global.SongMgrBackupRemoveSong == "True")
-                                        {
-                                            if (!Directory.Exists(Application.StartupPath + @"\SongMgr\RemoveSong")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\RemoveSong");
-                                            if (File.Exists(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName)) File.Delete(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            File.Move(SongDestPath, Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            CommonFunc.SetFileTime(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName, DateTime.Now);
-                                        }
-                                        else
-                                        {
-                                            File.Delete(SongDestPath);
-                                        }
-                                    }
-                                    File.Move(SongSrcPath, SongDestPath);
-                                    break;
-                                case "2":
-                                    if (File.Exists(SongDestPath))
-                                    {
-                                        FileAttributes attributes = File.GetAttributes(SongDestPath);
-                                        if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                        {
-                                            attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                            File.SetAttributes(SongDestPath, attributes);
-                                        }
-
-                                        if (Global.SongMgrBackupRemoveSong == "True")
-                                        {
-                                            if (!Directory.Exists(Application.StartupPath + @"\SongMgr\RemoveSong")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\RemoveSong");
-                                            if (File.Exists(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName)) File.Delete(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            File.Move(SongDestPath, Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            CommonFunc.SetFileTime(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName, DateTime.Now);
-                                        }
-                                    }
-                                    File.Copy(SongSrcPath, SongDestPath, true);
-                                    break;
-                            }
-                        }
-                        catch
+                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong == "True"))
                         {
                             FileIOError = true;
                             lock (LockThis) { Global.TotalList[2]++; }
-                            Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "檔案處理發生錯誤: " + SongDestPath + "(唯讀或使用中)";
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                            Global.FailureSongLog.Add("檔案處理發生錯誤: " + SongDestPath + "(唯讀或使用中)");
                         }
                     }
 
@@ -575,7 +506,14 @@ namespace CrazyKTV_SongMgr
 
                     if (!FileIOError && !SingerNameisEmpty)
                     {
-                        string SongAddValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture) + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + SongAddSinger + "|" + SongAddAllSinger + "|" + SongReplayGain;
+                        SongRecord SongAddValue = new SongRecord
+                        {
+                            Id = SongId, Lang = SongLang, SingerType = SongSingerType.ToString(), Singer = SongSinger, SongName = SongSongName,
+                            Track = SongTrack.ToString(), SongType = SongSongType, Volume = SongVolume.ToString(), WordCount = SongWordCount.ToString(),
+                            PlayCount = SongPlayCount.ToString(), MB = SongMB.ToString(), CreatDate = SongCreatDate.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture),
+                            FileName = SongFileName, Path = SongPath, Spell = SongSpell, SpellNum = SongSpellNum, SongStroke = SongSongStroke.ToString(),
+                            PenStyle = SongPenStyle, PlayState = SongPlayState.ToString(), AddSinger = SongAddSinger, AddAllSinger = SongAddAllSinger, ReplayGain = SongReplayGain,
+                        };
                         SongAddSong.SongAddValueList.Add(SongAddValue);
 
                         lock (LockThis)
@@ -630,47 +568,22 @@ namespace CrazyKTV_SongMgr
             // 移除原有歌曲
             bool DeleteError = false;
 
-            if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
+            if (LibraryPlacement.MovesFiles)
             {
                 string oldfile = Path.Combine(SongPath, SongFileName);
 
-                if (File.Exists(oldfile) && oldfile != SongSrcPath)
+                if (File.Exists(oldfile) && !LibraryPlacement.IsSameFile(oldfile, SongSrcPath))
                 {
-                    FileAttributes attributes = File.GetAttributes(oldfile);
-                    if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                    {
-                        attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                        File.SetAttributes(oldfile, attributes);
-                    }
-
-                    try
-                    {
-                        if (Global.SongMgrBackupRemoveSong == "True")
-                        {
-                            if (!Directory.Exists(Application.StartupPath + @"\SongMgr\RemoveSong")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\RemoveSong");
-                            if (File.Exists(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName)) File.Delete(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                            File.Move(oldfile, Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                            CommonFunc.SetFileTime(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName, DateTime.Now);
-                        }
-                        else
-                        {
-                            File.Delete(oldfile);
-                        }
-                    }
-                    catch
+                    if (!LibraryPlacement.Remove(oldfile, Global.SongMgrBackupRemoveSong == "True"))
                     {
                         DeleteError = true;
                         lock (LockThis) { Global.TotalList[2]++; }
-                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【加歌頁面】重複歌曲原有檔案是唯讀檔或正在使用中: " + oldfile;
-                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                        Global.SongLog.Add("【加歌頁面】重複歌曲原有檔案是唯讀檔或正在使用中: " + oldfile);
                     }
                 }
                 else
                 {
-                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【加歌頁面】重複歌曲原有檔案不存在或為同檔案,已自動忽略移除原有檔案: " + oldfile;
-                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                    Global.SongLog.Add("【加歌頁面】重複歌曲原有檔案不存在或為同檔案,已自動忽略移除原有檔案: " + oldfile);
                 }
             }
 
@@ -678,9 +591,14 @@ namespace CrazyKTV_SongMgr
             {
                 lock (LockThis) { Global.TotalList[4]++; }
 
-                if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
+                if (LibraryPlacement.MovesFiles)
                 {
-                    string SongDestPath = CommonFunc.GetFileStructure(SongId, SongLang, SongSingerType, SongSinger, SongSongName, SongTrack, SongSongType, SongFileName, SongPath, false, "", true, false);
+                    SongRecord song = new SongRecord
+                    {
+                        Id = SongId, Lang = SongLang, SingerType = SongSingerType.ToString(), Singer = SongSinger, SongName = SongSongName,
+                        Track = SongTrack.ToString(), SongType = SongSongType, FileName = SongFileName, Path = SongPath,
+                    };
+                    string SongDestPath = LibraryPlacement.Destination(song, PlacementPurpose.Relocate);
                     SongPath = Path.GetDirectoryName(SongDestPath) + @"\";
                     SongFileName = Path.GetFileNameWithoutExtension(SongDestPath) + SongExtension;
                 }
@@ -693,92 +611,37 @@ namespace CrazyKTV_SongMgr
                 if (SongSinger.Length > 60)
                 {
                     Global.TotalList[2]++;
-                    Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "歌手名稱超過60字元: " + SongSrcPath;
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                    Global.FailureSongLog.Add("歌手名稱超過60字元: " + SongSrcPath);
                 }
                 else if (SongSongName.Length > 80)
                 {
                     Global.TotalList[2]++;
-                    Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "歌曲名稱超過80字元: " + SongSrcPath;
-                    Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                    Global.FailureSongLog.Add("歌曲名稱超過80字元: " + SongSrcPath);
                 }
                 else
                 {
                     bool FileIOError = false;
-                    if (Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4")
+                    if (LibraryPlacement.MovesFiles)
                     {
                         string SongDestPath = Path.Combine(SongPath, SongFileName);
-
-                        if (!Directory.Exists(SongPath))
-                        {
-                            Directory.CreateDirectory(SongPath);
-                        }
-
-                        try
-                        {
-                            switch (Global.SongMgrSongAddMode)
-                            {
-                                case "1":
-                                    if (File.Exists(SongDestPath))
-                                    {
-                                        FileAttributes attributes = File.GetAttributes(SongDestPath);
-                                        if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                        {
-                                            attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                            File.SetAttributes(SongDestPath, attributes);
-                                        }
-
-                                        if (Global.SongMgrBackupRemoveSong == "True")
-                                        {
-                                            if (!Directory.Exists(Application.StartupPath + @"\SongMgr\RemoveSong")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\RemoveSong");
-                                            if (File.Exists(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName)) File.Delete(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            File.Move(SongDestPath, Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            CommonFunc.SetFileTime(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName, DateTime.Now);
-                                        }
-                                        else
-                                        {
-                                            File.Delete(SongDestPath);
-                                        }
-                                    }
-                                    File.Move(SongSrcPath, SongDestPath);
-                                    break;
-                                case "2":
-                                    if (File.Exists(SongDestPath))
-                                    {
-                                        FileAttributes attributes = File.GetAttributes(SongDestPath);
-                                        if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                        {
-                                            attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                            File.SetAttributes(SongDestPath, attributes);
-                                        }
-
-                                        if (Global.SongMgrBackupRemoveSong == "True")
-                                        {
-                                            if (!Directory.Exists(Application.StartupPath + @"\SongMgr\RemoveSong")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\RemoveSong");
-                                            if (File.Exists(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName)) File.Delete(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            File.Move(SongDestPath, Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName);
-                                            CommonFunc.SetFileTime(Application.StartupPath + @"\SongMgr\RemoveSong\" + SongFileName, DateTime.Now);
-                                        }
-                                    }
-                                    File.Copy(SongSrcPath, SongDestPath, true);
-                                    break;
-                            }
-                        }
-                        catch
+                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong == "True"))
                         {
                             FileIOError = true;
                             lock (LockThis) { Global.TotalList[2]++; }
-                            Global.FailureSongDT.Rows.Add(Global.FailureSongDT.NewRow());
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][0] = "檔案處理發生錯誤: " + SongDestPath + " (唯讀或使用中)";
-                            Global.FailureSongDT.Rows[Global.FailureSongDT.Rows.Count - 1][1] = Global.FailureSongDT.Rows.Count;
+                            Global.FailureSongLog.Add("檔案處理發生錯誤: " + SongDestPath + " (唯讀或使用中)");
                         }
                     }
 
                     if (!FileIOError)
                     {
-                        string SongAddValue = SongId + "|" + SongLang + "|" + SongSingerType + "|" + SongSinger + "|" + SongSongName + "|" + SongTrack + "|" + SongSongType + "|" + SongVolume + "|" + SongWordCount + "|" + SongPlayCount + "|" + SongMB + "|" + SongCreatDate.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture) + "|" + SongFileName + "|" + SongPath + "|" + SongSpell + "|" + SongSpellNum + "|" + SongSongStroke + "|" + SongPenStyle + "|" + SongPlayState + "|" + SongReplayGain;
+                        SongRecord SongAddValue = new SongRecord
+                        {
+                            Id = SongId, Lang = SongLang, SingerType = SongSingerType.ToString(), Singer = SongSinger, SongName = SongSongName,
+                            Track = SongTrack.ToString(), SongType = SongSongType, Volume = SongVolume.ToString(), WordCount = SongWordCount.ToString(),
+                            PlayCount = SongPlayCount.ToString(), MB = SongMB.ToString(), CreatDate = SongCreatDate.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture),
+                            FileName = SongFileName, Path = SongPath, Spell = SongSpell, SpellNum = SongSpellNum, SongStroke = SongSongStroke.ToString(),
+                            PenStyle = SongPenStyle, PlayState = SongPlayState.ToString(), ReplayGain = SongReplayGain,
+                        };
                         SongAddSong.SongAddValueList.Add(SongAddValue);
                         lock (LockThis) { Global.TotalList[3]++; }
                     }

@@ -918,7 +918,7 @@ namespace CrazyKTV_SongMgr
                 {
                     if (dt.Rows.Count > 0)
                     {
-                        List<string> UpdateList = new List<string>();
+                        List<(string SongId, string SrcPath, string DestPath)> UpdateList = new List<(string SongId, string SrcPath, string DestPath)>();
                         List<string> HasInvalidCharList = new List<string>();
                         SongMgrCfg.UpdateStructureError = false;
 
@@ -950,7 +950,12 @@ namespace CrazyKTV_SongMgr
                                     }
 
                                     string SongSrcPath = Path.Combine(SongPath, SongFileName);
-                                    string SongDestPath = CommonFunc.GetFileStructure(SongId, SongLang, SongSingerType, SongSinger, SongSongName, SongTrack, SongSongType, SongFileName, SongPath, false, "", true, true);
+                                    SongRecord song = new SongRecord
+                                    {
+                                        Id = SongId, Lang = SongLang, SingerType = SongSingerType.ToString(), Singer = SongSinger, SongName = SongSongName,
+                                        Track = SongTrack.ToString(), SongType = SongSongType, FileName = SongFileName, Path = SongPath,
+                                    };
+                                    string SongDestPath = LibraryPlacement.Destination(song, PlacementPurpose.UpdateStructure);
                                     if (SongSrcPath != SongDestPath)
                                     {
                                         bool HasInvalidChar = false;
@@ -966,7 +971,7 @@ namespace CrazyKTV_SongMgr
                                         }
                                         else
                                         {
-                                            lock (LockThis) { UpdateList.Add(SongId + "|" + SongSrcPath + "|" + SongDestPath); }
+                                            lock (LockThis) { UpdateList.Add((SongId, SongSrcPath, SongDestPath)); }
                                         }
                                     }
                                 }
@@ -979,53 +984,33 @@ namespace CrazyKTV_SongMgr
                             foreach (string SongDestPath in HasInvalidCharList)
                             {
                                 Global.TotalList[1]++;
-                                Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構更新】新的結構含有無效字元: " + SongDestPath + " (已忽略更新)";
-                                Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                Global.SongLog.Add("【歌庫結構更新】新的結構含有無效字元: " + SongDestPath + " (已忽略更新)");
                             }
                         }
                         HasInvalidCharList.Clear();
 
-                        List<string> UpdateDBList = new List<string>();
+                        List<SongRecord> UpdateDBList = new List<SongRecord>();
                         if (UpdateList.Count > 0)
                         {
-                            foreach (string UpdateStr in UpdateList)
+                            foreach (var update in UpdateList)
                             {
-                                List<string> list = new List<string>(UpdateStr.Split('|'));
-                                string SongPath = Path.GetDirectoryName(list[2]) + @"\";
-                                string SongFileName = Path.GetFileName(list[2]);
+                                string SongPath = Path.GetDirectoryName(update.DestPath) + @"\";
+                                string SongFileName = Path.GetFileName(update.DestPath);
 
-                                if (File.Exists(list[1]))
+                                switch (LibraryPlacement.Overwrite(update.SrcPath, update.DestPath, false))
                                 {
-                                    if (!Directory.Exists(SongPath)) Directory.CreateDirectory(SongPath);
-                                    try
-                                    {
-                                        FileAttributes attributes = File.GetAttributes(list[1]);
-                                        if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                                        {
-                                            attributes = CommonFunc.RemoveAttribute(attributes, FileAttributes.ReadOnly);
-                                            File.SetAttributes(list[1], attributes);
-                                        }
-
-                                        if (File.Exists(list[2])) File.Delete(list[2]);
-                                        File.Move(list[1], list[2]);
-                                        UpdateDBList.Add(list[0] + "|" + SongFileName + "|" + SongPath);
+                                    case PlacementOutcome.Placed:
+                                        UpdateDBList.Add(new SongRecord { Id = update.SongId, FileName = SongFileName, Path = SongPath });
                                         lock (LockThis) { Global.TotalList[2]++; }
-                                    }
-                                    catch
-                                    {
+                                        break;
+                                    case PlacementOutcome.SourceMissing:
                                         lock (LockThis) { Global.TotalList[1]++; }
-                                        Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構更新】檔案移動失敗: " + list[1] + " (已忽略更新)";
-                                        Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
-                                    }
-                                }
-                                else
-                                {
-                                    lock (LockThis) { Global.TotalList[1]++; }
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構更新】原始檔案不存在: " + list[1] + " (已忽略更新)";
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                        Global.SongLog.Add("【歌庫結構更新】原始檔案不存在: " + update.SrcPath + " (已忽略更新)");
+                                        break;
+                                    default:
+                                        lock (LockThis) { Global.TotalList[1]++; }
+                                        Global.SongLog.Add("【歌庫結構更新】檔案移動失敗: " + update.SrcPath + " (已忽略更新)");
+                                        break;
                                 }
 
                                 this.BeginInvoke((Action)delegate()
@@ -1038,40 +1023,27 @@ namespace CrazyKTV_SongMgr
 
                         if (UpdateDBList.Count > 0)
                         {
-                            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-                            OleDbCommand cmd = new OleDbCommand();
-                            string sqlColumnStr = "Song_FileName = @SongFileName, Song_Path = @SongPath";
-                            string SongUpdateSqlStr = "update ktv_Song set " + sqlColumnStr + " where Song_Id = @SongId";
-                            cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+                            SongLibraryStore store = SongLibraryStore.Open();
 
-                            List<string> valuelist = new List<string>();
-
-                            foreach (string str in UpdateDBList)
+                            foreach (SongRecord moved in UpdateDBList)
                             {
-                                valuelist = new List<string>(str.Split('|'));
-                                cmd.Parameters.AddWithValue("@SongFileName", valuelist[1]);
-                                cmd.Parameters.AddWithValue("@SongPath", valuelist[2]);
-                                cmd.Parameters.AddWithValue("@SongId", valuelist[0]);
-
                                 try
                                 {
-                                    cmd.ExecuteNonQuery();
+                                    store.UpdateSong(moved, SongColumns.FileName | SongColumns.Path);
                                     lock (LockThis) { Global.TotalList[0]++; Global.TotalList[3]++; }
                                 }
                                 catch
                                 {
                                     lock (LockThis) { Global.TotalList[1]++; }
-                                    Global.SongLogDT.Rows.Add(Global.SongLogDT.NewRow());
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][0] = "【歌庫結構更新】資料更新失敗: " + valuelist[0] + " (檔案已經更動)";
-                                    Global.SongLogDT.Rows[Global.SongLogDT.Rows.Count - 1][1] = Global.SongLogDT.Rows.Count;
+                                    Global.SongLog.Add("【歌庫結構更新】資料更新失敗: " + moved.Id + " (檔案已經更動)");
                                 }
-                                cmd.Parameters.Clear();
 
                                 this.BeginInvoke((Action)delegate()
                                 {
                                     SongMgrCfg_Tooltip_Label.Text = "已成功將 " + Global.TotalList[3] + " 首歌曲的資料更新,請稍待...";
                                 });
                             }
+                            store.Dispose();
                         }
                         UpdateDBList.Clear();
                     }
