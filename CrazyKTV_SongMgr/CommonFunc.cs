@@ -1,4 +1,4 @@
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
@@ -11,6 +11,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Security.Principal;
 using System.Text;
@@ -2844,18 +2845,22 @@ namespace CrazyKTV_SongMgr
 
         #region --- CommonFunc 下載檔案 ---
 
+        private static readonly HttpClient SharedHttpClient = new HttpClient(new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.All
+        });
+
         public static MemoryStream Download(string Url)
         {
-            HttpWebRequest Request = (HttpWebRequest)HttpWebRequest.Create(Url);
             MemoryStream mStream = new MemoryStream();
 
             try
             {
-                using (HttpWebResponse Response = (HttpWebResponse)Request.GetResponse())
+                using (HttpResponseMessage Response = SharedHttpClient.Send(new HttpRequestMessage(HttpMethod.Get, Url), HttpCompletionOption.ResponseHeadersRead))
                 {
-                    long FileSize = Response.ContentLength;
+                    Response.EnsureSuccessStatusCode();
 
-                    using (Stream DataStream = Response.GetResponseStream())
+                    using (Stream DataStream = Response.Content.ReadAsStream())
                     {
                         byte[] Databuffer = new byte[8192];
                         int CompletedLength = 0;
@@ -2880,10 +2885,10 @@ namespace CrazyKTV_SongMgr
 
             try
             {
-                HttpWebRequest Request = (HttpWebRequest)HttpWebRequest.Create(Url);
-                HttpWebResponse Response = (HttpWebResponse)Request.GetResponse();
+                HttpResponseMessage Response = SharedHttpClient.Send(new HttpRequestMessage(HttpMethod.Get, Url), HttpCompletionOption.ResponseHeadersRead);
+                Response.EnsureSuccessStatusCode();
 
-                Stream DataStream = Response.GetResponseStream();
+                Stream DataStream = Response.Content.ReadAsStream();
                 byte[] Databuffer = new byte[1024];
                 int CompletedLength = 0;
 
@@ -2894,7 +2899,7 @@ namespace CrazyKTV_SongMgr
 
                 FStream.Close();
                 DataStream.Close();
-                Response.Close();
+                Response.Dispose();
                 DownloadStatus = true;
             }
             catch
@@ -2914,31 +2919,26 @@ namespace CrazyKTV_SongMgr
 
         public static string DownloadCashboxData(string Url, string PostStr)
         {
-            HttpWebRequest Request = (HttpWebRequest)HttpWebRequest.Create(Url);
-            Request.Method = "POST";
-            Request.Host = "www.cashboxparty.com";
-            Request.Referer = "https://www.cashboxparty.com/Music/KTVMusic.aspx";
-            Request.Headers["Origin"] = "https://www.cashboxparty.com";
-            Request.Headers["Accept-Language"] = "zh-TW,zh;q=0.8,en-US;q=0.5,en;q=0.3";
-            Request.Headers["Accept-Encoding"] = "gzip, deflate, br";
-            Request.Headers["X-Requested-With"] = "XMLHttpRequest";
-            Request.Accept = "application/json, text/javascript, */*; q=0.01";
-            Request.ContentType = "application/x-www-form-urlencoded; charset=utf-8";
-            Request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0";
-            Request.AutomaticDecompression = DecompressionMethods.GZip;
-            Request.KeepAlive = true;
-
-            using (StreamWriter sw = new StreamWriter(Request.GetRequestStream()))
-            {
-                sw.Write(PostStr);
-            }
+            // Accept-Encoding 由 HttpClientHandler.AutomaticDecompression 自動加入並解壓
+            HttpRequestMessage Request = new HttpRequestMessage(HttpMethod.Post, Url);
+            Request.Headers.Host = "www.cashboxparty.com";
+            Request.Headers.Referrer = new Uri("https://www.cashboxparty.com/Music/KTVMusic.aspx");
+            Request.Headers.TryAddWithoutValidation("Origin", "https://www.cashboxparty.com");
+            Request.Headers.TryAddWithoutValidation("Accept-Language", "zh-TW,zh;q=0.8,en-US;q=0.5,en;q=0.3");
+            Request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+            Request.Headers.TryAddWithoutValidation("Accept", "application/json, text/javascript, */*; q=0.01");
+            Request.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0");
+            Request.Content = new StringContent(PostStr, Encoding.UTF8, "application/x-www-form-urlencoded");
 
             string result = string.Empty;
             try
             {
-                using (HttpWebResponse Response = (HttpWebResponse)Request.GetResponse())
+                using (Request)
+                using (HttpResponseMessage Response = SharedHttpClient.Send(Request))
                 {
-                    using (StreamReader sr = new StreamReader(Response.GetResponseStream()))
+                    Response.EnsureSuccessStatusCode();
+
+                    using (StreamReader sr = new StreamReader(Response.Content.ReadAsStream()))
                     {
                         result = sr.ReadToEnd();
                     }
