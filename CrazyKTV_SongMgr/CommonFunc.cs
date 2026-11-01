@@ -729,10 +729,12 @@ namespace CrazyKTV_SongMgr
                 Global.InitializeSongData = true;
                 this.BeginInvoke((Action)delegate()
                 {
-                    SongQuery_QueryStatus_Label.Text = "資料初始化已完成。";
+                    // 歌庫無法使用時不顯示完成訊息, 改顯示錯誤原因
+                    SongQuery_QueryStatus_Label.Text = (Global.CrazyktvDatabaseStatus) ? "資料初始化已完成。" : "";
                     SongAdd_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
                     SongMgrCfg_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
                     Common_SwitchDBVerErrorUI(Global.SongMgrDBVerErrorUIStatus);
+                    if (!Global.CrazyktvDatabaseStatus) MainTabControl_SelectedIndexChanged(new TabControl(), new EventArgs());
                 });
             }
         }
@@ -1629,16 +1631,31 @@ namespace CrazyKTV_SongMgr
             // 清除歌曲查詢、歌手查詢、加歌頁面的相關歌曲、歌手列表
             Common_ClearDataGridView();
 
+            // 重設資料庫檢查旗標, 否則會沿用啟動時的結果而不等待背景檢查完成
+            Global.DatabaseUpdateFinished = false;
+
             // 檢查資料庫檔案是否為舊版資料庫
             SongDBUpdate_CheckDatabaseFile();
 
-            if (InitializeSongData)
-            {
-                // 初始化所需資料
-                Common_InitializeSongData(true, false, false, true, true, false);
-            }
             Common_SwitchDBVerErrorUI(Global.SongMgrDBVerErrorUIStatus);
             MainTabControl_SelectedIndexChanged(new TabControl(), new EventArgs());
+
+            Task.Factory.StartNew(() =>
+            {
+                // 等待背景資料庫檢查完成後, 依最新狀態重新切換介面
+                SpinWait.SpinUntil(() => Global.DatabaseUpdateFinished == true);
+                this.BeginInvoke((Action)delegate()
+                {
+                    Common_SwitchDBVerErrorUI(Global.SongMgrDBVerErrorUIStatus);
+                    MainTabControl_SelectedIndexChanged(new TabControl(), new EventArgs());
+                });
+
+                if (InitializeSongData)
+                {
+                    // 初始化所需資料
+                    Common_InitializeSongData(true, false, false, true, true, false);
+                }
+            });
         }
 
         #endregion
