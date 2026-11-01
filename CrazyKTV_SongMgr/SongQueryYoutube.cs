@@ -22,7 +22,7 @@ namespace CrazyKTV_SongMgr
             ("Url", "影片 ID", 110, null),
             ("Length", "長度", 60, null),
             ("PlayCount", "點播次數", 80, YoutubeColumn.PlayCount),
-            ("Track", "聲道", 80, YoutubeColumn.Track),
+            ("Track", "聲道", 150, YoutubeColumn.Track),
             ("Volume", "音量", 60, YoutubeColumn.Volume),
             ("FileName", "檔名", 300, null),
             ("FileSize", "檔案大小(MB)", 100, null),
