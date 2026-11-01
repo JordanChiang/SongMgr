@@ -49,9 +49,15 @@ namespace CrazyKTV_SongMgr
 
             if (opd.ShowDialog() == DialogResult.OK && opd.FileName.Length > 0)
             {
-                Global.CrazyktvDatabaseFile = opd.FileName;
-                SongMgrCfg_DBFile_TextBox.Text = opd.FileName;
-                MainCfg_ExportSQLite_UpdateEnabled();
+                // 歌庫與參考資料庫須同為 Access 或同為 SQLite,缺少配對的參考資料庫時不載入
+                string SongMgrDatabaseFile = Db.SongMgrDatabaseFor(opd.FileName, Global.CrazyktvSongMgrDatabaseFile);
+                if (!File.Exists(SongMgrDatabaseFile))
+                {
+                    MessageBox.Show(Common_MissingSongMgrDatabaseText(SongMgrDatabaseFile), @"SongMgr\" + Path.GetFileName(SongMgrDatabaseFile) + " 參考資料庫檔案不存在!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                Common_SetDatabaseFile(opd.FileName);
                 CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvDatabaseFile", Global.CrazyktvDatabaseFile);
                 Common_RefreshSongMgr(true);
                 if (SongMgrCfg_SongAddMode_ComboBox.SelectedValue.ToString() == "4")

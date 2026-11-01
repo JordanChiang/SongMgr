@@ -40,13 +40,14 @@ namespace CrazyKTV_SongMgr
         public static bool IsSQLite(DbConnection conn) => conn is SQLiteConnection;
 
         /// <summary>
-        /// The SQLite copy of <paramref name="accessFile"/> (same name, .db) when it exists, otherwise the Access
-        /// file itself: putting CrazySongMgr.db into the SongMgr folder makes it take over from CrazySongMgr.mdb.
+        /// The CrazySongMgr database paired with the 歌庫 <paramref name="songDatabase"/>: CrazySongMgr.db for a
+        /// SQLite 歌庫, CrazySongMgr.mdb for an Access one. The two kinds are never mixed, so an Access 歌庫 keeps
+        /// CrazySongMgr.mdb even with the CrazySongMgr.db that 匯出 SQLite 資料庫 puts beside it. The paired file
+        /// may not exist.
         /// </summary>
-        public static string PreferSQLite(string accessFile)
+        public static string SongMgrDatabaseFor(string songDatabase, string songMgrDatabase)
         {
-            string sqliteFile = Path.ChangeExtension(accessFile, ".db");
-            return File.Exists(sqliteFile) ? sqliteFile : accessFile;
+            return Path.ChangeExtension(songMgrDatabase, IsSQLite(songDatabase) ? ".db" : ".mdb");
         }
 
         /// <summary>

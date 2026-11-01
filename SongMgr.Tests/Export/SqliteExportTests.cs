@@ -62,7 +62,7 @@ namespace SongMgr.Tests.Export
 
             string message = SqliteExport.Describe(results);
             Assert.Contains("已建立: " + Path.Combine(root, "CrazySong.db") + " (資料庫版本 1)", message);
-            Assert.Contains("SongMgr 下次啟動時會改用此檔案", message);
+            Assert.Contains("SongMgr 載入 SQLite 歌庫時會搭配使用此檔案", message);
         }
 
         [Fact]

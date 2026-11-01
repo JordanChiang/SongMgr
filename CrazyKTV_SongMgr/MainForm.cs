@@ -26,6 +26,31 @@ namespace CrazyKTV_SongMgr
 
         }
 
+        // 標題列的程式名稱及版本,其後接目前使用的資料庫 (Common_SetDatabaseFile)
+        private string MainForm_Title;
+
+        /// <summary>
+        /// Makes <paramref name="songDatabase"/> the 歌庫 and pairs CrazySongMgr with it (<see cref="Db.SongMgrDatabaseFor"/>),
+        /// then shows the type and both file names in the title bar.
+        /// </summary>
+        private void Common_SetDatabaseFile(string songDatabase)
+        {
+            Global.CrazyktvDatabaseFile = songDatabase;
+            Global.CrazyktvSongMgrDatabaseFile = Db.SongMgrDatabaseFor(songDatabase, Global.CrazyktvSongMgrDatabaseFile);
+            SongMgrCfg_DBFile_TextBox.Text = songDatabase;
+            MainCfg_ExportSQLite_UpdateEnabled();
+            this.Text = MainForm_Title + " - 【" + (Db.IsSQLite(songDatabase) ? "SQLite" : "Access") + "】" + Path.GetFileName(songDatabase) + " + " + Path.GetFileName(Global.CrazyktvSongMgrDatabaseFile);
+        }
+
+        private string Common_MissingSongMgrDatabaseText(string songMgrDatabase)
+        {
+            if (Db.IsSQLite(songMgrDatabase))
+            {
+                return "SQLite 歌庫須搭配 SongMgr\\CrazySongMgr.db 參考資料庫。" + Environment.NewLine + "請先載入 CrazySong.mdb 歌庫,再使用「匯出 SQLite 資料庫」產生。";
+            }
+            return "請將 CrazySongMgr.mdb 移至 SongMgr 資料夾裡。" + Environment.NewLine + "或是重新下載並執行 CrazyKTV_WebUpdater.exe 來重建所有檔案。";
+        }
+
         
         private void MainForm_Load(object sender, EventArgs e)
         {
@@ -43,6 +68,7 @@ namespace CrazyKTV_SongMgr
             {
                 this.Text += " (系統管理員)";
             }
+            MainForm_Title = this.Text;
 
             if(CommonFunc.CheckFor45PlusVersion()) ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
 
@@ -62,32 +88,6 @@ namespace CrazyKTV_SongMgr
 
             Global.DPIScalingFactor = Common_GetDPIScalingFactor();
             SongAddResult_SplitContainer.SplitterDistance = Convert.ToInt32(SongAddResult_SplitContainer.SplitterDistance * Global.DPIScalingFactor);
-
-            // 檢查加歌程式參考資料庫檔案
-            if (!File.Exists(Global.CrazyktvSongMgrDatabaseFile))
-            {
-                if (File.Exists(Application.StartupPath + @"\CrazySongMgr.mdb"))
-                {
-                    try
-                    {
-                        File.Move(Application.StartupPath + @"\CrazySongMgr.mdb", Global.CrazyktvSongMgrDatabaseFile);
-                    }
-                    catch
-                    {
-                        if (MessageBox.Show("請將 CrazySongMgr.mdb 移至 SongMgr 資料夾裡。" + Environment.NewLine + "或是重新下載並執行 CrazyKTV_WebUpdater.exe 來重建所有檔案。", @"SongMgr\CrazySongMgr.mdb 參考資料庫檔案不存在!", MessageBoxButtons.OK, MessageBoxIcon.Error) == DialogResult.OK)
-                        {
-                            Application.Exit();
-                        }
-                    }
-                }
-                else
-                {
-                    if (MessageBox.Show("請將 CrazySongMgr.mdb 移至 SongMgr 資料夾裡。" + Environment.NewLine + "或是重新下載並執行 CrazyKTV_WebUpdater.exe 來重建所有檔案。", @"SongMgr\CrazySongMgr.mdb 參考資料庫檔案不存在!", MessageBoxButtons.OK, MessageBoxIcon.Error) == DialogResult.OK)
-                    {
-                        Application.Exit();
-                    }
-                }
-            }
 
             // 歌庫版本資訊
             if (!File.Exists(Global.CrazyktvSongDBUpdateFile))
@@ -143,8 +143,38 @@ namespace CrazyKTV_SongMgr
             if (Global.CrazyktvSongLangList.Count < 10) Global.CrazyktvSongLangList = new List<string>() { "國語", "台語", "粵語", "日語", "英語", "客語", "原住民語", "韓語", "兒歌", "其它" };
 
             if (cfg["CrazyktvDatabaseFile"] != "") Global.CrazyktvDatabaseFile = cfg["CrazyktvDatabaseFile"];
-            SongMgrCfg_DBFile_TextBox.Text = Global.CrazyktvDatabaseFile;
-            MainCfg_ExportSQLite_UpdateEnabled();
+            Common_SetDatabaseFile(Global.CrazyktvDatabaseFile);
+
+            // 檢查加歌程式參考資料庫檔案
+            if (!File.Exists(Global.CrazyktvSongMgrDatabaseFile))
+            {
+                if (Db.IsSQLite(Global.CrazyktvSongMgrDatabaseFile))
+                {
+                    // SQLite 歌庫沒有 CrazySongMgr.db 時不改用 .mdb,各頁面維持鎖定,可在歌庫設定改載入其它歌庫
+                    MessageBox.Show(Common_MissingSongMgrDatabaseText(Global.CrazyktvSongMgrDatabaseFile), @"SongMgr\CrazySongMgr.db 參考資料庫檔案不存在!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else if (File.Exists(Application.StartupPath + @"\CrazySongMgr.mdb"))
+                {
+                    try
+                    {
+                        File.Move(Application.StartupPath + @"\CrazySongMgr.mdb", Global.CrazyktvSongMgrDatabaseFile);
+                    }
+                    catch
+                    {
+                        if (MessageBox.Show(Common_MissingSongMgrDatabaseText(Global.CrazyktvSongMgrDatabaseFile), @"SongMgr\CrazySongMgr.mdb 參考資料庫檔案不存在!", MessageBoxButtons.OK, MessageBoxIcon.Error) == DialogResult.OK)
+                        {
+                            Application.Exit();
+                        }
+                    }
+                }
+                else
+                {
+                    if (MessageBox.Show(Common_MissingSongMgrDatabaseText(Global.CrazyktvSongMgrDatabaseFile), @"SongMgr\CrazySongMgr.mdb 參考資料庫檔案不存在!", MessageBoxButtons.OK, MessageBoxIcon.Error) == DialogResult.OK)
+                    {
+                        Application.Exit();
+                    }
+                }
+            }
 
             if (cfg["SongMgrSupportFormat"] != "") Global.SongMgrSupportFormat = cfg["SongMgrSupportFormat"];
             SongMgrCfg_SupportFormat_TextBox.Text = Global.SongMgrSupportFormat;

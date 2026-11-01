@@ -10,7 +10,8 @@ namespace CrazyKTV_SongMgr
     /// <summary>
     /// 匯出 SQLite 資料庫: CrazySong.mdb and CrazySongMgr.mdb become CrazySong.db and CrazySongMgr.db, each
     /// beside its .mdb. UltimateKtv reads CrazySong.db instead of CrazySong.mdb once it exists next to its exe,
-    /// and SongMgr opens SongMgr\CrazySongMgr.db instead of CrazySongMgr.mdb at its next start.
+    /// and SongMgr pairs SongMgr\CrazySongMgr.db with a SQLite 歌庫 only (<see cref="Db.SongMgrDatabaseFor"/>):
+    /// while the 歌庫 is CrazySong.mdb, CrazySongMgr.mdb stays in use.
     /// Each database is exported to a temporary file first; a .db already there is replaced only when it
     /// differs and the user agrees (<see cref="Replace"/> / <see cref="Keep"/>).
     /// </summary>
@@ -243,7 +244,7 @@ namespace CrazyKTV_SongMgr
                     case Outcome.Replaced:
                         sb.AppendLine(((result.Outcome == Outcome.Created) ? "已建立: " : "已覆蓋: ") + result.Job.Dest + " (資料庫版本 " + result.Job.DBVer + ")");
                         foreach (var table in result.Tables) sb.AppendLine("    " + table.Table + ": " + table.Rows + " 筆");
-                        if (result.Job.IsSongMgr) sb.AppendLine("    SongMgr 下次啟動時會改用此檔案。");
+                        if (result.Job.IsSongMgr) sb.AppendLine("    SongMgr 載入 SQLite 歌庫時會搭配使用此檔案。");
                         break;
                     case Outcome.Unchanged:
                         sb.AppendLine("內容相同,未變更: " + result.Job.Dest);

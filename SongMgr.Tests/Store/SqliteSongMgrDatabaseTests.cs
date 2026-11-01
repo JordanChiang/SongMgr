@@ -42,12 +42,19 @@ namespace SongMgr.Tests.Store
         }
 
         [Fact]
-        public void PreferSQLite_PicksTheDbOnlyWhenItExists()
+        public void SongMgrDatabaseFor_PairsTheSameKindAsTheSongDatabase()
         {
-            Assert.Equal(db, Db.PreferSQLite(mdb));
+            // Both CrazySongMgr.mdb and CrazySongMgr.db exist: an Access 歌庫 keeps the .mdb.
+            Assert.Equal(mdb, Db.SongMgrDatabaseFor(Path.Combine(root, "CrazySong.mdb"), mdb));
+            Assert.Equal(mdb, Db.SongMgrDatabaseFor(Path.Combine(root, "CrazySong.mdb"), db));
+            Assert.Equal(db, Db.SongMgrDatabaseFor(Path.Combine(root, "CrazySong.db"), mdb));
+            Assert.Equal(db, Db.SongMgrDatabaseFor(Path.Combine(root, "CrazySong.sqlite"), db));
 
-            string lone = Path.Combine(root, "Other.mdb");
-            Assert.Equal(lone, Db.PreferSQLite(lone));
+            // Never falls back to the other kind when the paired file is missing.
+            string lone = Path.Combine(root, "Lone", "CrazySongMgr.mdb");
+            Directory.CreateDirectory(Path.GetDirectoryName(lone));
+            File.Copy(mdb, lone);
+            Assert.Equal(Path.ChangeExtension(lone, ".db"), Db.SongMgrDatabaseFor(Path.Combine(root, "CrazySong.db"), lone));
         }
 
         [Fact]
