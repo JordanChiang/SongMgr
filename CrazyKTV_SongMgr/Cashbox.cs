@@ -1114,7 +1114,7 @@ namespace CrazyKTV_SongMgr
                                     AddCmd.Parameters.AddWithValue("@SongLang", valuelist[1]);
                                     AddCmd.Parameters.AddWithValue("@SongSongName", valuelist[2]);
                                     AddCmd.Parameters.AddWithValue("@SongSinger", valuelist[3]);
-                                    AddCmd.Parameters.AddWithValue("@SongCreatDate", valuelist[4]);
+                                    AddCmd.Parameters.AddWithValue("@SongCreatDate", Db.DateParam(conn, valuelist[4]));
 
                                     try
                                     {
@@ -1139,7 +1139,7 @@ namespace CrazyKTV_SongMgr
                                     UpdCmd.Parameters.AddWithValue("@SongLang", valuelist[1]);
                                     UpdCmd.Parameters.AddWithValue("@SongSongName", valuelist[2]);
                                     UpdCmd.Parameters.AddWithValue("@SongSinger", valuelist[3]);
-                                    UpdCmd.Parameters.AddWithValue("@SongCreatDate", valuelist[4]);
+                                    UpdCmd.Parameters.AddWithValue("@SongCreatDate", Db.DateParam(conn, valuelist[4]));
                                     UpdCmd.Parameters.AddWithValue("@OldCashboxId", valuelist[0]);
 
                                     try
@@ -1174,7 +1174,7 @@ namespace CrazyKTV_SongMgr
 
                     using (DbCommand Versioncmd = Db.Command(CashboxUpdDateUpdateSqlStr, conn))
                     {
-                        Versioncmd.Parameters.AddWithValue("@CashboxUpdDate", Global.CashboxUpdDate.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture));
+                        Versioncmd.Parameters.AddWithValue("@CashboxUpdDate", Db.DateParam(conn, Global.CashboxUpdDate.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture)));
                         Versioncmd.Parameters.AddWithValue("@Id", "1");
                         Versioncmd.ExecuteNonQuery();
                     }
@@ -1847,7 +1847,9 @@ namespace CrazyKTV_SongMgr
                     SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where (((Song_SongName) In (select Song_SongName from ktv_Cashbox As Tmp group by Song_SongName, Song_Lang, Song_Singer HAVING Count(*)>1 and Song_SongName = ktv_Cashbox.Song_SongName and Song_Lang = ktv_Cashbox.Song_Lang and Song_Singer = ktv_Cashbox.Song_Singer))) order by Song_SongName";
                     break;
                 case "SongDate":
-                    SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Song_CreatDate like '%" + QueryValue + "%' order by Cashbox_Id";
+                    // Access 以地區日期文字比對; SQLite 的日期存成 ISO 8601 文字 (yyyy-MM-dd HH:mm:ss)
+                    string DateLikeStr = Db.IsSQLite(Global.CrazyktvSongMgrDatabaseFile) ? DateTime.Parse(QueryValue).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : QueryValue;
+                    SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Song_CreatDate like '%" + DateLikeStr + "%' order by Cashbox_Id";
                     break;
             }
 

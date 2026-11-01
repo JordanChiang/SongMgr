@@ -39,6 +39,27 @@ namespace CrazyKTV_SongMgr
 
         public static bool IsSQLite(DbConnection conn) => conn is SQLiteConnection;
 
+        /// <summary>
+        /// The SQLite copy of <paramref name="accessFile"/> (same name, .db) when it exists, otherwise the Access
+        /// file itself: putting CrazySongMgr.db into the SongMgr folder makes it take over from CrazySongMgr.mdb.
+        /// </summary>
+        public static string PreferSQLite(string accessFile)
+        {
+            string sqliteFile = Path.ChangeExtension(accessFile, ".db");
+            return File.Exists(sqliteFile) ? sqliteFile : accessFile;
+        }
+
+        /// <summary>
+        /// The value bound for a date column given as text. Access converts the text itself; SQLite keeps text as
+        /// given, and a DATETIME column holding "2024/11/1 下午 03:04:05" cannot be read back, so on SQLite the
+        /// date goes in as a DateTime.
+        /// </summary>
+        public static object DateParam(DbConnection conn, string text)
+        {
+            if (IsSQLite(conn) && DateTime.TryParse(text, out DateTime date)) return date;
+            return text;
+        }
+
         /// <summary>Opens the database and throws when it cannot be opened.</summary>
         public static DbConnection Open(string databaseFile, string password = "")
         {
@@ -150,16 +171,20 @@ namespace CrazyKTV_SongMgr
         private static readonly Regex InStrLCase = new Regex(@"InStr\(1,\s*LCase\(([^()]+)\),\s*LCase\(('(?:[^']|'')*')\),\s*0\)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex DeleteStar = new Regex(@"^(\s*delete)\s+\*\s+(from\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex SelectTop = new Regex(@"^(\s*select)\s+top\s+(\d+)\s+(.*)$", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+        // "First(Col)" in a GROUP BY query: SQLite has no First aggregate, but a bare column there takes its value
+        // from one row of the group, which is all Access promises for First too.
+        private static readonly Regex FirstAggregate = new Regex(@"\bFirst\(([^()]+)\)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         /// <summary>
         /// Rewrites the Access-only SQL SongMgr uses into SQLite: "delete * from", "select top N",
-        /// and InStr / LCase contains tests. Everything else (brackets, "@Name" parameters, like '%x%')
-        /// already means the same in both.
+        /// InStr / LCase contains tests and the First() aggregate. Everything else (brackets, "@Name"
+        /// parameters, like '%x%', Count, In (select ...)) already means the same in both.
         /// </summary>
         public static string ToSQLite(string sql)
         {
             sql = DeleteStar.Replace(sql, "$1 $2");
             sql = InStrLCase.Replace(sql, "instr(lower($1), lower($2))");
+            sql = FirstAggregate.Replace(sql, "$1");
             Match top = SelectTop.Match(sql);
             if (top.Success) sql = top.Groups[1].Value + " " + top.Groups[3].Value.TrimEnd().TrimEnd(';') + " limit " + top.Groups[2].Value;
             return sql;

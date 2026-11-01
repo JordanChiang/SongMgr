@@ -533,7 +533,7 @@ namespace CrazyKTV_SongMgr
                                 cmd.Parameters.AddWithValue("@SongLang", list[2]);
                                 cmd.Parameters.AddWithValue("@SongSongName", list[4]);
                                 cmd.Parameters.AddWithValue("@SongSinger", list[3]);
-                                cmd.Parameters.AddWithValue("@SongCreatDate", list[5]);
+                                cmd.Parameters.AddWithValue("@SongCreatDate", Db.DateParam(conn, list[5]));
 
                                 cmd.ExecuteNonQuery();
                                 cmd.Parameters.Clear();
@@ -990,7 +990,7 @@ namespace CrazyKTV_SongMgr
                     UpdCmd.Parameters.AddWithValue("@SongLang", valuelist[1]);
                     UpdCmd.Parameters.AddWithValue("@SongSongName", valuelist[2]);
                     UpdCmd.Parameters.AddWithValue("@SongSinger", valuelist[3]);
-                    UpdCmd.Parameters.AddWithValue("@SongCreatDate", valuelist[4]);
+                    UpdCmd.Parameters.AddWithValue("@SongCreatDate", Db.DateParam(conn, valuelist[4]));
                     UpdCmd.Parameters.AddWithValue("@OldCashboxId", valuelist[0]);
 
                     try

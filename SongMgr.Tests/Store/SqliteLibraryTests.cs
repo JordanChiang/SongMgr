@@ -56,6 +56,8 @@ namespace SongMgr.Tests.Store
         [InlineData("select * from ktv_Song where InStr(1,LCase(Song_SongName),LCase('Love (Live), 版'),0) <>0",
                     "select * from ktv_Song where instr(lower(Song_SongName), lower('Love (Live), 版')) <>0")]
         [InlineData("select top 10 Song_Id from ktv_Song order by Song_CreatDate desc", "select Song_Id from ktv_Song order by Song_CreatDate desc limit 10")]
+        [InlineData("SELECT First(Song_Singer) AS Song_Singer, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING First(Song_SingerType)<=10 ORDER BY First(Song_Singer)",
+                    "SELECT Song_Singer AS Song_Singer, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING Song_SingerType<=10 ORDER BY Song_Singer")]
         [InlineData("update ktv_Song set [Song_Volume] = @SongVolume where Song_Id = @SongId", "update ktv_Song set [Song_Volume] = @SongVolume where Song_Id = @SongId")]
         public void ToSQLite_RewritesAccessOnlySql(string access, string sqlite)
         {
@@ -105,6 +107,28 @@ namespace SongMgr.Tests.Store
             DataTable dt = Db.GetDataTable(db, "select Song_Id from ktv_Song where InStr(1,LCase(Song_SongName),LCase('LOVE'),0) <>0");
 
             Assert.Equal(new[] { "000001" }, dt.AsEnumerable().Select(r => r["Song_Id"].ToString()));
+        }
+
+        [Fact]
+        public void RebuildSingerQuery_GroupsSongsBySingerOnSqlite()
+        {
+            using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
+            {
+                store.InsertSong(Song("000001", "晴天"), SongColumns.AllButReplayGain);
+                store.InsertSong(Song("000002", "稻香"), SongColumns.AllButReplayGain);
+                SongRecord other = Song("000003", "日不落");
+                other.Singer = "蔡依林"; other.SingerType = "1";
+                store.InsertSong(other, SongColumns.AllButReplayGain);
+                SongRecord band = Song("000004", "倔強");
+                band.Singer = "五月天"; band.SingerType = "9";
+                store.InsertSong(band, SongColumns.AllButReplayGain);
+            }
+
+            // Common_RebuildSingerDataTask's query: 歌手類別 8 and 9 are left out
+            string sql = "SELECT First(Song_Singer) AS Song_Singer, First(Song_SingerType) AS Song_SingerType, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING First(Song_SingerType)<=10 AND First(Song_SingerType)<>8 AND First(Song_SingerType)<>9 AND Count(Song_Singer)>0 ORDER BY First(Song_SingerType), First(Song_Singer)";
+            DataTable dt = Db.GetDataTable(db, sql);
+
+            Assert.Equal(new[] { "周杰倫|0|2", "蔡依林|1|1" }, dt.AsEnumerable().Select(r => r["Song_Singer"] + "|" + r["Song_SingerType"] + "|" + r["Song_SingerCount"]));
         }
 
         [Fact]

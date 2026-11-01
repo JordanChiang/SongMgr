@@ -265,15 +265,10 @@ namespace CrazyKTV_SongMgr
             return list;
         }
 
-        /// <summary>
-        /// The value bound for a ktv_Song column. Access converts the text itself; SQLite keeps text as given,
-        /// and a Song_CreatDate such as "2024/11/1 下午 03:04:05" would not read back as a DATETIME, so on SQLite
-        /// the date goes in as a DateTime.
-        /// </summary>
+        /// <summary>The value bound for a ktv_Song column: text, except Song_CreatDate (see <see cref="Db.DateParam"/>).</summary>
         private object ParamValue(SongColumns column, string value)
         {
-            if (column == SongColumns.CreatDate && Db.IsSQLite(conn) && DateTime.TryParse(value, out DateTime date)) return date;
-            return value;
+            return (column == SongColumns.CreatDate) ? Db.DateParam(conn, value) : value;
         }
 
         /// <summary>One statement at a time: a DbConnection is not safe to share between threads.</summary>

@@ -505,7 +505,7 @@ namespace CrazyKTV_SongMgr
                         using (DataTable PhoneticsDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
                         {
                             var query = from row in PhoneticsDT.AsEnumerable()
-                                        where row.Field<Int16>("SortIdx") < 2
+                                        where Convert.ToInt32(row["SortIdx"]) < 2
                                         select row;
 
                             foreach (DataRow row in query)
@@ -2260,7 +2260,7 @@ namespace CrazyKTV_SongMgr
                         using (DataTable PhoneticsDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
                         {
                             var query = from row in PhoneticsDT.AsEnumerable()
-                                        where row.Field<Int16>("SortIdx") < 2
+                                        where Convert.ToInt32(row["SortIdx"]) < 2
                                         select row;
 
                             foreach (DataRow row in query)

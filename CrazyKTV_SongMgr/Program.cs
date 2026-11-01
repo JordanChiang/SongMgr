@@ -63,7 +63,7 @@ namespace CrazyKTV_SongMgr
         public static float DPIScalingFactor = 1;
 
         public static string CrazyktvDatabaseFile = Application.StartupPath + @"\CrazySong.mdb";
-        public static string CrazyktvSongMgrDatabaseFile = Application.StartupPath + @"\SongMgr\CrazySongMgr.mdb";
+        public static string CrazyktvSongMgrDatabaseFile = Db.PreferSQLite(Application.StartupPath + @"\SongMgr\CrazySongMgr.mdb");
         public static string CrazyktvSongDBVer = "1.00";
         public static string CrazyktvSongDBUpdateFile = Application.StartupPath + @"\SongMgr\Update\UpdateDB.xml";
         public static string CrazyktvCfgFile = Application.StartupPath + @"\CrazyKTV.cfg";
