@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Text;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -270,36 +271,23 @@ namespace CrazyKTV_SongMgr
 
         private void MainCfg_ExportSQLite_Button_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show("你確定要匯出 SQLite 資料庫嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (MessageBox.Show("你確定要匯出 SQLite 資料庫嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+
+            List<SqliteExport.Job> jobs = SqliteExport.Jobs(Global.CrazyktvDatabaseFile, Global.CrazyktvSongMgrDatabaseFile);
+            string OverwritePrompt = SqliteExport.OverwritePrompt(jobs, Global.CrazyktvDatabaseFile);
+            if (OverwritePrompt != "" && MessageBox.Show(OverwritePrompt, "覆蓋提示", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+
+            Common_SwitchSetUI(false);
+
+            Task.Factory.StartNew(() => SqliteExport.Run(jobs)).ContinueWith(ExportTask =>
             {
-                Common_SwitchSetUI(false);
-
-                var tasks = new List<Task>()
+                this.BeginInvoke((Action)delegate()
                 {
-                    Task.Factory.StartNew(() => MainCfg_ExportSQLiteTask())
-                };
-
-                Task.Factory.ContinueWhenAll(tasks.ToArray(), MainCfg_ExportSQLiteEndTask =>
-                {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        Common_SwitchSetUI(true);
-                    });
+                    Common_SwitchSetUI(true);
+                    List<SqliteExport.Result> results = ExportTask.Result;
+                    MessageBox.Show(SqliteExport.Describe(results), "匯出 SQLite 資料庫", MessageBoxButtons.OK, results.All(r => r.Succeeded) ? MessageBoxIcon.Information : MessageBoxIcon.Error);
                 });
-            }
-        }
-
-        private void MainCfg_ExportSQLiteTask()
-        {
-            try
-            {
-                // Initialize AccessExporter
-                AccessExporter exporter = new AccessExporter(Global.CrazyktvDatabaseFile);
-                exporter.export(Path.GetDirectoryName(Global.CrazyktvDatabaseFile) + @"\" + Path.GetFileNameWithoutExtension(Global.CrazyktvDatabaseFile) + ".sqlite");
-                // Dispose after use.
-                exporter.Dispose();
-            }
-            catch { }
+            });
         }
 
         #endregion

@@ -42,6 +42,9 @@ namespace CrazyKTV_SongMgr
     {
         private const string AccessConn = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source={0}";
         private const string SqliteConn = "Data Source={0};Version=3;";
+
+        /// <summary>Table holding the export format version (one row, DBVer), also written to PRAGMA user_version.</summary>
+        public const string VersionTable = "ktv_DBVersion";
         private OleDbConnection oleConn;
         private SQLiteConnection sqliteConn;
 
@@ -97,7 +100,8 @@ namespace CrazyKTV_SongMgr
                 // Schema Restrictions  :  http://msdn.microsoft.com/en-us/library/cc716722(v=vs.110).aspx
                 string[] restrictions = new string[4] { null, null, tblName, null };
                 var table = oleConn.GetSchema("Columns", restrictions);
-                var rows = table.AsEnumerable().ToList();
+                // GetSchema returns columns by name; keep the Access column order.
+                var rows = table.AsEnumerable().OrderBy(r => Convert.ToInt64(r["ORDINAL_POSITION"])).ToList();
                 // avoid [The source contains no DataRows] exception, check if there has any data.
                 dt_Columns = rows.Any() ? rows.CopyToDataTable() : table.Clone();
                 foreach (DataRow row in dt_Columns.Rows)
@@ -179,13 +183,14 @@ namespace CrazyKTV_SongMgr
                         sb.Append("BLOB");
                         break;
 
-                    /* Integers */
+                    /* Integers -- SINGLE (Song_MB) is rounded to a whole number */
                     case "YESNO":
                     case "BOOLEAN":
                     case "BYTE":
                     case "INT":
                     case "LONG":
                     case "SHORT":
+                    case "SINGLE":
                         sb.Append("INTEGER");
                         break;
 
@@ -200,7 +205,6 @@ namespace CrazyKTV_SongMgr
                     case "DOUBLE":
                     case "FLOAT":
                     case "NUMERIC":
-                    case "SINGLE":
                         sb.Append("DOUBLE");
                         break;
 
@@ -224,6 +228,13 @@ namespace CrazyKTV_SongMgr
 
                 if (i + 1 < columnCount)
                     sb.Append(", ");
+            }
+
+            /* The Access primary key becomes the SQLite PRIMARY KEY */
+            Index primaryKey = tbl.Indexes.FirstOrDefault(x => x.isPrimaryKey);
+            if (primaryKey != null)
+            {
+                sb.Append(", PRIMARY KEY (" + string.Join(", ", primaryKey.IndexingFields.Select(escapeIdentifier)) + ")");
             }
             sb.Append(")");
 
@@ -282,18 +293,46 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>
-        /// Iterate over and create SQLite tables for every table defined
-        /// in the MS Access database.
+        /// Create, populate and index an SQLite table for every table defined
+        /// in the MS Access database. Each Access table is read once.
         /// </summary>
-        private void CreateTables()
+        /// <returns>Table names with their row counts, in Access order.</returns>
+        private List<(string Table, int Rows)> ExportTables()
         {
-            List<string> tableNames = GetTableNames();
+            var counts = new List<(string Table, int Rows)>();
 
-            foreach (string tblName in tableNames)
+            foreach (string tblName in GetTableNames())
             {
                 Table table = GetTable(tblName);
                 CreateTable(table);
+                PopulateTable(table);
                 CreateIndexes(table);
+                counts.Add((table.Name, table.Rows.Count));
+            }
+            return counts;
+        }
+
+        /// <summary>
+        /// Record the export format version in <see cref="VersionTable"/> and PRAGMA user_version.
+        /// </summary>
+        private void WriteVersion(int dbVersion)
+        {
+            using (SQLiteTransaction trans = sqliteConn.BeginTransaction())
+            {
+                using (SQLiteCommand cmd = new SQLiteCommand("CREATE TABLE " + escapeIdentifier(VersionTable) + " (\"DBVer\" INTEGER)", sqliteConn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+                using (SQLiteCommand cmd = new SQLiteCommand("INSERT INTO " + escapeIdentifier(VersionTable) + " (\"DBVer\") VALUES (@DBVer)", sqliteConn))
+                {
+                    cmd.Parameters.AddWithValue("@DBVer", dbVersion);
+                    cmd.ExecuteNonQuery();
+                }
+                trans.Commit();
+            }
+            using (SQLiteCommand cmd = new SQLiteCommand("PRAGMA user_version = " + dbVersion, sqliteConn))
+            {
+                cmd.ExecuteNonQuery();
             }
         }
 
@@ -342,6 +381,8 @@ namespace CrazyKTV_SongMgr
                     /* Kick off the insert spree */
                     foreach (var row in tbl.Rows)
                     {
+                        cmd.Parameters.Clear();
+
                         /* Bind all the column values. We let JDBC do type conversion -- is this correct?. */
                         for (int i = 0; i < columnCount; i++)
                         {
@@ -375,7 +416,8 @@ namespace CrazyKTV_SongMgr
                                     cmd.Parameters.AddWithValue("@param" + (i + 1), (Double)(float)value);
                                     break;
                                 case "SINGLE":
-                                    cmd.Parameters.AddWithValue("@param" + (i + 1), (Double)(Single)value);
+                                    /* (decimal) keeps the 7 digits a Single holds, so 136.7 rounds to 137 rather than drifting */
+                                    cmd.Parameters.AddWithValue("@param" + (i + 1), (long)Math.Round((decimal)(Single)value, MidpointRounding.AwayFromZero));
                                     break;
                                 case "DOUBLE":
                                 case "NUMERIC":
@@ -440,22 +482,8 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>
-        /// Iterate over all data and populate the SQLite tables
-        /// </summary>
-        private void PopulateTables()
-        {
-            List<string> tableNames = GetTableNames();
-
-            foreach (string tblName in tableNames)
-            {
-                Table tbl = GetTable(tblName);
-                PopulateTable(tbl);
-            }
-        }
-
-        /// <summary>
         /// Iterate over and create SQLite indeces for every index defined
-        /// in the MS Access table.
+        /// in the MS Access table. The primary key is part of CREATE TABLE.
         /// </summary>
         /// <param name="tbl">MS Access table</param>
         private void CreateIndexes(Table tbl)
@@ -464,7 +492,7 @@ namespace CrazyKTV_SongMgr
 
             foreach (Index index in indexes)
             {
-                CreateIndex(index);
+                if (!index.isPrimaryKey) CreateIndex(index);
             }
         }
 
@@ -522,22 +550,42 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>
-        /// Export the Access database to SQLite.
-        /// The referenced SQLite database should be empty.
+        /// Export the Access database to SQLite. The database is built in a
+        /// temporary file that replaces <paramref name="exportDest"/> only once
+        /// it is complete, so a failed export leaves an existing file untouched.
         /// </summary>
-        /// <param name="exportDest">The path to create a new SQLite database.</param>
-        public void export(string exportDest)
+        /// <param name="exportDest">The path of the SQLite database to create or replace.</param>
+        /// <param name="dbVersion">Export format version written to <see cref="VersionTable"/> and PRAGMA user_version.</param>
+        /// <returns>Table names with their row counts, in Access order.</returns>
+        public List<(string Table, int Rows)> export(string exportDest, int dbVersion)
         {
-            /* Create the database */
-            SQLiteConnection.CreateFile(exportDest);
-            sqliteConn = new SQLiteConnection(String.Format(SqliteConn, exportDest));
-            sqliteConn.Open();
+            string tempDest = exportDest + ".tmp";
+            List<(string Table, int Rows)> counts;
+            try
+            {
+                /* Create the database */
+                SQLiteConnection.CreateFile(tempDest);
+                using (sqliteConn = new SQLiteConnection(String.Format(SqliteConn, tempDest)))
+                {
+                    sqliteConn.Open();
 
-            /* Create the tables */
-            CreateTables();
+                    /* Create, populate and index the tables */
+                    counts = ExportTables();
 
-            /* Populate the tables */
-            PopulateTables();
+                    WriteVersion(dbVersion);
+                }
+                sqliteConn = null;
+
+                File.Move(tempDest, exportDest, true);
+            }
+            catch
+            {
+                sqliteConn?.Dispose();
+                sqliteConn = null;
+                if (File.Exists(tempDest)) File.Delete(tempDest);
+                throw;
+            }
+            return counts;
         }
 
         /// <summary>
@@ -557,10 +605,10 @@ namespace CrazyKTV_SongMgr
             }
         }
 
-        /* XXX: Manual escaping of identifiers. */
+        /* XXX: Manual escaping of identifiers. Double quotes, so SQLite never reads one as a string literal. */
         private String escapeIdentifier(String identifier)
         {
-            return "'" + identifier.Replace("'", "''") + "'";
+            return "\"" + identifier.Replace("\"", "\"\"") + "\"";
         }
     }
 
