@@ -280,17 +280,29 @@ namespace CrazyKTV_SongMgr
             if (MessageBox.Show("你確定要匯出 SQLite 資料庫嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
             List<SqliteExport.Job> jobs = SqliteExport.Jobs(Global.CrazyktvDatabaseFile, Global.CrazyktvSongMgrDatabaseFile);
-            string OverwritePrompt = SqliteExport.OverwritePrompt(jobs, Global.CrazyktvDatabaseFile);
-            if (OverwritePrompt != "" && MessageBox.Show(OverwritePrompt, "覆蓋提示", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
 
             Common_SwitchSetUI(false);
 
-            Task.Factory.StartNew(() => SqliteExport.Run(jobs)).ContinueWith(ExportTask =>
+            Task.Factory.StartNew(() => SqliteExport.Build(jobs)).ContinueWith(ExportTask =>
             {
                 this.BeginInvoke((Action)delegate()
                 {
-                    Common_SwitchSetUI(true);
                     List<SqliteExport.Result> results = ExportTask.Result;
+
+                    // A .db that already exists with other content is overwritten only if the user says so.
+                    foreach (SqliteExport.Result result in results.Where(r => r.Outcome == SqliteExport.Outcome.Different))
+                    {
+                        if (MessageBox.Show(SqliteExport.OverwritePrompt(result), "覆蓋提示", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                        {
+                            SqliteExport.Replace(result);
+                        }
+                        else
+                        {
+                            SqliteExport.Keep(result);
+                        }
+                    }
+
+                    Common_SwitchSetUI(true);
                     MessageBox.Show(SqliteExport.Describe(results), "匯出 SQLite 資料庫", MessageBoxButtons.OK, results.All(r => r.Succeeded) ? MessageBoxIcon.Information : MessageBoxIcon.Error);
                 });
             });

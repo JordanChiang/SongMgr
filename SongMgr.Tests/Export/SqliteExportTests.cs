@@ -13,8 +13,8 @@ namespace SongMgr.Tests.Export
 {
     /// <summary>
     /// 匯出 SQLite 資料庫 on scratch copies of the bundled CrazySongEmpty.mdb / CrazySongMgr.mdb: both .db files,
-    /// their version, the Access column order and primary key, whole-number Song_MB, and a failed export
-    /// leaving the previous .db alone.
+    /// their version, the Access column order and primary key, whole-number Song_MB, an existing .db left alone
+    /// when its content is the same or the user keeps it, and a failed export leaving the previous .db alone.
     /// </summary>
     public class SqliteExportTests : IDisposable
     {
@@ -39,14 +39,122 @@ namespace SongMgr.Tests.Export
         }
 
         [Fact]
-        public void Jobs_WriteDbFilesBesideCrazySong()
+        public void Jobs_WriteEachDbBesideItsOwnMdb()
         {
             List<SqliteExport.Job> jobs = SqliteExport.Jobs(song, Path.Combine(root, "SongMgr", "CrazySongMgr.mdb"));
 
             Assert.Equal(Path.Combine(root, "CrazySong.db"), jobs[0].Dest);
-            Assert.Equal(Path.Combine(root, "CrazySongMgr.db"), jobs[1].Dest);
+            Assert.Equal(Path.Combine(root, "SongMgr", "CrazySongMgr.db"), jobs[1].Dest);
             Assert.Equal(SqliteExport.CrazySongDBVer, jobs[0].DBVer);
             Assert.Equal(SqliteExport.CrazySongMgrDBVer, jobs[1].DBVer);
+            Assert.False(jobs[0].IsSongMgr);
+            Assert.True(jobs[1].IsSongMgr);
+        }
+
+        [Fact]
+        public void Build_CreatesMissingDbFiles()
+        {
+            List<SqliteExport.Result> results = SqliteExport.Build(SqliteExport.Jobs(song, mgr));
+
+            Assert.All(results, r => Assert.Equal(SqliteExport.Outcome.Created, r.Outcome));
+            Assert.All(results, r => Assert.True(File.Exists(r.Job.Dest)));
+            Assert.All(results, r => Assert.False(File.Exists(r.Job.TempFile)));
+
+            string message = SqliteExport.Describe(results);
+            Assert.Contains("已建立: " + Path.Combine(root, "CrazySong.db") + " (資料庫版本 1)", message);
+            Assert.Contains("SongMgr 下次啟動時會改用此檔案", message);
+        }
+
+        [Fact]
+        public void Build_SameContentLeavesExistingDbUntouched()
+        {
+            InsertSong("000001", 136.7f);
+            SqliteExport.Run(SqliteExport.Jobs(song, mgr));
+            string dest = Path.Combine(root, "CrazySong.db");
+            byte[] before = File.ReadAllBytes(dest);
+            DateTime written = File.GetLastWriteTimeUtc(dest);
+
+            List<SqliteExport.Result> results = SqliteExport.Build(SqliteExport.Jobs(song, mgr));
+
+            Assert.All(results, r => Assert.Equal(SqliteExport.Outcome.Unchanged, r.Outcome));
+            Assert.All(results, r => Assert.False(File.Exists(r.Job.TempFile)));
+            Assert.Equal(before, File.ReadAllBytes(dest));
+            Assert.Equal(written, File.GetLastWriteTimeUtc(dest));
+            Assert.Contains("內容相同,未變更: " + dest, SqliteExport.Describe(results));
+        }
+
+        [Fact]
+        public void Build_DifferentContentWaitsAndKeepLeavesExistingDb()
+        {
+            SqliteExport.Run(SqliteExport.Jobs(song, mgr));
+            InsertSong("000001", 136.7f);
+
+            List<SqliteExport.Result> results = SqliteExport.Build(SqliteExport.Jobs(song, mgr));
+            SqliteExport.Result songResult = results[0];
+
+            Assert.Equal(SqliteExport.Outcome.Different, songResult.Outcome);
+            Assert.Equal(new[] { "ktv_Song: 資料不同 (現有 0 筆 → 匯出 1 筆)" }, songResult.Differences);
+            Assert.True(File.Exists(songResult.Job.TempFile));
+            Assert.Equal(SqliteExport.Outcome.Unchanged, results[1].Outcome);
+
+            SqliteExport.Keep(songResult);
+
+            Assert.Equal(SqliteExport.Outcome.Kept, songResult.Outcome);
+            Assert.False(File.Exists(songResult.Job.TempFile));
+            using (SQLiteConnection conn = OpenDb(songResult.Job.Dest)) Assert.Equal(0L, Scalar(conn, "select count(*) from ktv_Song"));
+            Assert.Contains("未覆蓋,保留現有檔案: " + songResult.Job.Dest, SqliteExport.Describe(results));
+        }
+
+        [Fact]
+        public void Build_DifferentContentReplaceOverwritesExistingDb()
+        {
+            SqliteExport.Run(SqliteExport.Jobs(song, mgr));
+            InsertSong("000001", 136.7f);
+
+            SqliteExport.Result songResult = SqliteExport.Build(SqliteExport.Jobs(song, mgr))[0];
+            SqliteExport.Replace(songResult);
+
+            Assert.Equal(SqliteExport.Outcome.Replaced, songResult.Outcome);
+            Assert.False(File.Exists(songResult.Job.TempFile));
+            using (SQLiteConnection conn = OpenDb(songResult.Job.Dest)) Assert.Equal(1L, Scalar(conn, "select count(*) from ktv_Song"));
+            Assert.Contains("已覆蓋: " + songResult.Job.Dest, SqliteExport.Describe(new List<SqliteExport.Result> { songResult }));
+        }
+
+        [Fact]
+        public void Compare_FindsWhatThePlayerChangedInTheDb()
+        {
+            InsertSong("000001", 136.7f);
+            SqliteExport.Run(SqliteExport.Jobs(song, mgr));
+            string dest = Path.Combine(root, "CrazySong.db");
+            using (SQLiteConnection conn = OpenDb(dest))
+            {
+                foreach (string sql in new[] {
+                    "update ktv_Song set Song_PlayCount = 5 where Song_Id = '000001'",
+                    "create table PlayerOnly (Id TEXT)",
+                    "pragma user_version = 0" })
+                {
+                    using (SQLiteCommand cmd = new SQLiteCommand(sql, conn)) cmd.ExecuteNonQuery();
+                }
+            }
+
+            SqliteExport.Result songResult = SqliteExport.Build(SqliteExport.Jobs(song, mgr))[0];
+
+            Assert.Equal(new[] { "資料庫版本: 0 → 1", "ktv_Song: 資料不同 (現有 1 筆 → 匯出 1 筆)", "PlayerOnly: 歌庫沒有此資料表 (覆蓋後會移除)" }, songResult.Differences);
+            SqliteExport.Keep(songResult);
+        }
+
+        [Fact]
+        public void Compare_ReportsAnUnreadableExistingFile()
+        {
+            string dest = Path.Combine(root, "CrazySong.db");
+            File.WriteAllText(dest, "not a database");
+
+            SqliteExport.Result songResult = SqliteExport.Build(SqliteExport.Jobs(song, mgr))[0];
+
+            Assert.Equal(SqliteExport.Outcome.Different, songResult.Outcome);
+            Assert.StartsWith("無法讀取現有檔案: ", Assert.Single(songResult.Differences));
+            SqliteExport.Keep(songResult);
+            Assert.Equal("not a database", File.ReadAllText(dest));
         }
 
         [Fact]
@@ -145,24 +253,28 @@ namespace SongMgr.Tests.Export
 
             string message = SqliteExport.Describe(results);
             Assert.Contains("匯出失敗: " + dest, message);
-            Assert.Contains("匯出完成: " + Path.Combine(root, "CrazySongMgr.db"), message);
+            Assert.Contains("已建立: " + Path.Combine(root, "CrazySongMgr.db"), message);
         }
 
         [Fact]
-        public void OverwritePrompt_WarnsOnlyWhenCrazySongDbIsReplaced()
+        public void OverwritePrompt_ListsDifferencesAndWarnsOnlyForCrazySongDb()
         {
-            List<SqliteExport.Job> jobs = SqliteExport.Jobs(song, mgr);
-            Assert.Equal("", SqliteExport.OverwritePrompt(jobs, song));
+            SqliteExport.Run(SqliteExport.Jobs(song, mgr));
+            InsertSong("000001", 136.7f);
+            Execute(mgr, "delete from ktv_Version");
 
-            File.WriteAllText(jobs[1].Dest, "");
-            string mgrOnly = SqliteExport.OverwritePrompt(jobs, song);
-            Assert.Contains(jobs[1].Dest, mgrOnly);
-            Assert.DoesNotContain("播放器", mgrOnly);
+            List<SqliteExport.Result> results = SqliteExport.Build(SqliteExport.Jobs(song, mgr));
+            string songPrompt = SqliteExport.OverwritePrompt(results[0]);
+            string mgrPrompt = SqliteExport.OverwritePrompt(results[1]);
+            results.ForEach(SqliteExport.Keep);
 
-            File.WriteAllText(jobs[0].Dest, "");
-            string both = SqliteExport.OverwritePrompt(jobs, song);
-            Assert.Contains(jobs[0].Dest, both);
-            Assert.Contains("播放器寫進 CrazySong.db 的點播次數、YouTube 紀錄、我的最愛,會被 CrazySong.mdb 的內容取代", both);
+            Assert.Contains(results[0].Job.Dest, songPrompt);
+            Assert.Contains("ktv_Song: 資料不同 (現有 0 筆 → 匯出 1 筆)", songPrompt);
+            Assert.Contains("播放器寫進 CrazySong.db 的點播次數、YouTube 紀錄、我的最愛,會被 CrazySong.mdb 的內容取代", songPrompt);
+            Assert.EndsWith("是否要覆蓋?", songPrompt);
+
+            Assert.Contains("ktv_Version: 資料不同", mgrPrompt);
+            Assert.DoesNotContain("播放器", mgrPrompt);
         }
 
         // ---------- helpers ----------

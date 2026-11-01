@@ -550,22 +550,20 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>
-        /// Export the Access database to SQLite. The database is built in a
-        /// temporary file that replaces <paramref name="exportDest"/> only once
-        /// it is complete, so a failed export leaves an existing file untouched.
+        /// Export the Access database to a new SQLite database at <paramref name="exportDest"/>,
+        /// overwriting any file there. A failed export deletes the half-written file.
         /// </summary>
-        /// <param name="exportDest">The path of the SQLite database to create or replace.</param>
+        /// <param name="exportDest">The path of the SQLite database to create.</param>
         /// <param name="dbVersion">Export format version written to <see cref="VersionTable"/> and PRAGMA user_version.</param>
         /// <returns>Table names with their row counts, in Access order.</returns>
         public List<(string Table, int Rows)> export(string exportDest, int dbVersion)
         {
-            string tempDest = exportDest + ".tmp";
             List<(string Table, int Rows)> counts;
             try
             {
                 /* Create the database */
-                SQLiteConnection.CreateFile(tempDest);
-                using (sqliteConn = new SQLiteConnection(String.Format(SqliteConn, tempDest)))
+                SQLiteConnection.CreateFile(exportDest);
+                using (sqliteConn = new SQLiteConnection(String.Format(SqliteConn, exportDest)))
                 {
                     sqliteConn.Open();
 
@@ -575,14 +573,12 @@ namespace CrazyKTV_SongMgr
                     WriteVersion(dbVersion);
                 }
                 sqliteConn = null;
-
-                File.Move(tempDest, exportDest, true);
             }
             catch
             {
                 sqliteConn?.Dispose();
                 sqliteConn = null;
-                if (File.Exists(tempDest)) File.Delete(tempDest);
+                if (File.Exists(exportDest)) File.Delete(exportDest);
                 throw;
             }
             return counts;
