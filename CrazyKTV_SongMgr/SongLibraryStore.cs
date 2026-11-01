@@ -36,8 +36,8 @@ namespace CrazyKTV_SongMgr
     }
 
     /// <summary>
-    /// 歌手資料表: ktv_Singer lives in CrazySong.mdb (the 歌庫's own singers), ktv_AllSinger in
-    /// CrazySongMgr.mdb (the 預設 singer list that 歌曲分析 recognises).
+    /// 歌手資料表: ktv_Singer lives in the 歌庫 database (the 歌庫's own singers), ktv_AllSinger in
+    /// CrazySongMgr, the 參考資料庫 (the 預設 singer list that 歌曲分析 recognises).
     /// </summary>
     sealed class SingerTable
     {
@@ -55,8 +55,8 @@ namespace CrazyKTV_SongMgr
     }
 
     /// <summary>
-    /// 歌庫存取: every write to ktv_Song, ktv_Favorite and the 歌手資料表 goes through here, so the SQL,
-    /// the column lists and the connection strings live in one place. One instance holds one connection;
+    /// 歌庫存取: every write to ktv_Song, ktv_Favorite and the 歌手資料表 goes through here, so the SQL
+    /// and the column lists live in one place; the connection comes from <see cref="Db"/>. One instance holds one connection;
     /// dispose it when the batch is done. Writes throw like DbCommand.ExecuteNonQuery does.
     /// </summary>
     sealed class SongLibraryStore : IDisposable

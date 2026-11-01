@@ -12,7 +12,7 @@ namespace SongMgr.Tests.Store
 {
     /// <summary>
     /// CrazySongMgr.db: the bundled CrazySongMgr.mdb exported to SQLite and used as
-    /// Global.CrazyktvSongMgrDatabaseFile. Picking it over the .mdb, reading the 注音 table,
+    /// Global.CrazyktvSongMgrDatabaseFile. Pairing it with a SQLite 歌庫 only, reading the 注音 table,
     /// writing 錢櫃 dates, and the 錢櫃 date query.
     /// </summary>
     public class SqliteSongMgrDatabaseTests : IDisposable

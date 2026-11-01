@@ -18,7 +18,7 @@ namespace CrazyKTV_SongMgr
 
     /// <summary>
     /// YouTube 歌曲: UltimateKtv records each YouTube video it downloads as a row of YoutubeSongList in
-    /// CrazySong.mdb. SongMgr lists, edits and deletes those rows; only UltimateKtv adds them.
+    /// the 歌庫 database (CrazySong.mdb or CrazySong.db). SongMgr lists, edits and deletes those rows; only UltimateKtv adds them.
     /// Every method opens its own connection and throws when the database cannot be read or written.
     /// </summary>
     static class YoutubeSongStore
