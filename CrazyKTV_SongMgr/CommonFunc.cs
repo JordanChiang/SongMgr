@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -502,7 +502,7 @@ namespace CrazyKTV_SongMgr
 
                         string SongPhoneticsQuerySqlStr = "select * from ktv_Phonetics";
 
-                        using (DataTable PhoneticsDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
+                        using (DataTable PhoneticsDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
                         {
                             var query = from row in PhoneticsDT.AsEnumerable()
                                         where row.Field<Int16>("SortIdx") < 2
@@ -531,7 +531,7 @@ namespace CrazyKTV_SongMgr
                         Global.CashboxFullAnalysisSongList = new List<string>();
 
                         string SongQuerySqlStr = "select Song_Lang, Song_Singer, Song_SongName from ktv_Cashbox order by Song_Lang";
-                        using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
+                        using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
                         {
                             foreach (DataRow row in dt.Rows)
                             {
@@ -591,7 +591,7 @@ namespace CrazyKTV_SongMgr
                     tasks.Add(Task.Factory.StartNew(() =>
                     {
                         string SongQuerySqlStr = "select * from ktv_SongMgr where Config_Type = 'SpecialStr' order by Config_Value";
-                        using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
+                        using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
                         {
                             HashSet<string> specialStrLowCaseSet = new HashSet<string>(Global.SongAddSpecialStr.ToLower().Split('|'), StringComparer.OrdinalIgnoreCase);
                             string SongAddSpecialStr = "";
@@ -642,7 +642,7 @@ namespace CrazyKTV_SongMgr
                         }
 
                         string SongQuerySqlStr = "select * from ktv_SongMgr where Config_Type = 'SingerGroup' order by Config_Value";
-                        using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
+                        using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
                         {
                             foreach (DataRow row in dt.AsEnumerable())
                             {
@@ -809,7 +809,7 @@ namespace CrazyKTV_SongMgr
                 });
 
                 string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_Path, Song_FileName from ktv_Song";
-                using (DataTable SongStatisticsDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                using (DataTable SongStatisticsDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
                 {
                     var tasks = new List<Task<List<int>>>()
                     {
@@ -926,7 +926,7 @@ namespace CrazyKTV_SongMgr
                 List<string> LangKeyWordlist = new List<string>();
 
                 string SongQuerySqlStr = "select Langauage_Id, Langauage_Name, Langauage_KeyWord from ktv_Langauage";
-                using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
                 {
                     if (dt.Rows.Count > 0)
                     {
@@ -1229,10 +1229,10 @@ namespace CrazyKTV_SongMgr
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
 
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+            using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
             {
                 string TruncateSqlStr = "delete * from ktv_Singer";
-                using (OleDbCommand cmd = new OleDbCommand(TruncateSqlStr, conn))
+                using (DbCommand cmd = Db.Command(TruncateSqlStr, conn))
                 {
                     cmd.ExecuteNonQuery();
                 }
@@ -1242,7 +1242,7 @@ namespace CrazyKTV_SongMgr
             List<string> UnusedSingerId = CommonFunc.GetUnusedSingerId("ktv_Singer", Global.CrazyktvDatabaseFile);
 
             string SingerQuerySqlStr = "SELECT First(Song_Singer) AS Song_Singer, First(Song_SingerType) AS Song_SingerType, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING First(Song_SingerType)<=10 AND First(Song_SingerType)<>8 AND First(Song_SingerType)<>9 AND Count(Song_Singer)>0 ORDER BY First(Song_SingerType), First(Song_Singer)";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SingerQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SingerQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
@@ -1372,7 +1372,7 @@ namespace CrazyKTV_SongMgr
                     }
 
                     string SongSingerQuerySqlStr = "select Singer_Name, Singer_Type from ktv_Singer";
-                    using (DataTable SingerDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
+                    using (DataTable SingerDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
                     {
                         foreach (DataRow row in SingerDT.AsEnumerable())
                         {
@@ -1849,102 +1849,6 @@ namespace CrazyKTV_SongMgr
 
         #endregion
 
-        #region --- CommonFunc 讀取資料庫 ---
-
-        public static OleDbConnection OleDbOpenConn(string Database, string Password)
-        {
-            string cnstr;
-            if (Password != "")
-            {
-                cnstr = string.Format("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Database + ";Jet OLEDB:Database Password=" + Password + ";");
-            }
-            else
-            {
-                cnstr = string.Format("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Database + ";");
-            }
-
-            OleDbConnection conn = new OleDbConnection(cnstr);
-            if (conn.State == ConnectionState.Open) conn.Close();
-            try
-            {
-                conn.Open();
-            }
-            catch
-            {
-                
-            }
-            return conn;
-        }
-
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2100:必須檢視 SQL 查詢中是否有安全性弱點")]
-        public static DataTable GetOleDbDataTable(string Database, string OleDbString, string Password)
-        {
-            using (OleDbConnection conn = OleDbOpenConn(Database, Password))
-            {
-                using (OleDbDataAdapter da = new OleDbDataAdapter(OleDbString, conn))
-                {
-                    using (DataSet ds = new DataSet())
-                    {
-                        da.Fill(ds);
-                        using (DataTable dt = ds.Tables[0])
-                        {
-                            return dt;
-                        }
-                    }
-                }
-            }
-        }
-
-        public static List<string> GetOleDbTableList(string Database, string Password)
-        {
-            List<string> list = new List<string>();
-
-            if (File.Exists(Database))
-            {
-                using (OleDbConnection conn = OleDbOpenConn(Database, Password))
-                {
-                    using (DataTable dt = conn.GetSchema("Tables"))
-                    {
-                        if (dt.Rows.Count > 0)
-                        {
-                            foreach (DataRow row in dt.AsEnumerable())
-                            {
-                                if (row["TABLE_TYPE"].ToString() == "TABLE")
-                                {
-                                    list.Add(row["TABLE_NAME"].ToString());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return list;
-        }
-
-        public static List<string> GetOleDbColumnList(string Database, string Password, string TableName)
-        {
-            List<string> list = new List<string>();
-
-            using (OleDbConnection conn = OleDbOpenConn(Database, Password))
-            {
-                String[] Restrictions = new String[4];
-                Restrictions[2] = TableName;
-                using (DataTable dt = conn.GetSchema("Columns", Restrictions))
-                {
-                    if (dt.Rows.Count > 0)
-                    {
-                        foreach (DataRow row in dt.AsEnumerable())
-                        {
-                            list.Add(row["COLUMN_NAME"].ToString());
-                        }
-                    }
-                }
-            }
-            return list;
-        }
-
-        #endregion
-
         #region --- CommonFunc 壓縮資料庫 ---
 
         public static void CompactAccessDB(string connectionString, string mdwfilename)
@@ -2096,7 +2000,7 @@ namespace CrazyKTV_SongMgr
                 StartIdlist.Add((DigitCode == 5) ? "100000" : "1000000");
 
                 string SongQuerySqlStr = "select Song_Id, Song_Lang from ktv_Song order by Song_Id";
-                using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
                 {
                     int RemainingSongId;
 
@@ -2143,7 +2047,7 @@ namespace CrazyKTV_SongMgr
             }
 
             string SongQuerySqlStr = "select Song_Id from ktv_Song order by Song_Id desc";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
@@ -2190,7 +2094,7 @@ namespace CrazyKTV_SongMgr
             }
 
             string SongQuerySqlStr = "select Song_Id from ktv_Song";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
@@ -2249,13 +2153,13 @@ namespace CrazyKTV_SongMgr
             int i = 0;
 
             string SongQuerySqlStr = "select Singer_Id from " + TableName + " order by Singer_Id";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(DatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(DatabaseFile, SongQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
                     var query = from row in dt.AsEnumerable()
-                                where row.Field<Int32>("Singer_Id") > 0
-                                orderby row.Field<Int32>("Singer_Id") descending
+                                where Convert.ToInt32(row["Singer_Id"]) > 0
+                                orderby Convert.ToInt32(row["Singer_Id"]) descending
                                 select row;
 
                     foreach (DataRow row in query)
@@ -2274,13 +2178,13 @@ namespace CrazyKTV_SongMgr
             List<int> UsedIdlist = new List<int>();
 
             string SongQuerySqlStr = "select Singer_Id from " + TableName + " order by Singer_Id";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(DatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(DatabaseFile, SongQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
                     var query = from row in dt.AsEnumerable()
-                                where row.Field<Int32>("Singer_Id") > 0
-                                orderby row.Field<Int32>("Singer_Id")
+                                where Convert.ToInt32(row["Singer_Id"]) > 0
+                                orderby Convert.ToInt32(row["Singer_Id"])
                                 select row;
 
                     if (query.Count<DataRow>() > 0)
@@ -2353,7 +2257,7 @@ namespace CrazyKTV_SongMgr
 
                         string SongPhoneticsQuerySqlStr = "select * from ktv_Phonetics";
 
-                        using (DataTable PhoneticsDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
+                        using (DataTable PhoneticsDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongPhoneticsQuerySqlStr, ""))
                         {
                             var query = from row in PhoneticsDT.AsEnumerable()
                                         where row.Field<Int16>("SortIdx") < 2
@@ -2615,7 +2519,7 @@ namespace CrazyKTV_SongMgr
             {
                 DataTable dt = new DataTable();
                 string SongQuerySqlStr = "select User_Id, User_Name from ktv_User";
-                dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
                 List<string> removelist = new List<string>() { "####", "****", "9999" };
                 List<int> RemoveRowsIdxlist = new List<int>();

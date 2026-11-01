@@ -144,6 +144,7 @@ namespace CrazyKTV_SongMgr
 
             if (cfg["CrazyktvDatabaseFile"] != "") Global.CrazyktvDatabaseFile = cfg["CrazyktvDatabaseFile"];
             SongMgrCfg_DBFile_TextBox.Text = Global.CrazyktvDatabaseFile;
+            MainCfg_ExportSQLite_UpdateEnabled();
 
             if (cfg["SongMgrSupportFormat"] != "") Global.SongMgrSupportFormat = cfg["SongMgrSupportFormat"];
             SongMgrCfg_SupportFormat_TextBox.Text = Global.SongMgrSupportFormat;
@@ -533,8 +534,8 @@ namespace CrazyKTV_SongMgr
             {
                 try
                 {
-                    CommonFunc.CompactAccessDB(SongLibraryStore.ConnectionString(Global.CrazyktvDatabaseFile), Global.CrazyktvDatabaseFile);
-                    CommonFunc.CompactAccessDB(SongLibraryStore.ConnectionString(Global.CrazyktvSongMgrDatabaseFile), Global.CrazyktvSongMgrDatabaseFile);
+                    Db.Compact(Global.CrazyktvDatabaseFile);
+                    Db.Compact(Global.CrazyktvSongMgrDatabaseFile);
                     if (Global.MainCfgBackupDB == "True" && Directory.Exists(Global.MainCfgBackupDBPath))
                     {
                         try

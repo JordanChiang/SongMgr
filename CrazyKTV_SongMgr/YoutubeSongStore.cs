@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Globalization;
 using System.Linq;
 
@@ -31,8 +31,11 @@ namespace CrazyKTV_SongMgr
         /// </summary>
         public static readonly (int Value, string Display)[] Tracks = { (0, "立體聲 (人聲)"), (3, "去人聲 (伴唱)") };
 
-        /// <summary>The Access form of UltimateKtv's CheckAndCreateYoutubeTable (Library/SongDatas.cs).</summary>
-        private const string CreateTableSql = "create table YoutubeSongList ( Id TEXT(5) PRIMARY KEY, Name TEXT(255), CreatDate DATETIME, Url MEMO, Singer TEXT(50), Lang TEXT(16), PlayCount INTEGER, Length INTEGER, FileName TEXT(255), FileSize INTEGER, Track INTEGER DEFAULT 3, Volume INTEGER, WordCount INTEGER )";
+        /// <summary>
+        /// UltimateKtv's CheckAndCreateYoutubeTable (Library/SongDatas.cs): Url is MEMO on Access and TEXT on
+        /// SQLite, where MEMO would give the column numeric affinity.
+        /// </summary>
+        private static string CreateTableSql(string databaseFile) => "create table YoutubeSongList ( Id TEXT(5) PRIMARY KEY, Name TEXT(255), CreatDate DATETIME, Url " + (Db.IsSQLite(databaseFile) ? "TEXT" : "MEMO") + ", Singer TEXT(50), Lang TEXT(16), PlayCount INTEGER, Length INTEGER, FileName TEXT(255), FileSize INTEGER, Track INTEGER DEFAULT 3, Volume INTEGER, WordCount INTEGER )";
 
         /// <summary>
         /// The columns 歌庫查詢 shows, in display order. Singer, Lang and WordCount are left out: UltimateKtv
@@ -42,20 +45,17 @@ namespace CrazyKTV_SongMgr
 
         public static bool TableExists(string databaseFile)
         {
-            using (OleDbConnection conn = Open(databaseFile))
+            using (DbConnection conn = Open(databaseFile))
             {
-                using (DataTable dt = conn.GetSchema("Tables", new string[] { null, null, TableName, "TABLE" }))
-                {
-                    return dt.Rows.Count > 0;
-                }
+                return Db.GetTableList(conn).Contains(TableName);
             }
         }
 
         public static void CreateTable(string databaseFile)
         {
-            using (OleDbConnection conn = Open(databaseFile))
+            using (DbConnection conn = Open(databaseFile))
             {
-                using (OleDbCommand cmd = new OleDbCommand(CreateTableSql, conn))
+                using (DbCommand cmd = Db.Command(CreateTableSql(databaseFile), conn))
                 {
                     cmd.ExecuteNonQuery();
                 }
@@ -66,9 +66,9 @@ namespace CrazyKTV_SongMgr
         public static DataTable Query(string databaseFile, string keyword)
         {
             DataTable dt = new DataTable();
-            using (OleDbConnection conn = Open(databaseFile))
+            using (DbConnection conn = Open(databaseFile))
             {
-                using (OleDbDataAdapter da = new OleDbDataAdapter(QuerySql, conn))
+                using (DbDataAdapter da = Db.Adapter(QuerySql, conn))
                 {
                     da.Fill(dt);
                 }
@@ -118,9 +118,9 @@ namespace CrazyKTV_SongMgr
             string error = Validate(column, input, out object value);
             if (error != "") throw new ArgumentException(error, nameof(input));
 
-            using (OleDbConnection conn = Open(databaseFile))
+            using (DbConnection conn = Open(databaseFile))
             {
-                using (OleDbCommand cmd = new OleDbCommand("update YoutubeSongList set [" + column + "] = @Value where Id = @Id", conn))
+                using (DbCommand cmd = Db.Command("update YoutubeSongList set [" + column + "] = @Value where Id = @Id", conn))
                 {
                     cmd.Parameters.AddWithValue("@Value", value);
                     cmd.Parameters.AddWithValue("@Id", id);
@@ -133,9 +133,9 @@ namespace CrazyKTV_SongMgr
         public static int Delete(string databaseFile, IEnumerable<string> ids)
         {
             int count = 0;
-            using (OleDbConnection conn = Open(databaseFile))
+            using (DbConnection conn = Open(databaseFile))
             {
-                using (OleDbCommand cmd = new OleDbCommand("delete from YoutubeSongList where Id = @Id", conn))
+                using (DbCommand cmd = Db.Command("delete from YoutubeSongList where Id = @Id", conn))
                 {
                     foreach (string id in ids)
                     {
@@ -181,11 +181,6 @@ namespace CrazyKTV_SongMgr
             return "";
         }
 
-        private static OleDbConnection Open(string databaseFile)
-        {
-            OleDbConnection conn = new OleDbConnection(SongLibraryStore.ConnectionString(databaseFile));
-            conn.Open();
-            return conn;
-        }
+        private static DbConnection Open(string databaseFile) => Db.Open(databaseFile);
     }
 }

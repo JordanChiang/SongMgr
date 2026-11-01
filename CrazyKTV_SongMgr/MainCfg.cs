@@ -269,6 +269,12 @@ namespace CrazyKTV_SongMgr
             Global.MainCfgPlayerDefaultVolume = MainCfg_PlayerDefaultVolume_TextBox.Text;
         }
 
+        /// <summary>匯出 SQLite 資料庫 只在歌庫是 Access (.mdb) 時可用,.db / .sqlite 歌庫本身已是 SQLite。</summary>
+        private void MainCfg_ExportSQLite_UpdateEnabled()
+        {
+            MainCfg_ExportSQLite_Button.Enabled = !Db.IsSQLite(Global.CrazyktvDatabaseFile);
+        }
+
         private void MainCfg_ExportSQLite_Button_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("你確定要匯出 SQLite 資料庫嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
@@ -326,7 +332,7 @@ namespace CrazyKTV_SongMgr
 
             DataTable dt = new DataTable();
             string SingerQuerySqlStr = "SELECT First(Song_Singer) AS Song_Singer, First(Song_SingerType) AS Song_SingerType, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING First(Song_SingerType)<=10 AND First(Song_SingerType)<>8 AND First(Song_SingerType)<>9 AND Count(Song_Singer)>0 ORDER BY First(Song_SingerType), First(Song_Singer)";
-            dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SingerQuerySqlStr, "");
+            dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SingerQuerySqlStr, "");
 
             if (dt.Rows.Count > 0)
             {
@@ -426,7 +432,7 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
 
             string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_Track, Song_SongType, Song_Volume, Song_PlayCount, Song_FileName, Song_Path from ktv_Song order by Song_Id";
-            using (DataTable SongDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable SongDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
             {
                 string MatchWord = "";
                 List<string> wordlist = new List<string>();

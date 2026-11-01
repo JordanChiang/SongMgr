@@ -40,7 +40,7 @@ namespace CrazyKTV_SongMgr
             SongDataFilePathList = new List<string>();
 
             string SongDataSqlStr = "select Song_Id, Song_Lang, Song_Singer, Song_SongName, Song_SongType, Song_FileName, Song_Path from ktv_Song";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongDataSqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongDataSqlStr, ""))
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {
@@ -56,7 +56,7 @@ namespace CrazyKTV_SongMgr
             SingerDataTypeList = new List<string>();
 
             string SongSingerQuerySqlStr = "select Singer_Name, Singer_Type from ktv_Singer";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {
@@ -71,7 +71,7 @@ namespace CrazyKTV_SongMgr
             AllSingerDataTypeList = new List<string>();
 
             string SongAllSingerQuerySqlStr = "select Singer_Name, Singer_Type from ktv_AllSinger";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongAllSingerQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongAllSingerQuerySqlStr, ""))
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {

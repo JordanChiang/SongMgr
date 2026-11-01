@@ -71,7 +71,7 @@ namespace CrazyKTV_SongMgr
             tasks.Add(Task.Factory.StartNew(() =>
             {
                 string SongDataSqlStr = "select Song_Id, Song_Lang, Song_Singer, Song_SongName, Song_SongType, Song_FileName, Song_Path from ktv_Song";
-                using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongDataSqlStr, ""))
+                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongDataSqlStr, ""))
                 {
                     foreach (DataRow row in dt.AsEnumerable())
                     {

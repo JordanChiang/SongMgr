@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Drawing;
 using System.IO;
 using System.Threading;
@@ -361,24 +361,24 @@ namespace CrazyKTV_SongMgr
             Task.Factory.StartNew(() =>
             {
                 string whereClause = "";
-                List<OleDbParameter> parameters = new List<OleDbParameter>();
+                List<string> keywords = new List<string>();
 
                 switch (searchType)
                 {
                     case 0: // 歌手
                         whereClause = "WHERE Song_Singer LIKE @Keyword ";
-                        parameters.Add(new OleDbParameter("@Keyword", "%" + keyword + "%"));
+                        keywords.Add("%" + keyword + "%");
                         break;
                     case 1: // 歌名
                         whereClause = "WHERE Song_SongName LIKE @Keyword ";
-                        parameters.Add(new OleDbParameter("@Keyword", "%" + keyword + "%"));
+                        keywords.Add("%" + keyword + "%");
                         break;
                     case 2: // 國語
                         whereClause = "WHERE Song_Lang = '國語' ";
                         if (!string.IsNullOrEmpty(keyword))
                         {
                             whereClause += "AND Song_Singer LIKE @Keyword ";
-                            parameters.Add(new OleDbParameter("@Keyword", "%" + keyword + "%"));
+                            keywords.Add("%" + keyword + "%");
                         }
                         break;
                     case 3: // 台語
@@ -386,7 +386,7 @@ namespace CrazyKTV_SongMgr
                         if (!string.IsNullOrEmpty(keyword))
                         {
                             whereClause += "AND Song_Singer LIKE @Keyword ";
-                            parameters.Add(new OleDbParameter("@Keyword", "%" + keyword + "%"));
+                            keywords.Add("%" + keyword + "%");
                         }
                         break;
                     case 4: // 其它
@@ -394,7 +394,7 @@ namespace CrazyKTV_SongMgr
                         if (!string.IsNullOrEmpty(keyword))
                         {
                             whereClause += "AND Song_Singer LIKE @Keyword ";
-                            parameters.Add(new OleDbParameter("@Keyword", "%" + keyword + "%"));
+                            keywords.Add("%" + keyword + "%");
                         }
                         break;
                     case 5: // 全部歌曲
@@ -412,15 +412,13 @@ namespace CrazyKTV_SongMgr
                 DataTable dt = null;
                 try
                 {
-                    using (OleDbConnection conn = new OleDbConnection(
-                        SongLibraryStore.ConnectionString(Global.CrazyktvDatabaseFile)))
+                    using (DbConnection conn = Db.Open(Global.CrazyktvDatabaseFile))
                     {
-                        conn.Open();
-                        using (OleDbCommand cmd = new OleDbCommand(sql, conn))
+                        using (DbCommand cmd = Db.Command(sql, conn))
                         {
-                            foreach (var p in parameters) cmd.Parameters.Add(p);
+                            foreach (string k in keywords) cmd.Parameters.AddWithValue("@Keyword", k);
 
-                            OleDbDataAdapter da = new OleDbDataAdapter(cmd);
+                            DbDataAdapter da = Db.Adapter(cmd);
                             dt = new DataTable();
                             da.Fill(dt);
                         }

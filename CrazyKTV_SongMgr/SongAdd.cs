@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -30,7 +30,7 @@ namespace CrazyKTV_SongMgr
 
                     string SongQuerySqlStr = "select * from ktv_SongMgr where Config_Type = 'SpecialStr' order by Config_Value";
                     string SongAddSpecialStr = "";
-                    using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
+                    using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
                     {
                         List<string> SpecialStrlist = new List<string>(Regex.Split(Global.SongAddSpecialStr, @"\|", RegexOptions.IgnoreCase));
                         List<string> SpecialStrLowCaselist = SpecialStrlist.ConvertAll(str => str.ToLower());
@@ -159,7 +159,7 @@ namespace CrazyKTV_SongMgr
                         List<string> SpecialStrLowCaselist = new List<string>();
 
                         string SongQuerySqlStr = "select * from ktv_SongMgr where Config_Type = 'SpecialStr' order by Config_Value";
-                        using (DataTable SpecialStrDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
+                        using (DataTable SpecialStrDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
                         {
                             foreach (DataRow row in SpecialStrDT.AsEnumerable())
                             {
@@ -696,7 +696,7 @@ namespace CrazyKTV_SongMgr
                 List<string> SingerLowCaseList = new List<string>();
 
                 string SongSingerQuerySqlStr = "select Singer_Name, Singer_Type from ktv_Singer";
-                using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
+                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
                 {
                     foreach (DataRow row in dt.AsEnumerable())
                     {
@@ -1486,7 +1486,7 @@ namespace CrazyKTV_SongMgr
                                 Global.SongAddSpecialStr = Global.SongAddSpecialStr.Replace(",", "|");
                                 string SongQuerySqlStr = "select * from ktv_SongMgr where Config_Type = 'SpecialStr' order by Config_Value";
                                 
-                                using (DataTable SpecialStrDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
+                                using (DataTable SpecialStrDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
                                 {
                                     List<string> SpecialStrlist = new List<string>(Regex.Split(Global.SongAddSpecialStr, @"\|", RegexOptions.IgnoreCase));
                                     List<string> SpecialStrLowCaselist = SpecialStrlist.ConvertAll(SpecialStr => SpecialStr.ToLower());

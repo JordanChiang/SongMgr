@@ -40,7 +40,7 @@ namespace SongMgr.Tests.Store
 
         static void Seed()
         {
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+            using (OleDbConnection conn = DbHelper.Access.OpenConn(Global.CrazyktvDatabaseFile))
             {
                 foreach (SongRecord s in SeedSongs())
                 {
@@ -72,7 +72,7 @@ namespace SongMgr.Tests.Store
 
         static string Dump(string db, string table, string order)
         {
-            DataTable dt = CommonFunc.GetOleDbDataTable(db, "select * from " + table + " order by " + order, "");
+            DataTable dt = Db.GetDataTable(db, "select * from " + table + " order by " + order, "");
             return string.Join("\n", dt.AsEnumerable().Select(r => string.Join("|", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName + "=" + (r[c] is DBNull ? "NULL" : r[c].ToString())))));
         }
 
@@ -86,7 +86,7 @@ namespace SongMgr.Tests.Store
 
         static void Legacy(string db, string sql, params string[] values)
         {
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(db, ""))
+            using (OleDbConnection conn = DbHelper.Access.OpenConn(db))
             using (OleDbCommand cmd = new OleDbCommand(sql, conn))
             {
                 int i = 0;

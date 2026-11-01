@@ -169,7 +169,7 @@ namespace SongMgr.Tests.Export
 
         void InsertSong(string id, float mb)
         {
-            using (OleDbConnection conn = new OleDbConnection(SongLibraryStore.ConnectionString(song)))
+            using (OleDbConnection conn = new OleDbConnection(DbHelper.Access.ConnectionString(song)))
             {
                 conn.Open();
                 using (OleDbCommand cmd = new OleDbCommand("insert into ktv_Song (Song_Id, Song_Lang, Song_Singer, Song_SongName, Song_MB, Song_CreatDate, Song_FileName, Song_Path) values (@Id, '國語', '周杰倫', '晴天', @MB, @Date, '晴天.mpg', 'D:\\KTV\\')", conn))
@@ -184,7 +184,7 @@ namespace SongMgr.Tests.Export
 
         static void Execute(string mdb, string sql)
         {
-            using (OleDbConnection conn = new OleDbConnection(SongLibraryStore.ConnectionString(mdb)))
+            using (OleDbConnection conn = new OleDbConnection(DbHelper.Access.ConnectionString(mdb)))
             {
                 conn.Open();
                 using (OleDbCommand cmd = new OleDbCommand(sql, conn)) cmd.ExecuteNonQuery();
@@ -193,7 +193,7 @@ namespace SongMgr.Tests.Export
 
         static List<string> AccessTables(string mdb)
         {
-            using (OleDbConnection conn = new OleDbConnection(SongLibraryStore.ConnectionString(mdb)))
+            using (OleDbConnection conn = new OleDbConnection(DbHelper.Access.ConnectionString(mdb)))
             {
                 conn.Open();
                 return conn.GetSchema("Tables", new string[] { null, null, null, "TABLE" }).AsEnumerable().Select(r => r["TABLE_NAME"].ToString()).ToList();
@@ -202,7 +202,7 @@ namespace SongMgr.Tests.Export
 
         static List<string> AccessColumns(string mdb, string table)
         {
-            using (OleDbConnection conn = new OleDbConnection(SongLibraryStore.ConnectionString(mdb)))
+            using (OleDbConnection conn = new OleDbConnection(DbHelper.Access.ConnectionString(mdb)))
             {
                 conn.Open();
                 return conn.GetSchema("Columns", new string[] { null, null, table, null }).AsEnumerable()
@@ -212,7 +212,7 @@ namespace SongMgr.Tests.Export
 
         static int AccessRowCount(string mdb, string table)
         {
-            using (OleDbConnection conn = new OleDbConnection(SongLibraryStore.ConnectionString(mdb)))
+            using (OleDbConnection conn = new OleDbConnection(DbHelper.Access.ConnectionString(mdb)))
             {
                 conn.Open();
                 using (OleDbCommand cmd = new OleDbCommand("select count(*) from [" + table + "]", conn)) return Convert.ToInt32(cmd.ExecuteScalar());

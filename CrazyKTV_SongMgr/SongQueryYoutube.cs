@@ -88,10 +88,12 @@ namespace CrazyKTV_SongMgr
         {
             SongQuery_YoutubeReplaceWithComboBox("Track", combo =>
             {
+                // Value has the Track column's own type (Int32 on Access, Int64 on SQLite), or no row would match it
+                Type TrackType = dt.Columns["Track"].DataType;
                 DataTable TrackList = new DataTable();
                 TrackList.Columns.Add("Display", typeof(string));
-                TrackList.Columns.Add("Value", typeof(int));
-                foreach (var track in YoutubeSongStore.Tracks) TrackList.Rows.Add(track.Display, track.Value);
+                TrackList.Columns.Add("Value", TrackType);
+                foreach (var track in YoutubeSongStore.Tracks) TrackList.Rows.Add(track.Display, Convert.ChangeType(track.Value, TrackType));
                 combo.DataSource = TrackList;
                 combo.DisplayMember = "Display";
                 combo.ValueMember = "Value";

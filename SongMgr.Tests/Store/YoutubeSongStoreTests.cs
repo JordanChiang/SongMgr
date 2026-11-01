@@ -180,7 +180,7 @@ namespace SongMgr.Tests.Store
 
         OleDbConnection Open()
         {
-            OleDbConnection conn = new OleDbConnection(SongLibraryStore.ConnectionString(db));
+            OleDbConnection conn = new OleDbConnection(DbHelper.Access.ConnectionString(db));
             conn.Open();
             return conn;
         }

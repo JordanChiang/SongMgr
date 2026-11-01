@@ -33,7 +33,7 @@ namespace SongMgr.Tests.Records
         DataTable QueryTable()
         {
             TestEnv.UseScratchDatabases(dir);
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+            using (OleDbConnection conn = DbHelper.Access.OpenConn(Global.CrazyktvDatabaseFile))
             {
                 string sql = "insert into ktv_Song (Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_Track, Song_SongType, Song_Volume, Song_WordCount, Song_PlayCount, Song_MB, Song_CreatDate, Song_FileName, Song_Path, Song_Spell, Song_SpellNum, Song_SongStroke, Song_PenStyle, Song_PlayState, Song_ReplayGain) " +
                              "values (@a, @b, @c, @d, @e, @f, @g, @h, @i, @j, @k, @l, @m, @n, @o, @p, @q, @r, @s, @t)";
@@ -51,7 +51,7 @@ namespace SongMgr.Tests.Records
                     }
                 }
             }
-            return CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, "select * from ktv_Song order by Song_Id", "");
+            return Db.GetDataTable(Global.CrazyktvDatabaseFile, "select * from ktv_Song order by Song_Id", "");
         }
 
         /// <summary>The 加歌 grid is bound to the 歌曲分析 table.</summary>

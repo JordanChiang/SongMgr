@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -44,13 +44,14 @@ namespace CrazyKTV_SongMgr
         {
             OpenFileDialog opd = new OpenFileDialog();
             if (SongMgrCfg_DBFile_TextBox.Text != "") opd.InitialDirectory = Path.GetDirectoryName(SongMgrCfg_DBFile_TextBox.Text);
-            opd.Filter = "資料庫檔案 (*.mdb)|*.mdb";
+            opd.Filter = Db.FileDialogFilter;
             opd.FilterIndex = 1;
 
             if (opd.ShowDialog() == DialogResult.OK && opd.FileName.Length > 0)
             {
                 Global.CrazyktvDatabaseFile = opd.FileName;
                 SongMgrCfg_DBFile_TextBox.Text = opd.FileName;
+                MainCfg_ExportSQLite_UpdateEnabled();
                 CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvDatabaseFile", Global.CrazyktvDatabaseFile);
                 Common_RefreshSongMgr(true);
                 if (SongMgrCfg_SongAddMode_ComboBox.SelectedValue.ToString() == "4")
@@ -783,7 +784,7 @@ namespace CrazyKTV_SongMgr
                         List<string> SingerGroupLowCaselist = new List<string>();
 
                         string SongQuerySqlStr = "select * from ktv_SongMgr where Config_Type = 'SingerGroup' order by Config_Value";
-                        using (DataTable SingerGroupDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
+                        using (DataTable SingerGroupDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
                         {
                             foreach (DataRow row in SingerGroupDT.AsEnumerable())
                             {
@@ -914,7 +915,7 @@ namespace CrazyKTV_SongMgr
             {
                 string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_Track, Song_SongType, Song_Volume, Song_PlayCount, Song_FileName, Song_Path from ktv_Song order by Song_Id";
 
-                using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
                 {
                     if (dt.Rows.Count > 0)
                     {

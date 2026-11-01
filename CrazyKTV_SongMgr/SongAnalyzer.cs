@@ -89,7 +89,7 @@ namespace CrazyKTV_SongMgr
             List<string> names = new List<string>();
             List<string> types = new List<string>();
 
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, "select Singer_Name, Singer_Type from ktv_AllSinger", ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, "select Singer_Name, Singer_Type from ktv_AllSinger", ""))
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {
@@ -99,7 +99,7 @@ namespace CrazyKTV_SongMgr
             }
             List<string> lowCase = names.ConvertAll(str => str.ToLower());
 
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, "select Singer_Name, Singer_Type from ktv_Singer", ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, "select Singer_Name, Singer_Type from ktv_Singer", ""))
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {

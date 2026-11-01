@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -19,7 +19,7 @@ namespace CrazyKTV_SongMgr
             if (File.Exists(Global.CrazyktvSongMgrDatabaseFile))
             {
                 List<string> TableList = new List<string>() { "ktv_AllSinger", "ktv_Cashbox", "ktv_Phonetics", "ktv_SongMgr", "ktv_Version" };
-                List<string> SongMgrDBTableList = new List<string>(CommonFunc.GetOleDbTableList(Global.CrazyktvSongMgrDatabaseFile, ""));
+                List<string> SongMgrDBTableList = new List<string>(Db.GetTableList(Global.CrazyktvSongMgrDatabaseFile, ""));
                 foreach (string TableName in TableList)
                 {
                     if (SongMgrDBTableList.IndexOf(TableName) < 0)
@@ -58,7 +58,7 @@ namespace CrazyKTV_SongMgr
                 SongMgrDatabaseFile = true;
 
                 List<string> TableList = new List<string>() { "ktv_Favorite", "ktv_Langauage", "ktv_Phonetics", "ktv_Remote", "ktv_Singer", "ktv_SingerName", "ktv_Song", "ktv_Swan", "ktv_User", "ktv_Words" };
-                List<string> CrazyktvDBTableList = new List<string>(CommonFunc.GetOleDbTableList(Global.CrazyktvDatabaseFile, ""));
+                List<string> CrazyktvDBTableList = new List<string>(Db.GetTableList(Global.CrazyktvDatabaseFile, ""));
                 foreach (string TableName in TableList)
                 {
                     if (CrazyktvDBTableList.IndexOf(TableName) < 0)
@@ -70,7 +70,7 @@ namespace CrazyKTV_SongMgr
                 TableList.Clear();
 
                 TableList = new List<string>() { "ktv_AllSinger", "ktv_Cashbox", "ktv_Phonetics", "ktv_SongMgr", "ktv_Version" };
-                List<string> SongMgrDBTableList = new List<string>(CommonFunc.GetOleDbTableList(Global.CrazyktvSongMgrDatabaseFile, ""));
+                List<string> SongMgrDBTableList = new List<string>(Db.GetTableList(Global.CrazyktvSongMgrDatabaseFile, ""));
                 foreach (string TableName in TableList)
                 {
                     if (SongMgrDBTableList.IndexOf(TableName) < 0)
@@ -83,7 +83,7 @@ namespace CrazyKTV_SongMgr
 
                 if (!Global.CrazyktvDatabaseError)
                 {
-                    List<string> ktvLangauageColumnList = new List<string>(CommonFunc.GetOleDbColumnList(Global.CrazyktvDatabaseFile, "", "ktv_Langauage"));
+                    List<string> ktvLangauageColumnList = new List<string>(Db.GetColumnList(Global.CrazyktvDatabaseFile, "", "ktv_Langauage"));
                     if (ktvLangauageColumnList.IndexOf("Langauage_KeyWord") >= 0) Col_Langauage_KeyWord = true;
                     ktvLangauageColumnList.Clear();
 
@@ -91,7 +91,7 @@ namespace CrazyKTV_SongMgr
                     if (CrazyktvDBTableList.IndexOf("ktv_Version") >= 0) TB_ktv_Version = true;
 
                     List<string> GodLiuColumnList = new List<string>() { "Song_SongNameFuzzy", "Song_SingerFuzzy", "Song_FuzzyVer", "DLspace", "Epasswd", "imgpath", "cashboxsongid", "cashboxdat", "holidaysongid" };
-                    List<string> ktvSongColumnList = new List<string>(CommonFunc.GetOleDbColumnList(Global.CrazyktvDatabaseFile, "", "ktv_Song"));
+                    List<string> ktvSongColumnList = new List<string>(Db.GetColumnList(Global.CrazyktvDatabaseFile, "", "ktv_Song"));
                     if (ktvSongColumnList.IndexOf("Song_ReplayGain") >= 0) Col_Song_ReplayGain = true;
                     if (ktvSongColumnList.IndexOf("Song_MeanVolume") >= 0) Col_Song_MeanVolume = true;
 
@@ -169,7 +169,7 @@ namespace CrazyKTV_SongMgr
             string CashboxUpdDate = "";
 
             string VersionQuerySqlStr = "select * from ktv_Version";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, VersionQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, VersionQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
@@ -197,7 +197,7 @@ namespace CrazyKTV_SongMgr
                                 ms.Position = 0;
                                 Global.CrazyktvSongDBVer = CommonFunc.LoadConfigXmlFile("", "SongDBVer", ms, true);
 
-                                if (File.Exists(Global.CrazyktvDatabaseFile))
+                                if (File.Exists(Global.CrazyktvDatabaseFile) && !Db.IsSQLite(Global.CrazyktvDatabaseFile))
                                 {
                                     if (Convert.ToDouble(Global.CrazyktvSongDBVer) > SongDBVer)
                                     {
@@ -228,7 +228,18 @@ namespace CrazyKTV_SongMgr
         {
             Global.TimerStartTime = DateTime.Now;
 
-            using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+            // 結構更新用的是 Access 專用的 alter column / GetSchema 欄位長度,SQLite 歌庫無法更新
+            if (Db.IsSQLite(Global.CrazyktvDatabaseFile))
+            {
+                this.BeginInvoke((Action)delegate ()
+                {
+                    SongMaintenance_DBVerTooltip_Label.Text = "SQLite 歌庫無法更新資料庫結構,請載入原本的 .mdb 歌庫更新後,再重新匯出 SQLite 資料庫。";
+                });
+                Global.DatabaseUpdateFinished = true;
+                return;
+            }
+
+            using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
             {
                 bool UpdateError = false;
 
@@ -236,12 +247,12 @@ namespace CrazyKTV_SongMgr
                 string SongDBBackupFile = SongDBBackupFile = Application.StartupPath + @"\SongMgr\Backup\" + DateTime.Now.ToLongDateString() + "_CrazySong.mdb";
                 File.Copy(Global.CrazyktvDatabaseFile, SongDBBackupFile, true);
 
-                List<string> CrazyktvDBTableList = new List<string>(CommonFunc.GetOleDbTableList(Global.CrazyktvDatabaseFile, ""));
+                List<string> CrazyktvDBTableList = new List<string>(Db.GetTableList(Global.CrazyktvDatabaseFile, ""));
 
                 // 移除 ktv_AllSinger 資料表
                 if (CrazyktvDBTableList.IndexOf("ktv_AllSinger") >= 0)
                 {
-                    using (OleDbCommand cmd = new OleDbCommand("drop table ktv_AllSinger", conn))
+                    using (DbCommand cmd = Db.Command("drop table ktv_AllSinger", conn))
                     {
                         try
                         {
@@ -262,7 +273,7 @@ namespace CrazyKTV_SongMgr
                 // 移除 ktv_Version 資料表
                 if (CrazyktvDBTableList.IndexOf("ktv_Version") >= 0)
                 {
-                    using (OleDbCommand cmd = new OleDbCommand("drop table ktv_Version", conn))
+                    using (DbCommand cmd = Db.Command("drop table ktv_Version", conn))
                     {
                         try
                         {
@@ -378,14 +389,14 @@ namespace CrazyKTV_SongMgr
                         try
                         {
                             UpdateSqlStr = "select * into ktv_Song_temp from ktv_Song";
-                            using (OleDbCommand cmd = new OleDbCommand(UpdateSqlStr, conn))
+                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
                             {
                                 cmd.ExecuteNonQuery();
                                 cmd.Parameters.Clear();
                             }
 
                             UpdateSqlStr = "delete * from ktv_Song";
-                            using (OleDbCommand cmd = new OleDbCommand(UpdateSqlStr, conn))
+                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
                             {
                                 cmd.ExecuteNonQuery();
                                 cmd.Parameters.Clear();
@@ -403,7 +414,7 @@ namespace CrazyKTV_SongMgr
 
                             foreach (string cmdstr in cmdstrlist)
                             {
-                                using (OleDbCommand cmd = new OleDbCommand(cmdstr, conn))
+                                using (DbCommand cmd = Db.Command(cmdstr, conn))
                                 {
                                     cmd.ExecuteNonQuery();
                                     cmd.Parameters.Clear();
@@ -413,14 +424,14 @@ namespace CrazyKTV_SongMgr
                             cmdstrlist = null;
 
                             UpdateSqlStr = "insert into ktv_Song select * from ktv_Song_temp";
-                            using (OleDbCommand cmd = new OleDbCommand(UpdateSqlStr, conn))
+                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
                             {
                                 cmd.ExecuteNonQuery();
                                 cmd.Parameters.Clear();
                             }
 
                             UpdateSqlStr = "drop table ktv_Song_temp";
-                            using (OleDbCommand cmd = new OleDbCommand(UpdateSqlStr, conn))
+                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
                             {
                                 cmd.ExecuteNonQuery();
                                 cmd.Parameters.Clear();
@@ -450,7 +461,7 @@ namespace CrazyKTV_SongMgr
                         {
                             foreach (string cmdstr in cmdstrlist)
                             {
-                                using (OleDbCommand cmd = new OleDbCommand(cmdstr, conn))
+                                using (DbCommand cmd = Db.Command(cmdstr, conn))
                                 {
                                     cmd.ExecuteNonQuery();
                                     cmd.Parameters.Clear();
@@ -472,7 +483,7 @@ namespace CrazyKTV_SongMgr
 
                     if (UpdatePhonetics)
                     {
-                        using (OleDbCommand cmd = new OleDbCommand("alter table ktv_Phonetics alter column PenStyle TEXT(40) WITH COMPRESSION", conn))
+                        using (DbCommand cmd = Db.Command("alter table ktv_Phonetics alter column PenStyle TEXT(40) WITH COMPRESSION", conn))
                         {
                             try
                             {
@@ -492,7 +503,7 @@ namespace CrazyKTV_SongMgr
 
                     if (UpdateLangauage)
                     {
-                        using (OleDbCommand cmd = new OleDbCommand("alter table ktv_Langauage add column Langauage_KeyWord TEXT(255) WITH COMPRESSION", conn))
+                        using (DbCommand cmd = Db.Command("alter table ktv_Langauage add column Langauage_KeyWord TEXT(255) WITH COMPRESSION", conn))
                         {
                             try
                             {
@@ -522,7 +533,7 @@ namespace CrazyKTV_SongMgr
                         {
                             foreach (string cmdstr in cmdstrlist)
                             {
-                                using (OleDbCommand cmd = new OleDbCommand(cmdstr, conn))
+                                using (DbCommand cmd = Db.Command(cmdstr, conn))
                                 {
                                     cmd.ExecuteNonQuery();
                                     cmd.Parameters.Clear();
@@ -544,7 +555,7 @@ namespace CrazyKTV_SongMgr
 
                     if (AddSongReplayGainColumn)
                     {
-                        using (OleDbCommand cmd = new OleDbCommand("alter table ktv_Song add column Song_ReplayGain DOUBLE", conn))
+                        using (DbCommand cmd = Db.Command("alter table ktv_Song add column Song_ReplayGain DOUBLE", conn))
                         {
                             try
                             {
@@ -564,7 +575,7 @@ namespace CrazyKTV_SongMgr
 
                     if (RemoveSongMeanVolumeColumn)
                     {
-                        using (OleDbCommand cmd = new OleDbCommand("alter table ktv_Song drop column Song_MeanVolume", conn))
+                        using (DbCommand cmd = Db.Command("alter table ktv_Song drop column Song_MeanVolume", conn))
                         {
                             try
                             {
@@ -634,7 +645,7 @@ namespace CrazyKTV_SongMgr
                             {
                                 if (haveindexlist.IndexOf(GodLiuColumn) > 0)
                                 {
-                                    using (OleDbCommand cmd = new OleDbCommand(removeindex, conn))
+                                    using (DbCommand cmd = Db.Command(removeindex, conn))
                                     {
                                         try
                                         {
@@ -653,7 +664,7 @@ namespace CrazyKTV_SongMgr
                                 }
                             }
 
-                            using (OleDbCommand cmd = new OleDbCommand(cmdstr, conn))
+                            using (DbCommand cmd = Db.Command(cmdstr, conn))
                             {
                                 try
                                 {
@@ -673,13 +684,13 @@ namespace CrazyKTV_SongMgr
                     }
 
                     string SqlStr = "select * from ktv_Swan";
-                    using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SqlStr, ""))
+                    using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SqlStr, ""))
                     {
                         if (dt.Rows.Count > 0)
                         {
                             if (Convert.ToString(dt.Rows[3][1]) == "合唱歌曲")
                             {
-                                using (OleDbCommand cmd = new OleDbCommand("update ktv_Swan set Swan_Name = @SwanName where Swan_Id = @SwanId", conn))
+                                using (DbCommand cmd = Db.Command("update ktv_Swan set Swan_Name = @SwanName where Swan_Id = @SwanId", conn))
                                 {
                                     cmd.Parameters.AddWithValue("@SwanName", "合唱");
                                     cmd.Parameters.AddWithValue("@SwanId", "3");
@@ -712,7 +723,7 @@ namespace CrazyKTV_SongMgr
                     CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongDBVer", Global.CrazyktvSongDBVer);
 
                     string VersionQuerySqlStr = "select * from ktv_Version";
-                    using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, VersionQuerySqlStr, ""))
+                    using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, VersionQuerySqlStr, ""))
                     {
                         if (dt.Rows.Count > 0)
                         {
@@ -750,7 +761,7 @@ namespace CrazyKTV_SongMgr
             {
                 DataTable dt = new DataTable();
                 string SongQuerySqlStr = "select Song_Id from ktv_Song";
-                dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
                 if (dt.Rows.Count > 0)
                 {
                     var d5code = from row in dt.AsEnumerable()

@@ -19,21 +19,21 @@ namespace CrazyKTV_SongMgr
             {
                 case 1:
                     SongQuerySqlStr = "select Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_Track, Song_SongType, Song_Volume, Song_WordCount, Song_PlayCount, Song_MB, Song_CreatDate, Song_FileName, Song_Path, Song_PlayState from ktv_Song";
-                    Global.SongSrcDT = CommonFunc.GetOleDbDataTable(SongSrcDBFile, SongQuerySqlStr, "");
+                    Global.SongSrcDT = Db.GetDataTable(SongSrcDBFile, SongQuerySqlStr, "");
                     break;
                 case 2:
                     SongQuerySqlStr = "select Song_ID, Song_Type, Song_Singer, Song_SingerList, Song_Title, Song_Channel, Song_Volume, Song_Count, Song_CreateDate, Song_FileName, Song_Path from Tbl_Song";
-                    Global.SongSrcDT = CommonFunc.GetOleDbDataTable(SongSrcDBFile, SongQuerySqlStr, "tmwcmgumbonqd");
+                    Global.SongSrcDT = Db.GetDataTable(SongSrcDBFile, SongQuerySqlStr, "tmwcmgumbonqd");
 
                     SongQuerySqlStr = "select Singer_ID, Singer_Sex, Singer_Name from Tbl_Singer";
-                    Global.SingerSrcDT = CommonFunc.GetOleDbDataTable(SongSrcDBFile, SongQuerySqlStr, "tmwcmgumbonqd");
+                    Global.SingerSrcDT = Db.GetDataTable(SongSrcDBFile, SongQuerySqlStr, "tmwcmgumbonqd");
                     break;
                 case 3:
                     SongQuerySqlStr = "select Song_ID, Song_Title, Song_Singer, Song_Channel, Song_Type, Song_FileName, Song_Count, Song_Path, Song_CreateDate, Song_Chorus, Song_Volume from Tbl_Song";
-                    Global.SongSrcDT = CommonFunc.GetOleDbDataTable(SongSrcDBFile, SongQuerySqlStr, "");
+                    Global.SongSrcDT = Db.GetDataTable(SongSrcDBFile, SongQuerySqlStr, "");
 
                     SongQuerySqlStr = "select SongPath_Path from Tbl_SongPath";
-                    Global.SongPathSrcDT = CommonFunc.GetOleDbDataTable(SongSrcDBFile, SongQuerySqlStr, "");
+                    Global.SongPathSrcDT = Db.GetDataTable(SongSrcDBFile, SongQuerySqlStr, "");
                     Global.SongDBConvHK2SongPathList = new List<string>();
                     foreach (DataRow row in Global.SongPathSrcDT.Rows)
                     {
@@ -41,10 +41,10 @@ namespace CrazyKTV_SongMgr
                     }
 
                     SongQuerySqlStr = "select Extension_Name from Tbl_Extension";
-                    Global.ExtensionSrcDT = CommonFunc.GetOleDbDataTable(SongSrcDBFile, SongQuerySqlStr, "");
+                    Global.ExtensionSrcDT = Db.GetDataTable(SongSrcDBFile, SongQuerySqlStr, "");
 
                     SongQuerySqlStr = "select Singer_ID, Singer_Name, Singer_Sex from Tbl_Singer";
-                    Global.SingerSrcDT = CommonFunc.GetOleDbDataTable(SongSrcDBFile, SongQuerySqlStr, "");
+                    Global.SingerSrcDT = Db.GetDataTable(SongSrcDBFile, SongQuerySqlStr, "");
                     break;
             }
         }

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data.OleDb;
+using System.Data.Common;
 
 namespace CrazyKTV_SongMgr
 {
@@ -57,7 +57,7 @@ namespace CrazyKTV_SongMgr
     /// <summary>
     /// 歌庫存取: every write to ktv_Song, ktv_Favorite and the 歌手資料表 goes through here, so the SQL,
     /// the column lists and the connection strings live in one place. One instance holds one connection;
-    /// dispose it when the batch is done. Writes throw like OleDbCommand.ExecuteNonQuery does.
+    /// dispose it when the batch is done. Writes throw like DbCommand.ExecuteNonQuery does.
     /// </summary>
     sealed class SongLibraryStore : IDisposable
     {
@@ -85,21 +85,13 @@ namespace CrazyKTV_SongMgr
             (SongColumns.ReplayGain, "Song_ReplayGain", s => s.ReplayGain),
         };
 
-        private readonly OleDbConnection conn;
-        private readonly Dictionary<string, OleDbCommand> commands = new Dictionary<string, OleDbCommand>();
-        private OleDbTransaction transaction;
+        private readonly DbConnection conn;
+        private readonly Dictionary<string, DbCommand> commands = new Dictionary<string, DbCommand>();
+        private DbTransaction transaction;
 
         private SongLibraryStore(string databaseFile, bool throwIfUnavailable = false)
         {
-            if (throwIfUnavailable)
-            {
-                conn = new OleDbConnection(ConnectionString(databaseFile));
-                conn.Open();
-            }
-            else
-            {
-                conn = CommonFunc.OleDbOpenConn(databaseFile, "");
-            }
+            conn = throwIfUnavailable ? Db.Open(databaseFile) : Db.OpenConn(databaseFile);
         }
 
         /// <summary>CrazySong.mdb: ktv_Song, ktv_Favorite, ktv_Singer.</summary>
@@ -113,9 +105,6 @@ namespace CrazyKTV_SongMgr
 
         /// <summary>The database file holding <paramref name="table"/>.</summary>
         public static SongLibraryStore Open(SingerTable table) => new SongLibraryStore(table.DatabaseFile);
-
-        /// <summary>Jet connection string for a database file.</summary>
-        public static string ConnectionString(string databaseFile) => "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + databaseFile + ";";
 
         /// <summary>Following writes join one transaction until <see cref="Commit"/> or <see cref="Rollback"/>.</summary>
         public void BeginTransaction()
@@ -135,7 +124,7 @@ namespace CrazyKTV_SongMgr
 
         public void Dispose()
         {
-            foreach (OleDbCommand cmd in commands.Values) cmd.Dispose();
+            foreach (DbCommand cmd in commands.Values) cmd.Dispose();
             conn.Dispose();
         }
 
@@ -145,7 +134,7 @@ namespace CrazyKTV_SongMgr
         {
             var fields = Fields(columns);
             string sql = "insert into ktv_Song ( " + string.Join(", ", fields.ConvertAll(f => f.Name)) + " ) values ( " + string.Join(", ", fields.ConvertAll(f => "@" + f.Name.Replace("_", ""))) + " )";
-            return Execute(sql, cmd => { foreach (var f in fields) cmd.Parameters.AddWithValue("@" + f.Name.Replace("_", ""), f.Value(song)); });
+            return Execute(sql, cmd => { foreach (var f in fields) cmd.Parameters.AddWithValue("@" + f.Name.Replace("_", ""), ParamValue(f.Column, f.Value(song))); });
         }
 
         /// <summary>
@@ -160,7 +149,7 @@ namespace CrazyKTV_SongMgr
             string whereId = (song.OldId != "") ? song.OldId : song.Id;
             return Execute(sql, cmd =>
             {
-                foreach (var f in fields) cmd.Parameters.AddWithValue("@" + f.Name.Replace("_", ""), f.Value(song));
+                foreach (var f in fields) cmd.Parameters.AddWithValue("@" + f.Name.Replace("_", ""), ParamValue(f.Column, f.Value(song)));
                 cmd.Parameters.AddWithValue("@WhereSongId", whereId);
             });
         }
@@ -276,15 +265,26 @@ namespace CrazyKTV_SongMgr
             return list;
         }
 
-        /// <summary>One statement at a time: an OleDbConnection is not safe to share between threads.</summary>
-        private int Execute(string sql, Action<OleDbCommand> bind)
+        /// <summary>
+        /// The value bound for a ktv_Song column. Access converts the text itself; SQLite keeps text as given,
+        /// and a Song_CreatDate such as "2024/11/1 下午 03:04:05" would not read back as a DATETIME, so on SQLite
+        /// the date goes in as a DateTime.
+        /// </summary>
+        private object ParamValue(SongColumns column, string value)
+        {
+            if (column == SongColumns.CreatDate && Db.IsSQLite(conn) && DateTime.TryParse(value, out DateTime date)) return date;
+            return value;
+        }
+
+        /// <summary>One statement at a time: a DbConnection is not safe to share between threads.</summary>
+        private int Execute(string sql, Action<DbCommand> bind)
         {
             lock (commands)
             {
-                OleDbCommand cmd;
+                DbCommand cmd;
                 if (!commands.TryGetValue(sql, out cmd))
                 {
-                    cmd = new OleDbCommand(sql, conn);
+                    cmd = Db.Command(sql, conn);
                     commands[sql] = cmd;
                 }
                 cmd.Parameters.Clear();

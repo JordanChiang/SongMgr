@@ -2,7 +2,7 @@ using HtmlAgilityPack;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -178,11 +178,11 @@ namespace CrazyKTV_SongMgr
                             list.Add(str);
                         }
 
-                        OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
-                        OleDbCommand cmd = new OleDbCommand();
+                        DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
+                        DbCommand cmd = null;
                         string sqlColumnStr = "Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle";
                         string SongUpdateSqlStr = "update ktv_Singer set " + sqlColumnStr + " where Singer_Id = @SingerId";
-                        cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+                        cmd = Db.Command(SongUpdateSqlStr, conn);
                         List<string> valuelist = new List<string>();
 
                         foreach (string str in list)
@@ -238,11 +238,11 @@ namespace CrazyKTV_SongMgr
                             list.Add(str);
                         }
 
-                        OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvSongMgrDatabaseFile, "");
-                        OleDbCommand cmd = new OleDbCommand();
+                        DbConnection conn = Db.OpenConn(Global.CrazyktvSongMgrDatabaseFile, "");
+                        DbCommand cmd = null;
                         string sqlColumnStr = "Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle";
                         string SongUpdateSqlStr = "update ktv_AllSinger set " + sqlColumnStr + " where Singer_Id = @SingerId";
-                        cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+                        cmd = Db.Command(SongUpdateSqlStr, conn);
                         List<string> valuelist = new List<string>();
 
                         foreach (string str in list)
@@ -387,8 +387,8 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
 
             var query = from row in Global.SongDT.AsEnumerable()
-                         where row.Field<byte>("Song_Track").Equals(1) ||
-                               row.Field<byte>("Song_Track").Equals(2)
+                         where Convert.ToInt32(row["Song_Track"]) == 1 ||
+                               Convert.ToInt32(row["Song_Track"]) == 2
                          select row;
 
             if (query.Count<DataRow>() > 0)
@@ -623,7 +623,7 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.SongDT = new DataTable();
                         string SongQuerySqlStr = "select Song_Id, Song_Path, Song_SongName, Song_Singer, Song_Volume, Song_Track, Song_Lang, Song_FileName, Song_SingerType, Song_SongType from ktv_Song order by Song_Id";
-                        Global.SongDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                        Global.SongDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
                         var FavoriteImportTask = Task.Factory.StartNew(() => SongMaintenance_FavoriteImportTask());
                         FavoriteImportTask.Wait();
@@ -1544,7 +1544,7 @@ namespace CrazyKTV_SongMgr
             List<string> UnusedFileList = new List<string>();
 
             string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_FileName, Song_Path from ktv_Song order by Song_Id";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
             {
                 Parallel.ForEach(Global.CrazyktvSongLangList, (langstr, loopState) =>
                 {
@@ -1609,7 +1609,7 @@ namespace CrazyKTV_SongMgr
 
             string sqlColumnStr = "Remote_Id, Remote_Subject, Remote_Controler, Remote_Controler2, Remote_Name";
             string RemoteQuerySqlStr = "select " + sqlColumnStr + " from ktv_Remote";
-            DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, RemoteQuerySqlStr, "");
+            DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, RemoteQuerySqlStr, "");
 
             if (dt.Rows.Count > 0)
             {
@@ -1675,13 +1675,12 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
             List<string> Addlist = new List<string>();
 
-            OleDbConnection conn = new OleDbConnection();
-            OleDbCommand cmd = new OleDbCommand();
-            OleDbCommand Versioncmd = new OleDbCommand();
+            DbConnection conn = null;
+            DbCommand cmd = null;
 
-            conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
+            conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
             string TruncateSqlStr = "delete * from ktv_Remote";
-            cmd = new OleDbCommand(TruncateSqlStr, conn);
+            cmd = Db.Command(TruncateSqlStr, conn);
             cmd.ExecuteNonQuery();
 
             StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\Remote.txt", Encoding.UTF8); ;
@@ -1695,7 +1694,7 @@ namespace CrazyKTV_SongMgr
             string sqlColumnStr = "Remote_Id, Remote_Subject, Remote_Controler, Remote_Controler2, Remote_Name";
             string sqlValuesStr = "@RemoteId, @RemoteSubject, @RemoteControler, @RemoteControler2, @RemoteName";
             string RemoteAddSqlStr = "insert into ktv_Remote ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-            cmd = new OleDbCommand(RemoteAddSqlStr, conn);
+            cmd = Db.Command(RemoteAddSqlStr, conn);
 
             foreach (string AddStr in Addlist)
             {
@@ -1735,7 +1734,7 @@ namespace CrazyKTV_SongMgr
 
             string sqlColumnStr = "Word, Code, Spell, PenStyle, SortIdx, Strokes";
             string PhoneticsQuerySqlStr = "select " + sqlColumnStr + " from ktv_Phonetics order by Code, SortIdx";
-            DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, PhoneticsQuerySqlStr, "");
+            DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, PhoneticsQuerySqlStr, "");
 
             if (dt.Rows.Count > 0)
             {
@@ -1802,13 +1801,13 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
             List<string> Addlist = new List<string>();
 
-            OleDbConnection conn = new OleDbConnection();
-            OleDbCommand cmd = new OleDbCommand();
-            OleDbCommand Versioncmd = new OleDbCommand();
+            DbConnection conn = null;
+            DbCommand cmd = null;
+            DbCommand Versioncmd = null;
 
-            conn = CommonFunc.OleDbOpenConn(Global.CrazyktvSongMgrDatabaseFile, "");
+            conn = Db.OpenConn(Global.CrazyktvSongMgrDatabaseFile, "");
             string TruncateSqlStr = "delete * from ktv_Phonetics";
-            cmd = new OleDbCommand(TruncateSqlStr, conn);
+            cmd = Db.Command(TruncateSqlStr, conn);
             cmd.ExecuteNonQuery();
 
             StreamReader sr;
@@ -1830,7 +1829,7 @@ namespace CrazyKTV_SongMgr
             string sqlColumnStr = "Word, Code, Spell, PenStyle, SortIdx, Strokes";
             string sqlValuesStr = "@Word, @Code, @Spell, @PenStyle, @SortIdx, @Strokes";
             string RemoteAddSqlStr = "insert into ktv_Phonetics ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-            cmd = new OleDbCommand(RemoteAddSqlStr, conn);
+            cmd = Db.Command(RemoteAddSqlStr, conn);
 
             foreach (string AddStr in Addlist)
             {
@@ -1840,7 +1839,7 @@ namespace CrazyKTV_SongMgr
                     case "ktv_Version":
                         string VersionSqlStr = "PhoneticsDB = @PhoneticsDB";
                         string VersionUpdateSqlStr = "update ktv_Version set " + VersionSqlStr + " where Id = @Id";
-                        Versioncmd = new OleDbCommand(VersionUpdateSqlStr, conn);
+                        Versioncmd = Db.Command(VersionUpdateSqlStr, conn);
                         Versioncmd.Parameters.AddWithValue("@PhoneticsDB", list[1]);
                         Versioncmd.Parameters.AddWithValue("@Id", "1");
                         Versioncmd.ExecuteNonQuery();
@@ -2099,8 +2098,8 @@ namespace CrazyKTV_SongMgr
             string UserId = "";
             string UserName = "";
 
-            OleDbConnection conn = new OleDbConnection();
-            OleDbCommand cmd = new OleDbCommand();
+            DbConnection conn = null;
+            DbCommand cmd = null;
 
             switch (SongMaintenance_Favorite_Button.Text)
             {
@@ -2129,7 +2128,7 @@ namespace CrazyKTV_SongMgr
                         if (AddUser)
                         {
                             SongQuerySqlStr = "select User_Id, User_Name from ktv_User";
-                            dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                            dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
                             List<string> UserIdList = new List<string>();
                             foreach (DataRow row in dt.Rows)
@@ -2152,11 +2151,11 @@ namespace CrazyKTV_SongMgr
 
                             if (UserId != "")
                             {
-                                conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
+                                conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
                                 string sqlColumnStr = "User_Id, User_Name";
                                 string sqlValuesStr = "@UserId, @UserName";
                                 string UserAddSqlStr = "insert into ktv_User ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-                                cmd = new OleDbCommand(UserAddSqlStr, conn);
+                                cmd = Db.Command(UserAddSqlStr, conn);
 
                                 cmd.Parameters.AddWithValue("@UserId", UserId);
                                 cmd.Parameters.AddWithValue("@UserName", UserName);
@@ -2198,7 +2197,7 @@ namespace CrazyKTV_SongMgr
                         if (MessageBox.Show("你確定要移除此最愛用戶【" + UserName + "】及其所有最愛歌曲嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                         {
                             SongQuerySqlStr = "select User_Id, User_Name from ktv_User";
-                            dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                            dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
                             var query = from row in dt.AsEnumerable()
                                         where row.Field<string>("User_Name").Equals(UserName)
@@ -2215,9 +2214,9 @@ namespace CrazyKTV_SongMgr
 
                             if (UserId != "")
                             {
-                                conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
+                                conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
                                 string UserRemoveSqlStr = "delete from ktv_User where User_Id = @UserId and User_Name = @UserName";
-                                cmd = new OleDbCommand(UserRemoveSqlStr, conn);
+                                cmd = Db.Command(UserRemoveSqlStr, conn);
 
                                 cmd.Parameters.AddWithValue("@UserId", UserId);
                                 cmd.Parameters.AddWithValue("@UserName", UserName);
@@ -2225,7 +2224,7 @@ namespace CrazyKTV_SongMgr
                                 cmd.Parameters.Clear();
 
                                 SongQuerySqlStr = "select User_Id, Song_Id from ktv_Favorite";
-                                dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                                dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
                                 List<string> list = new List<string>();
 
@@ -2242,7 +2241,7 @@ namespace CrazyKTV_SongMgr
 
 
                                     string FavoriteRemoveSqlStr = "delete from ktv_Favorite where User_Id = @UserId and Song_Id = @SongId";
-                                    cmd = new OleDbCommand(FavoriteRemoveSqlStr, conn);
+                                    cmd = Db.Command(FavoriteRemoveSqlStr, conn);
 
                                     foreach (string SongId in list)
                                     {
@@ -2296,7 +2295,7 @@ namespace CrazyKTV_SongMgr
             List<string> UserIDList = new List<string>();
 
             string SongQuerySqlStr = "select User_Id, User_Name from ktv_User";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
@@ -2319,7 +2318,7 @@ namespace CrazyKTV_SongMgr
             }
 
             SongQuerySqlStr = "select User_Id, Song_Id from ktv_Favorite";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
             {
                 if (dt.Rows.Count > 0)
                 {
@@ -2419,19 +2418,19 @@ namespace CrazyKTV_SongMgr
             List<string> list = new List<string>();
             List<string> Addlist = new List<string>();
 
-            OleDbConnection conn = new OleDbConnection();
-            OleDbCommand Ucmd = new OleDbCommand();
-            OleDbCommand Fcmd = new OleDbCommand();
+            DbConnection conn = null;
+            DbCommand Ucmd = null;
+            DbCommand Fcmd = null;
 
             string TruncateSqlStr = "";
 
-            conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
+            conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
             TruncateSqlStr = "delete * from ktv_User";
-            Ucmd = new OleDbCommand(TruncateSqlStr, conn);
+            Ucmd = Db.Command(TruncateSqlStr, conn);
             Ucmd.ExecuteNonQuery();
 
             TruncateSqlStr = "delete * from ktv_Favorite";
-            Fcmd = new OleDbCommand(TruncateSqlStr, conn);
+            Fcmd = Db.Command(TruncateSqlStr, conn);
             Fcmd.ExecuteNonQuery();
 
             StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\Favorite.txt", Encoding.UTF8);
@@ -2444,12 +2443,12 @@ namespace CrazyKTV_SongMgr
             string UserColumnStr = "User_Id, User_Name";
             string UserValuesStr = "@UserId, @UserName";
             string UserAddSqlStr = "insert into ktv_User ( " + UserColumnStr + " ) values ( " + UserValuesStr + " )";
-            Ucmd = new OleDbCommand(UserAddSqlStr, conn);
+            Ucmd = Db.Command(UserAddSqlStr, conn);
 
             string FavoriteColumnStr = "User_Id, Song_Id";
             string FavoriteValuesStr = "@UserId, @SongId";
             string FavoriteAddSqlStr = "insert into ktv_Favorite ( " + FavoriteColumnStr + " ) values ( " + FavoriteValuesStr + " )";
-            Fcmd = new OleDbCommand(FavoriteAddSqlStr, conn);
+            Fcmd = Db.Command(FavoriteAddSqlStr, conn);
 
             foreach (string AddStr in Addlist)
             {
@@ -2649,7 +2648,7 @@ namespace CrazyKTV_SongMgr
                 List<string> CUpdateList = new List<string>();
                 List<string> TUpdateList = new List<string>();
                 string SqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox";
-                using (DataTable CashboxDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
+                using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
                 {
                     // 國語新歌排行
                     if (clist.Count > 0)
@@ -2670,7 +2669,7 @@ namespace CrazyKTV_SongMgr
 
                 if (CUpdateList.Count > 0 || TUpdateList.Count > 0)
                 {
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
                     {
                         if (CUpdateList.Count > 0)
                         {
@@ -2839,7 +2838,7 @@ namespace CrazyKTV_SongMgr
                 List<string> CUpdateList = new List<string>();
                 List<string> TUpdateList = new List<string>();
                 string SqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox";
-                using (DataTable CashboxDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
+                using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
                 {
                     // 國語新歌排行
                     if (clist.Count > 0)
@@ -2860,7 +2859,7 @@ namespace CrazyKTV_SongMgr
 
                 if (CUpdateList.Count > 0 || TUpdateList.Count > 0)
                 {
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
                     {
                         if (CUpdateList.Count > 0)
                         {
@@ -3077,7 +3076,7 @@ namespace CrazyKTV_SongMgr
                 List<string> EUpdateList = new List<string>();
                 List<string> JUpdateList = new List<string>();
                 string SqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox";
-                using (DataTable CashboxDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
+                using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
                 {
                     // 粵語新歌排行
                     if (hlist.Count > 0)
@@ -3105,7 +3104,7 @@ namespace CrazyKTV_SongMgr
 
                 if (HUpdateList.Count > 0 || EUpdateList.Count > 0 || JUpdateList.Count > 0)
                 {
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
                     {
                         if (HUpdateList.Count > 0)
                         {
@@ -3270,7 +3269,7 @@ namespace CrazyKTV_SongMgr
                 List<string> C56UpdateList = new List<string>();
                 List<string> T56UpdateList = new List<string>();
                 string SqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox";
-                using (DataTable CashboxDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
+                using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
                 {
                     // 三四年級國語金曲
                     if (c34list.Count > 0)
@@ -3307,7 +3306,7 @@ namespace CrazyKTV_SongMgr
 
                 if (C34UpdateList.Count > 0 || T34UpdateList.Count > 0 || C56UpdateList.Count > 0 || T56UpdateList.Count > 0)
                 {
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
                     {
                         if (C34UpdateList.Count > 0)
                         {
@@ -3398,7 +3397,7 @@ namespace CrazyKTV_SongMgr
                 List<string> UpdateCashboxIdList = new List<string>();
                 string UpdateDate = string.Empty;
                 string SqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox";
-                using (DataTable CashboxDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
+                using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
                 {
                     if (DateItem != "")
                     {
@@ -3446,7 +3445,7 @@ namespace CrazyKTV_SongMgr
                     }
                     UpdateCashboxIdList.Clear();
 
-                    using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
                     {
                         if (UpdateList.Count > 0)
                         {
@@ -3563,10 +3562,10 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, "");
+            DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
             string sqlColumnStr = "Langauage_Name = @LangauageName, Langauage_KeyWord = @LangauageKeyWord";
             string SongUpdateSqlStr = "update ktv_Langauage set " + sqlColumnStr + " where Langauage_Id = @LangauageId";
-            OleDbCommand cmd = new OleDbCommand(SongUpdateSqlStr, conn);
+            DbCommand cmd = Db.Command(SongUpdateSqlStr, conn);
 
             foreach (string str in Global.CrazyktvSongLangList)
             {
@@ -3896,7 +3895,7 @@ namespace CrazyKTV_SongMgr
         {
             Global.SongDT = new DataTable();
             string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_Track, Song_SongType, Song_Volume, Song_PlayCount, Song_FileName, Song_Path, Song_ReplayGain from ktv_Song order by Song_Id";
-            Global.SongDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+            Global.SongDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
             Global.SingerList = new List<string>();
             Global.SingerLowCaseList = new List<string>();
@@ -3904,7 +3903,7 @@ namespace CrazyKTV_SongMgr
 
             Global.SingerDT = new DataTable();
             string SongSingerQuerySqlStr = "select Singer_Id, Singer_Name, Singer_Type from ktv_Singer";
-            Global.SingerDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, "");
+            Global.SingerDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, "");
 
             foreach (DataRow row in Global.SingerDT.AsEnumerable())
             {
@@ -3919,7 +3918,7 @@ namespace CrazyKTV_SongMgr
 
             Global.AllSingerDT = new DataTable();
             string SongAllSingerQuerySqlStr = "select Singer_Id, Singer_Name, Singer_Type from ktv_AllSinger";
-            Global.AllSingerDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongAllSingerQuerySqlStr, "");
+            Global.AllSingerDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongAllSingerQuerySqlStr, "");
 
             foreach (DataRow row in Global.AllSingerDT.AsEnumerable())
             {
@@ -3967,7 +3966,7 @@ namespace CrazyKTV_SongMgr
                 List<string> ItemList = new List<string>();
 
                 string QuerySqlStr = "SELECT First(Song_CreatDate) AS Song_CreatDate, Count(Song_CreatDate) AS Song_CreatDateCount FROM ktv_Cashbox GROUP BY Song_CreatDate HAVING (Count(Song_CreatDate)>0) ORDER BY First(Song_CreatDate) desc";
-                using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, QuerySqlStr, ""))
+                using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, QuerySqlStr, ""))
                 {
                     if (dt.Rows.Count > 0)
                     {
@@ -4092,10 +4091,10 @@ namespace CrazyKTV_SongMgr
         }
 
 
-        public static void UpdateFavoriteData(OleDbConnection conn, string userid, string username, List<string> songidlist)
+        public static void UpdateFavoriteData(DbConnection conn, string userid, string username, List<string> songidlist)
         {
             string TruncateSqlStr = "delete from ktv_User where User_Id = @UserId";
-            using (OleDbCommand Ucmd = new OleDbCommand(TruncateSqlStr, conn))
+            using (DbCommand Ucmd = Db.Command(TruncateSqlStr, conn))
             {
                 Ucmd.Parameters.AddWithValue("@UserId", userid);
                 Ucmd.ExecuteNonQuery();
@@ -4103,7 +4102,7 @@ namespace CrazyKTV_SongMgr
             }
 
             TruncateSqlStr = "delete from ktv_Favorite where User_Id = @UserId";
-            using (OleDbCommand Fcmd = new OleDbCommand(TruncateSqlStr, conn))
+            using (DbCommand Fcmd = Db.Command(TruncateSqlStr, conn))
             {
                 Fcmd.Parameters.AddWithValue("@UserId", userid);
                 Fcmd.ExecuteNonQuery();
@@ -4111,7 +4110,7 @@ namespace CrazyKTV_SongMgr
             }
 
             string AddSqlStr = "insert into ktv_User ( User_Id, User_Name ) values ( @UserId, @UserName )";
-            using (OleDbCommand Ucmd = new OleDbCommand(AddSqlStr, conn))
+            using (DbCommand Ucmd = Db.Command(AddSqlStr, conn))
             {
                 Ucmd.Parameters.AddWithValue("@UserId", userid);
                 Ucmd.Parameters.AddWithValue("@UserName", username);
@@ -4120,7 +4119,7 @@ namespace CrazyKTV_SongMgr
             }
 
             AddSqlStr = "insert into ktv_Favorite ( User_Id, Song_Id ) values ( @UserId, @SongId )";
-            using (OleDbCommand Fcmd = new OleDbCommand(AddSqlStr, conn))
+            using (DbCommand Fcmd = Db.Command(AddSqlStr, conn))
             {
                 foreach (string songid in songidlist)
                 {

@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CrazyKTV_MediaKit.DirectShow.Controls;
 using CrazyKTV_MediaKit.DirectShow.MediaPlayers;
-using System.Data.OleDb;
+using System.Data.Common;
 
 namespace CrazyKTV_SongMgr
 {

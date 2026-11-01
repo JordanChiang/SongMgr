@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -68,7 +68,7 @@ namespace CrazyKTV_SongMgr
 
                 DataTable dt = new DataTable();
                 string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_FileName, Song_Path from ktv_Song order by Song_Id";
-                dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
                 System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongMonitor_CheckCurSongTask] Loaded DB song records count: {dt?.Rows.Count ?? 0}");
 
                 List<string> RemoveSongIdList = new List<string>();
@@ -211,7 +211,7 @@ namespace CrazyKTV_SongMgr
                 {
                     Global.SongMonitorDT = new DataTable();
                     SongQuerySqlStr = "select Song_Id, Song_Lang, Song_FileName, Song_Path from ktv_Song order by Song_Id";
-                    Global.SongMonitorDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                    Global.SongMonitorDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
                     System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongMonitor_CheckCurSongTask] Global.SongMonitorDT initialized with {Global.SongMonitorDT?.Rows.Count ?? 0} rows");
 
                     this.BeginInvoke((Action)delegate()
@@ -277,7 +277,7 @@ namespace CrazyKTV_SongMgr
 
                         Global.SongMonitorDT = new DataTable();
                         string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_FileName, Song_Path from ktv_Song order by Song_Id";
-                        Global.SongMonitorDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                        Global.SongMonitorDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
                         if (!Global.SongMonitorTimer.Enabled)
                         {
@@ -527,7 +527,7 @@ namespace CrazyKTV_SongMgr
 
                                 Global.SongMonitorDT = new DataTable();
                                 string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_FileName, Song_Path from ktv_Song order by Song_Id";
-                                Global.SongMonitorDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+                                Global.SongMonitorDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
 
                                 Common_SwitchSetUI(true);
                                 Global.SongMonitorTimer.Start();

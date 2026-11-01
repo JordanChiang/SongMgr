@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -189,7 +189,7 @@ namespace CrazyKTV_SongMgr
                 try
                 {
                     string DatabaseFile = SingerTable.Default.DatabaseFile;
-                    using (DataTable dt = CommonFunc.GetOleDbDataTable(DatabaseFile, SingerQuerySqlStr, ""))
+                    using (DataTable dt = Db.GetDataTable(DatabaseFile, SingerQuerySqlStr, ""))
                     {
                         if (dt.Rows.Count == 0)
                         {
@@ -351,7 +351,7 @@ namespace CrazyKTV_SongMgr
                             string SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Singer = '" + OldSingerName + "' or InStr(1,LCase(Song_Singer),LCase('&" + OldSingerName + "'),0) <>0 or InStr(1,LCase(Song_Singer),LCase('" + OldSingerName + "&'),0) <>0";
                             List<string> SyncValuelist = new List<string>();
 
-                            using (DataTable SyncDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                            using (DataTable SyncDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
                             {
                                 if (SyncDT.Rows.Count > 0)
                                 {
@@ -653,7 +653,7 @@ namespace CrazyKTV_SongMgr
 
             string sqlColumnStr = "Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle";
             string SingerQuerySqlStr = "select " + sqlColumnStr + " from " + SingerTable.Default.Name + " order by Singer_Type, Singer_Name";
-            DataTable dt = CommonFunc.GetOleDbDataTable(SingerTable.Default.DatabaseFile, SingerQuerySqlStr, "");
+            DataTable dt = Db.GetDataTable(SingerTable.Default.DatabaseFile, SingerQuerySqlStr, "");
 
             if (dt.Rows.Count > 0)
             {
@@ -820,7 +820,7 @@ namespace CrazyKTV_SongMgr
         private void SingerMgr_RebuildSingerLastNameTask()
         {
             string SingerQuerySqlStr = "SELECT First(Song_Singer) AS Song_Singer, First(Song_SingerType) AS Song_SingerType, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING First(Song_SingerType)<=10 AND First(Song_SingerType)<>8 AND First(Song_SingerType)<>9 AND Count(Song_Singer)>0 ORDER BY First(Song_SingerType), First(Song_Singer)";
-            using (DataTable SingerDT = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SingerQuerySqlStr, ""))
+            using (DataTable SingerDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SingerQuerySqlStr, ""))
             {
                 if (SingerDT.Rows.Count > 0)
                 {
@@ -920,10 +920,10 @@ namespace CrazyKTV_SongMgr
                             }
                         }
 
-                        using (OleDbConnection conn = CommonFunc.OleDbOpenConn(Global.CrazyktvDatabaseFile, ""))
+                        using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
                         {
                             string TruncateSqlStr = "delete * from ktv_SingerName";
-                            using (OleDbCommand cmd = new OleDbCommand(TruncateSqlStr, conn))
+                            using (DbCommand cmd = Db.Command(TruncateSqlStr, conn))
                             {
                                 cmd.ExecuteNonQuery();
                             }
@@ -932,7 +932,7 @@ namespace CrazyKTV_SongMgr
                             string sqlValuesStr = "@SingerNameId, @SingerNameNum, @SingerNameName";
                             string SingerNameAddSqlStr = "insert into ktv_SingerName ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
 
-                            using (OleDbCommand cmd = new OleDbCommand(SingerNameAddSqlStr, conn))
+                            using (DbCommand cmd = Db.Command(SingerNameAddSqlStr, conn))
                             {
                                 List<string> list;
                                 foreach (string RebuildStr in RebuildList)
@@ -1318,7 +1318,7 @@ namespace CrazyKTV_SongMgr
             SingerTypeList = new List<string>();
 
             string SongSingerQuerySqlStr = "select Singer_Id, Singer_Name, Singer_Type from ktv_Singer";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongSingerQuerySqlStr, ""))
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {
@@ -1335,7 +1335,7 @@ namespace CrazyKTV_SongMgr
             AllSingerTypeList = new List<string>();
 
             string SongAllSingerQuerySqlStr = "select Singer_Id, Singer_Name, Singer_Type from ktv_AllSinger";
-            using (DataTable dt = CommonFunc.GetOleDbDataTable(Global.CrazyktvSongMgrDatabaseFile, SongAllSingerQuerySqlStr, ""))
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongAllSingerQuerySqlStr, ""))
             {
                 foreach (DataRow row in dt.AsEnumerable())
                 {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Common;
 using System.Drawing;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -34,7 +34,7 @@ namespace CrazyKTV_SongMgr
                         SongDBConverter_StartConv_Button.Enabled = false;
                         SongQuerySqlStr = "select Song_ID, Song_Type, Song_Singer, Song_SingerList, Song_Title from Tbl_Song";
 
-                        list = CommonFunc.GetOleDbTableList(opd.FileName, "tmwcmgumbonqd");
+                        list = Db.GetTableList(opd.FileName, "tmwcmgumbonqd");
 
                         if (list.IndexOf("Tbl_Song") >= 0)
                         {
@@ -47,7 +47,7 @@ namespace CrazyKTV_SongMgr
 
                         if (SongDBConverter_Tooltip_Label.Text != "你選取的來源資料庫不是 JetKTV 資料庫!")
                         {
-                            using (DataTable dt = CommonFunc.GetOleDbDataTable(opd.FileName, SongQuerySqlStr, "tmwcmgumbonqd"))
+                            using (DataTable dt = Db.GetDataTable(opd.FileName, SongQuerySqlStr, "tmwcmgumbonqd"))
                             {
                                 if (dt.Rows.Count > 0)
                                 {
@@ -67,7 +67,7 @@ namespace CrazyKTV_SongMgr
                         SongDBConverter_StartConv_Button.Enabled = false;
                         SongQuerySqlStr = "select Song_ID, Song_Title, Song_Singer, Song_Channel, Song_Type, Song_FileName, Song_Count, Song_Path, Song_CreateDate, Song_Chorus, Song_Volume from Tbl_Song";
 
-                        list = CommonFunc.GetOleDbTableList(opd.FileName, "");
+                        list = Db.GetTableList(opd.FileName, "");
 
                         bool DBError = false;
                         List<string> TBList = new List<string>() { "PhonAlpha", "PhonSpell", "Tbl_Extension", "Tbl_KeyName", "Tbl_Name", "Tbl_Remote2", "Tbl_Singer", "Tbl_Song", "Tbl_SongPath", "Tbl_Strokes" };
@@ -87,7 +87,7 @@ namespace CrazyKTV_SongMgr
                         else
                         {
                             if (SongDBConverter_Tooltip_Label.Text == "你選取的來源資料庫不是 HomeKara2 資料庫!") SongDBConverter_Tooltip_Label.Text = "";
-                            using (DataTable dt = CommonFunc.GetOleDbDataTable(opd.FileName, SongQuerySqlStr, ""))
+                            using (DataTable dt = Db.GetDataTable(opd.FileName, SongQuerySqlStr, ""))
                             {
                                 if (dt.Rows.Count > 0)
                                 {
@@ -122,7 +122,7 @@ namespace CrazyKTV_SongMgr
 
                 bool CrazyktvDatabaseError = false;
                 List<string> TableList = new List<string>() { "ktv_Favorite", "ktv_Langauage", "ktv_Phonetics", "ktv_Remote", "ktv_Singer", "ktv_SingerName", "ktv_Song", "ktv_Swan", "ktv_User", "ktv_Words" };
-                List<string> CrazyktvDBTableList = new List<string>(CommonFunc.GetOleDbTableList(opd.FileName, ""));
+                List<string> CrazyktvDBTableList = new List<string>(Db.GetTableList(opd.FileName, ""));
 
                 foreach (string TableName in TableList)
                 {
@@ -141,7 +141,7 @@ namespace CrazyKTV_SongMgr
                 if (SongDBConverter_Tooltip_Label.Text != "你選取的目的資料庫不是 CrazyKTV 資料庫!")
                 {
                     string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_Singer, Song_SongName, Song_SongType from ktv_Song";
-                    using (DataTable dt = CommonFunc.GetOleDbDataTable(opd.FileName, SongQuerySqlStr, ""))
+                    using (DataTable dt = Db.GetDataTable(opd.FileName, SongQuerySqlStr, ""))
                     {
                         if (dt.Rows.Count > 0)
                         {
@@ -416,7 +416,7 @@ namespace CrazyKTV_SongMgr
 
             DataTable dt = new DataTable();
             string SingerQuerySqlStr = "SELECT First(Song_Singer) AS Song_Singer, First(Song_SingerType) AS Song_SingerType, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING (((First(Song_SingerType))<>3) AND ((Count(Song_Singer))>0)) ORDER BY First(Song_SingerType), First(Song_Singer)";
-            dt = CommonFunc.GetOleDbDataTable(SongDestDBFile, SingerQuerySqlStr, "");
+            dt = Db.GetDataTable(SongDestDBFile, SingerQuerySqlStr, "");
             count = dt.Rows.Count;
 
             if (count > 0)

@@ -38,15 +38,20 @@ namespace CrazyKTV_SongMgr
             public Result(Job job, List<(string Table, int Rows)> tables, Exception error) { Job = job; Tables = tables; Error = error; }
         }
 
-        /// <summary>Both databases, written as .db files into the folder of <paramref name="songDatabase"/>.</summary>
+        /// <summary>
+        /// Both databases, written as .db files into the folder of <paramref name="songDatabase"/>. A database
+        /// that is already SQLite is left out: it has nothing to export, and its .db would be the file itself.
+        /// </summary>
         public static List<Job> Jobs(string songDatabase, string songMgrDatabase)
         {
             string dir = Path.GetDirectoryName(songDatabase);
-            return new List<Job>()
+            var jobs = new List<Job>()
             {
                 new Job(songDatabase, Path.Combine(dir, Path.GetFileNameWithoutExtension(songDatabase) + ".db"), CrazySongDBVer),
                 new Job(songMgrDatabase, Path.Combine(dir, Path.GetFileNameWithoutExtension(songMgrDatabase) + ".db"), CrazySongMgrDBVer),
             };
+            jobs.RemoveAll(j => Db.IsSQLite(j.Source));
+            return jobs;
         }
 
         /// <summary>Exports each job in turn; a failed job does not stop the others.</summary>
