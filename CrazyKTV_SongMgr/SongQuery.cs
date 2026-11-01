@@ -141,6 +141,17 @@ namespace CrazyKTV_SongMgr
                     SongQuery_Clear_Button.Enabled = false;
                     SongQuery_Query_Button.PerformClick();
                     break;
+                case "11":
+                    SongQuery_QueryValue_TextBox.ImeMode = ImeMode.OnHalf;
+                    SongQuery_QueryValue_TextBox.Text = "";
+                    SongQuery_QueryValue_TextBox.Enabled = true;
+                    SongQuery_QueryValue_ComboBox.Visible = false;
+                    SongQuery_QueryValue_TextBox.Visible = true;
+                    SongQuery_Paste_Button.Enabled = true;
+                    SongQuery_Clear_Button.Enabled = true;
+                    SongQuery_Query_Button.PerformClick();
+                    SongQuery_QueryValue_TextBox.Focus();
+                    break;
             }
         }
 
@@ -263,6 +274,17 @@ namespace CrazyKTV_SongMgr
         {
             if (Global.CrazyktvDatabaseStatus)
             {
+                if (SongQuery_IsYoutubeMode && SongQuery_EditMode_CheckBox.Checked) SongQuery_EditMode_CheckBox.Checked = false;
+
+                if (SongQuery_QueryType_ComboBox.SelectedValue.ToString() == "11")
+                {
+                    SongQuery.QuerySameFileSong = false;
+                    Global.SongQueryQueryType = "SongQuery";
+                    SongQuery_YoutubeQuery(SongQuery_QueryValue_TextBox.Text);
+                    if (SongQuery_DataGridView.Rows.Count > 0) SongQuery_DataGridView.Focus();
+                    return;
+                }
+
                 SongQuery_QueryType_ComboBox.SelectedIndexChanged -= new EventHandler(SongQuery_QueryType_ComboBox_SelectedIndexChanged);
 
                 SongQuery.QuerySameFileSong = false;
@@ -678,6 +700,12 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_EditMode_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
+            if (SongQuery_IsYoutubeMode)
+            {
+                SongQuery_YoutubeEditModeChanged();
+                return;
+            }
+
             if (SongQuery_EditMode_CheckBox.Checked == true)
             {
                 SongQuery_DataGridView.Size = new Size(Convert.ToInt32(952 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor), Convert.ToInt32(270 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor));
@@ -2731,7 +2759,7 @@ namespace CrazyKTV_SongMgr
                 list.Columns.Add(new DataColumn("Display", typeof(string)));
                 list.Columns.Add(new DataColumn("Value", typeof(int)));
 
-                List<string> ItemList = new List<string>() { "歌曲名稱", "歌手名稱", "歌曲編號", "全部歌曲", "新進歌曲", "合唱歌曲", "歌曲類別", "歌手類別", "歌曲聲道", "錢櫃編號" };
+                List<string> ItemList = new List<string>() { "歌曲名稱", "歌手名稱", "歌曲編號", "全部歌曲", "新進歌曲", "合唱歌曲", "歌曲類別", "歌手類別", "歌曲聲道", "錢櫃編號", "YouTube 歌曲" };
 
                 foreach (string str in ItemList)
                 {

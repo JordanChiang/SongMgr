@@ -19,6 +19,12 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
+            if (SongQuery_IsYoutubeMode)
+            {
+                SongQuery_YoutubeCellFormatting(e);
+                return;
+            }
+
             int val;
             string valStr;
             switch (SongQuery_DataGridView.Columns[e.ColumnIndex].Name)
@@ -56,7 +62,13 @@ namespace CrazyKTV_SongMgr
         {
             if ((e.RowIndex < 0) || (e.ColumnIndex < 0)) return;
 
-            if (e.Button == MouseButtons.Right) 
+            if (SongQuery_IsYoutubeMode)
+            {
+                if (e.Button == MouseButtons.Right) SongQuery_YoutubeShowContextMenu(e);
+                return;
+            }
+
+            if (e.Button == MouseButtons.Right)
             {
                 ContextMenuStrip GridView_ContextMenu;
                 ToolStripMenuItem[] GridView_ContextMenuItem;
@@ -387,6 +399,12 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_DataGridView_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
+            if (SongQuery_IsYoutubeMode)
+            {
+                SongQuery_YoutubeCellDoubleClick(e);
+                return;
+            }
+
             if (SongQuery_EditMode_CheckBox.Checked == false)
             {
                 if (e.RowIndex < 0) return;
@@ -426,6 +444,8 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_DataGridView_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
         {
+            if (SongQuery_IsYoutubeMode) return;
+
             if (e.RowIndex == -1)
             {
                 Global.SongQueryDataGridViewRestoreCurrentRow = SongQuery_DataGridView.CurrentRow.Cells["Song_Id"].Value.ToString();
@@ -444,6 +464,12 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_DataGridView_KeyDown(object sender, KeyEventArgs e)
         {
+            if (SongQuery_IsYoutubeMode)
+            {
+                if (SongQuery_EditMode_CheckBox.Checked && e.KeyCode == Keys.Delete) SongQuery_YoutubeDeleteSelected();
+                return;
+            }
+
             if (SongQuery_EditMode_CheckBox.Checked == true)
             {
                 if (SongQuery_DataGridView.SelectedRows.Count > 0)
@@ -511,6 +537,8 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_DataGridView_SelectionChanged(object sender, EventArgs e)
         {
+            if (SongQuery_IsYoutubeMode) return;
+
             if (SongQuery_EditMode_CheckBox.Checked == true)
             {
                 int SelectedRowsCount = SongQuery_DataGridView.SelectedRows.Count;
@@ -613,6 +641,8 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_DataGridView_Sorted(object sender, EventArgs e)
         {
+            if (SongQuery_IsYoutubeMode) return;
+
             SongQuery_DataGridView.ClearSelection();
             if (Global.SongQueryDataGridViewRestoreCurrentRow != "")
             {

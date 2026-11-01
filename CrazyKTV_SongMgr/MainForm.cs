@@ -419,6 +419,7 @@ namespace CrazyKTV_SongMgr
             SongQuery_QueryType_ComboBox.ValueMember = "Value";
             SongQuery_QueryType_ComboBox.SelectedValue = 1;
             SongQuery_QueryValue_TextBox.ImeMode = ImeMode.OnHalf;
+            SongQuery_InitializeYoutubeEvents();
 
             SongQuery_QueryFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(Global.CrazyktvSongLangList);
             SongQuery_QueryFilter_ComboBox.DisplayMember = "Display";
