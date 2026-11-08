@@ -6,9 +6,11 @@
 
 ### 元件
 
+元件只定義在 `pack-release.ps1` 的 `$components`，程式端依 `update.json` 處理，不寫死元件名稱。要新增或改名元件，只改腳本即可。
+
 | 元件 | 內容 | 多久變一次 |
 |---|---|---|
-| `App` | `CrazyKTV_SongMgr.exe`、`SongMgr\` | 每次發佈 |
+| `App` | 根目錄的檔案（目前只有 `CrazyKTV_SongMgr.exe`，不含 `.pdb`）、`SongMgr\` | 每次發佈 |
 | `Codec_x86` | 影音解碼器 | 很少，換 LAV 版本時才會變 |
 | `Tools` | ffmpeg / ffplay / ffprobe | 很少 |
 
@@ -39,7 +41,7 @@
 | `SongMgr_App_<版本>.zip` | 主程式 | 要 |
 | `Codec_x86_<版本>.zip` | 影音解碼器 | 要 |
 | `Tools_<版本>.zip` | FFmpeg 工具 | 要 |
-| `CrazyKtv_SongMgr<版本>.zip` | 完整包，給手動下載及第一次安裝 | 建議 |
+| `CrazyKtv_SongMgr<版本>.zip` | 完整包，給手動下載及第一次安裝；沒有 `update.json` 時自動更新也只認這個檔名 | **一定要** |
 
 **之後的版本**：通常只有 3 個，例如只改了程式的 2.12.1：
 
@@ -53,11 +55,11 @@ CrazyKtv_SongMgr2.12.1.zip
 
 ### 注意事項
 
-- **每次都要上傳 `update.json`。** 沒有它，自動更新會改成下載完整包。
+- **每次都要上傳 `update.json` 和完整包。** 沒有 `update.json` 時，自動更新會改成下載完整包；`update.json` 讀不到或格式錯誤時，這次不更新，下次啟動再檢查。
 - **不要刪除舊 release 和它的附檔。** 新的 `update.json` 可能還指向舊 release 裡的 `Tools_*.zip` 或 `Codec_x86_*.zip`。
 - **tag 和版本號要一致。** 清單裡的下載網址是用 tag 組出來的，不一致就會下載失敗。
 - 在 `Publish` 資料夾執行過程式留下的 `.cfg`、`.log` 不會被打包。
-- 使用者電腦上的 `SongMgr\CrazySongMgr.mdb`、`SongMgr\CrazySongMgr.db`、`SongMgr\Custom.lang`、`CrazyKTV_SongMgr.cfg` 已經存在時，自動更新不會覆蓋。
+- 使用者電腦上已經存在的參考資料庫、自訂語系和設定檔，自動更新不會覆蓋。清單在 `AppUpdater.KeepExisting`。
 
 ### 參數
 
@@ -97,3 +99,12 @@ powershell -ExecutionPolicy Bypass -File tools\pack-release.ps1 -Tag 2.12.0 -Pre
 ```
 
 自動更新會逐一比對 `files` 裡每個檔案的 SHA256。某個元件有任何檔案不存在或內容不同，才會下載那個元件的 zip；解壓後也會用同一份雜湊值驗證，不符就中止更新。
+
+### 覆蓋檔案
+
+下載並驗證完成後，程式先把會被取代的檔案備份到暫存資料夾，再關閉自己，由批次檔覆蓋：
+
+- 程式有背景工作（例如加歌）時，會等工作完成才詢問更新或關閉程式。
+- 批次檔最多等程式結束 10 分鐘（關閉時會壓縮資料庫）。逾時仍未結束就放棄這次更新，不動任何檔案。
+- 覆蓋失敗（robocopy 結束碼 8 以上）時，把備份還原回程式資料夾，再以 `--update-failed` 啟動舊版並提示使用者。
+- 還原也失敗時保留備份（`%TEMP%\CrazyKTV_SongMgr_Update\backup`），提示使用者手動複製回去。

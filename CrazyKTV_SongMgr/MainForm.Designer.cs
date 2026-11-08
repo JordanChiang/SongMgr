@@ -6917,9 +6917,9 @@
             this.MainCfg_EnableAutoUpdate_CheckBox.Text = "啟用程式自動更新";
             this.MainCfg_EnableAutoUpdate_CheckBox.UseVisualStyleBackColor = true;
             this.MainCfg_EnableAutoUpdate_CheckBox.CheckedChanged += new System.EventHandler(this.MainCfg_EnableAutoUpdate_CheckBox_CheckedChanged);
-            //
+            // 
             // MainCfg_AutoSongFileCount_CheckBox
-            //
+            // 
             this.MainCfg_AutoSongFileCount_CheckBox.AutoSize = true;
             this.MainCfg_AutoSongFileCount_CheckBox.Font = new System.Drawing.Font("微軟正黑體", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.MainCfg_AutoSongFileCount_CheckBox.Location = new System.Drawing.Point(335, 153);

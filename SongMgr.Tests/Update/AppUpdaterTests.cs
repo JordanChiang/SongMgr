@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CrazyKTV_SongMgr;
+using SongMgr.Tests.Support;
 using Xunit;
 
 namespace SongMgr.Tests.Update
@@ -16,14 +17,9 @@ namespace SongMgr.Tests.Update
     /// <summary>程式自動更新: 版本比對、GitHub release 與 update.json 解析、依元件比對下載.</summary>
     public class AppUpdaterTests : IDisposable
     {
-        readonly string dir = Path.Combine(Path.GetTempPath(), "AppUpdaterTests_" + Guid.NewGuid().ToString("N"));
+        readonly string dir = TestEnv.NewTempDir("updater");
 
-        public AppUpdaterTests() => Directory.CreateDirectory(dir);
-
-        public void Dispose()
-        {
-            try { Directory.Delete(dir, true); } catch { }
-        }
+        public void Dispose() => TestEnv.DeleteDir(dir);
 
         string Write(string root, string rel, string content)
         {
@@ -123,6 +119,20 @@ namespace SongMgr.Tests.Update
                 { ""name"": ""CrazyKtv_SongMgr2.11.2.zip"", ""browser_download_url"": ""https://x/full.zip"", ""size"": 5 } ] }");
             Assert.Null(r.ManifestUrl);
             Assert.Equal("https://x/full.zip", r.ZipUrl);
+        }
+
+        [Fact]
+        public void ParseRelease_never_uses_a_component_zip_as_the_full_package()
+        {
+            AppUpdater.ReleaseInfo r = AppUpdater.ParseRelease(@"{ ""tag_name"": ""2.12.0"", ""assets"": [
+                { ""name"": ""Codec_x86_2.12.0.zip"", ""browser_download_url"": ""https://x/codec.zip"", ""size"": 5 },
+                { ""name"": ""update.json"", ""browser_download_url"": ""https://x/update.json"", ""size"": 9 } ] }");
+            Assert.Equal("https://x/update.json", r.ManifestUrl);
+            Assert.Null(r.ZipUrl);
+
+            // 只有元件 zip, 沒有清單也沒有完整包: 無法更新
+            Assert.Null(AppUpdater.ParseRelease(@"{ ""tag_name"": ""2.12.0"", ""assets"": [
+                { ""name"": ""Codec_x86_2.12.0.zip"", ""browser_download_url"": ""https://x/codec.zip"", ""size"": 5 } ] }"));
         }
 
         [Fact]
@@ -238,9 +248,53 @@ namespace SongMgr.Tests.Update
         }
 
         [Fact]
+        public void BackupReplacedFiles_copies_only_files_the_update_overwrites()
+        {
+            string pkg = Path.Combine(dir, "pkg");
+            string app = Path.Combine(dir, "app");
+            string bak = Path.Combine(dir, "bak");
+            Write(pkg, AppUpdater.ExeName, "exe 2.12.0");
+            Write(pkg, "Codec_x86/LAVVideo.ax", "lav 0.80");
+            Write(pkg, "Codec_x86/New.dll", "new");
+            Write(app, AppUpdater.ExeName, "exe 2.11.2");
+            Write(app, "Codec_x86/LAVVideo.ax", "lav 0.79");
+            Write(app, "Tools/ffmpeg.exe", "ffmpeg 7.1");
+            Write(bak, "stale.txt", "上次留下的");
+
+            AppUpdater.BackupReplacedFiles(pkg, app, bak);
+
+            Assert.Equal("exe 2.11.2", File.ReadAllText(AppUpdater.LocalPath(bak, AppUpdater.ExeName)));
+            Assert.Equal("lav 0.79", File.ReadAllText(AppUpdater.LocalPath(bak, "Codec_x86/LAVVideo.ax")));
+            Assert.False(File.Exists(AppUpdater.LocalPath(bak, "Codec_x86/New.dll")));   // 新檔案沒有舊檔可備份
+            Assert.False(File.Exists(AppUpdater.LocalPath(bak, "Tools/ffmpeg.exe")));    // 不會被覆蓋的不備份
+            Assert.False(File.Exists(AppUpdater.LocalPath(bak, "stale.txt")));
+        }
+
+        [Fact]
         public void Script_restarts_with_the_updated_argument()
         {
             Assert.Contains("start \"\" \"%DST%\\" + AppUpdater.ExeName + "\" " + AppUpdater.RestartArg + "\r\n", AppUpdater.ScriptText);
+        }
+
+        [Fact]
+        public void Script_restores_the_backup_when_copying_fails()
+        {
+            string s = AppUpdater.ScriptText;
+            int copy = s.IndexOf("robocopy.exe\" \"%SRC%\" \"%DST%\"");
+            int rollback = s.IndexOf("robocopy.exe\" \"%BAK%\" \"%DST%\"");
+            Assert.True(copy >= 0 && rollback > copy);
+            Assert.StartsWith("\r\nif errorlevel 8 goto rollback\r\n", s.Substring(s.IndexOf("\r\n", copy)));
+            Assert.Contains("start \"\" \"%DST%\\" + AppUpdater.ExeName + "\" " + AppUpdater.FailedArg + "\r\n", s);
+        }
+
+        [Fact]
+        public void Script_gives_up_without_copying_when_the_program_does_not_exit()
+        {
+            string s = AppUpdater.ScriptText;
+            Assert.Contains("if %TRIES% GEQ " + AppUpdater.WaitSeconds + " goto abort\r\n", s);
+            string abort = s.Substring(s.IndexOf(":abort\r\n"), s.IndexOf(":copy\r\n") - s.IndexOf(":abort\r\n"));
+            Assert.DoesNotContain("robocopy", abort);
+            Assert.DoesNotContain("start", abort);
         }
 
         #endregion
@@ -301,6 +355,25 @@ namespace SongMgr.Tests.Update
                 {
                     Directory.Delete(AppUpdater.StageDir, true);
                 }
+            }
+        }
+
+        [Fact]
+        public void A_broken_manifest_means_no_update_rather_than_the_full_package()
+        {
+            using (TinyHttpServer server = new TinyHttpServer())
+            {
+                server.Files["/update.json"] = Encoding.UTF8.GetBytes("not json");
+                AppUpdater.ReleaseInfo release = new AppUpdater.ReleaseInfo
+                {
+                    Version = new Version(2, 12, 0, 0),
+                    ManifestUrl = server.Url + "update.json",
+                    ZipUrl = server.Url + "CrazyKtv_SongMgr2.12.0.zip",
+                };
+                Assert.Null(AppUpdater.GetUpdatePlan(release, Path.Combine(dir, "app")));
+
+                release.ManifestUrl = server.Url + "missing.json";   // 404
+                Assert.Null(AppUpdater.GetUpdatePlan(release, Path.Combine(dir, "app")));
             }
         }
 

@@ -11,6 +11,10 @@ namespace CrazyKTV_SongMgr
         [DllImport("user32.dll")]
         public static extern bool SetProcessDPIAware();
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern int LCMapString(int locale, int dwMapFlags, string lpSrcStr, int cchSrc, StringBuilder lpDestStr, int cchDest);
 

@@ -5,7 +5,7 @@
 .DESCRIPTION
     程式的自動更新會讀 release 的 update.json, 依每個元件的檔案 SHA256 比對使用者電腦上的檔案,
     只下載有變動的元件:
-        App        加歌程式 (CrazyKTV_SongMgr.exe + SongMgr\)
+        App        加歌程式 (根目錄的 CrazyKTV_SongMgr.exe 及設定檔 + SongMgr\)
         Codec_x86  影音解碼器
         Tools      FFmpeg 工具
 
@@ -16,7 +16,7 @@
         1. Visual Studio 以 FolderProfile 發佈 (輸出到 CrazyKTV_SongMgr\Publish)
         2. powershell -ExecutionPolicy Bypass -File tools\pack-release.ps1
         3. 在 GitHub 建立 tag 為版本號 (例如 2.12.0) 的 Release,
-           上傳輸出資料夾裡的所有檔案 (update.json 一定要上傳)
+           上傳輸出資料夾裡的所有檔案 (update.json 與完整包一定要上傳)
 
 .PARAMETER PublishDir
     發佈資料夾, 預設 CrazyKTV_SongMgr\Publish.
@@ -52,9 +52,11 @@ if (-not $OutDir) { $OutDir = Join-Path $PublishDir "ReleaseAssets\$version" }
 $OutDir = [IO.Path]::GetFullPath($OutDir).TrimEnd('\')
 
 # --- 元件定義 (rel 為相對於發佈資料夾的路徑, 以 \ 分隔) ---
+# 元件清單只定義在這裡; 程式端 (AppUpdater) 依 update.json 處理, 不寫死元件名稱.
+# App 收根目錄所有檔案 (目前只有 exe, 以後多出的檔案也會一起收進來, 不含 .pdb) 及 SongMgr\.
 $components = @(
     @{ Name = 'App';       Desc = '加歌程式';               Zip = "SongMgr_App_$version.zip"
-       Match = { param($rel) (($rel -notmatch '\\') -and ($rel -match '\.(exe|dll)$')) -or $rel.StartsWith('SongMgr\', 'OrdinalIgnoreCase') } },
+       Match = { param($rel) (($rel -notmatch '\\') -and ($rel -notmatch '\.pdb$')) -or $rel.StartsWith('SongMgr\', 'OrdinalIgnoreCase') } },
     @{ Name = 'Codec_x86'; Desc = '影音解碼器 (Codec_x86)'; Zip = "Codec_x86_$version.zip"
        Match = { param($rel) $rel.StartsWith('Codec_x86\', 'OrdinalIgnoreCase') } },
     @{ Name = 'Tools';     Desc = 'FFmpeg 工具 (Tools)';    Zip = "Tools_$version.zip"
@@ -146,7 +148,7 @@ foreach ($c in $components) {
     $manifestComponents += [ordered]@{ name = $c.Name; desc = $c.Desc; url = $url; size = $size; files = $files }
 }
 
-# --- 完整安裝包 (給手動下載; 沒有 update.json 的舊版更新程式也會用它) ---
+# --- 完整安裝包 (給手動下載及第一次安裝; 沒有 update.json 時自動更新只認這個檔名, 見 AppUpdater.FullPackagePattern) ---
 $fullZip = "CrazyKtv_SongMgr$version.zip"
 $componentRels = @($allRels | Where-Object { $rel = $_; @($components | Where-Object { & $_.Match $rel }).Count -gt 0 })
 New-Zip (Join-Path $OutDir $fullZip) $componentRels

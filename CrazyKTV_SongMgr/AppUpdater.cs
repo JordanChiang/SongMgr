@@ -2,34 +2,35 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace CrazyKTV_SongMgr
 {
     /// <summary>
     /// 程式自動更新: 從 GitHub Releases 取得最新版本.
-    /// release 附有 update.json 時, 依清單裡每個元件 (主程式 / Codec_x86 / Tools) 的檔案雜湊值
-    /// 比對本機檔案, 只下載有變動的元件; 沒有清單時退回下載整包 zip.
-    /// 下載的檔案解壓到暫存資料夾, 程式結束後由批次檔覆蓋回程式資料夾並重新啟動.
-    /// update.json 與各元件 zip 由 tools\pack-release.ps1 產生.
+    /// release 附有 update.json 時, 依清單裡每個元件的檔案雜湊值比對本機檔案, 只下載有變動的元件;
+    /// 沒有清單時退回下載完整包 zip.
+    /// 下載的檔案解壓到暫存資料夾, 程式結束後由批次檔覆蓋回程式資料夾並重新啟動, 覆蓋失敗時還原原本的檔案.
+    /// 元件的定義、update.json 與各元件 zip 都由 tools\pack-release.ps1 產生.
     /// </summary>
     public static class AppUpdater
     {
         public const string LatestReleaseApi = "https://api.github.com/repos/JordanChiang/SongMgr/releases/latest";
+        public const string ReleasesPage = "https://github.com/JordanChiang/SongMgr/releases/latest";
         public const string ExeName = "CrazyKTV_SongMgr.exe";
         public const string ManifestName = "update.json";
+
+        /// <summary>完整包的檔名, 例如 CrazyKtv_SongMgr2.12.0.zip (由 pack-release.ps1 產生).</summary>
+        public const string FullPackagePattern = @"^CrazyKTV_SongMgr[\d.]+\.zip$";
 
         /// <summary>程式資料夾已有這些檔案時保留不覆蓋 (使用者的參考資料庫、自訂語系及設定).</summary>
         public static readonly string[] KeepExisting =
@@ -81,6 +82,9 @@ namespace CrazyKTV_SongMgr
             return client;
         }
 
+        /// <summary>位元組數轉成 "12.3 MB".</summary>
+        public static string FormatMB(long bytes) => (bytes / 1048576.0).ToString("0.0") + " MB";
+
         #region --- 版本 ---
 
         /// <summary>把 "v2.11.2"、"2.11.2.0"、"2.11" 之類的字串轉成四段版本 (缺的段補 0); 無法解析時回傳 null.</summary>
@@ -89,15 +93,30 @@ namespace CrazyKTV_SongMgr
             if (string.IsNullOrWhiteSpace(text)) return null;
             Match m = Regex.Match(text.Trim(), @"^[vV]?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?");
             if (!m.Success) return null;
-            int Part(int i) => m.Groups[i].Success ? int.Parse(m.Groups[i].Value) : 0;
-            try { return new Version(Part(1), Part(2), Part(3), Part(4)); }
-            catch { return null; }
+            if (!TryPart(m, 1, out int major) || !TryPart(m, 2, out int minor) ||
+                !TryPart(m, 3, out int build) || !TryPart(m, 4, out int revision))
+            {
+                return null;
+            }
+            return new Version(major, minor, build, revision);
+        }
+
+        private static bool TryPart(Match m, int group, out int value)
+        {
+            value = 0;
+            return !m.Groups[group].Success || int.TryParse(m.Groups[group].Value, out value);
         }
 
         public static string CurrentVersionText()
         {
-            try { return FileVersionInfo.GetVersionInfo(Environment.ProcessPath).FileVersion ?? ""; }
-            catch { return ""; }
+            try
+            {
+                return FileVersionInfo.GetVersionInfo(Environment.ProcessPath).FileVersion ?? "";
+            }
+            catch
+            {
+                return "";
+            }
         }
 
         public static Version CurrentVersion() => ParseVersion(CurrentVersionText());
@@ -114,7 +133,7 @@ namespace CrazyKTV_SongMgr
 
         #region --- 取得最新版本資訊 ---
 
-        /// <summary>解析 GitHub releases/latest API 的回應; 草稿、預覽版或沒有 update.json / zip 附檔時回傳 null.</summary>
+        /// <summary>解析 GitHub releases/latest API 的回應; 草稿、預覽版或沒有 update.json / 完整包附檔時回傳 null.</summary>
         public static ReleaseInfo ParseRelease(string json)
         {
             try
@@ -129,10 +148,8 @@ namespace CrazyKTV_SongMgr
                 JArray assets = obj["assets"] as JArray ?? new JArray();
                 JToken manifest = assets.FirstOrDefault(a => string.Equals((string)a["name"], ManifestName, StringComparison.OrdinalIgnoreCase));
 
-                // 沒有清單時用來整包更新的 zip: 優先取名稱含 SongMgr 的完整包
-                List<JToken> zips = assets.Where(a => ((string)a["name"] ?? "").EndsWith(".zip", StringComparison.OrdinalIgnoreCase)).ToList();
-                JToken zip = zips.FirstOrDefault(a => Regex.IsMatch((string)a["name"], @"^CrazyKTV_SongMgr[\d.]+\.zip$", RegexOptions.IgnoreCase))
-                             ?? zips.FirstOrDefault();
+                // 沒有清單時用來整包更新的 zip: 只認完整包, 不能拿元件 zip (例如 Codec_x86_*.zip) 代替
+                JToken zip = assets.FirstOrDefault(a => Regex.IsMatch((string)a["name"] ?? "", FullPackagePattern, RegexOptions.IgnoreCase));
 
                 if (manifest == null && zip == null) return null;
 
@@ -259,7 +276,10 @@ namespace CrazyKTV_SongMgr
             return false;
         }
 
-        /// <summary>依 release 決定要下載哪些元件; 已是最新或無法取得資訊時回傳 null.</summary>
+        /// <summary>
+        /// 依 release 決定要下載哪些元件; 已是最新或無法取得資訊時回傳 null.
+        /// release 有 update.json 卻讀不到或格式錯誤時也回傳 null (下次啟動再檢查), 不改抓完整包.
+        /// </summary>
         public static UpdatePlan GetUpdatePlan(ReleaseInfo release, string appDir)
         {
             UpdatePlan plan = new UpdatePlan { Release = release };
@@ -268,14 +288,14 @@ namespace CrazyKTV_SongMgr
             {
                 string json = GetString(release.ManifestUrl, null);
                 List<Component> comps = json == null ? null : ParseManifest(json);
-                if (comps != null)
-                {
-                    plan.FromManifest = true;
-                    plan.Components.AddRange(comps.Where(c => NeedsUpdate(c, appDir)));
-                    return plan.Components.Count > 0 ? plan : null;
-                }
+                if (comps == null) return null;
+
+                plan.FromManifest = true;
+                plan.Components.AddRange(comps.Where(c => NeedsUpdate(c, appDir)));
+                return plan.Components.Count > 0 ? plan : null;
             }
 
+            // 沒有 update.json 的舊 release: 下載完整包
             if (string.IsNullOrEmpty(release.ZipUrl)) return null;
             plan.Components.Add(new Component { Name = release.ZipName, Url = release.ZipUrl, Size = release.ZipSize });
             return plan;
@@ -286,6 +306,9 @@ namespace CrazyKTV_SongMgr
         #region --- 下載與準備更新檔 ---
 
         public static string StageDir => Path.Combine(Path.GetTempPath(), "CrazyKTV_SongMgr_Update");
+
+        /// <summary>覆蓋前程式資料夾裡會被取代的檔案備份在這裡; 覆蓋與還原都失敗時才會留下.</summary>
+        public static string BackupDir => Path.Combine(StageDir, "backup");
 
         public static bool CanWrite(string dir)
         {
@@ -390,45 +413,89 @@ namespace CrazyKTV_SongMgr
             }
         }
 
+        /// <summary>
+        /// 把程式資料夾裡會被更新檔取代的檔案複製到 backupDir (保持相對路徑), 覆蓋失敗時由批次檔還原.
+        /// 更新檔裡的新檔案沒有對應的舊檔, 不備份; 還原後會留在程式資料夾, 不影響舊版執行.
+        /// </summary>
+        public static void BackupReplacedFiles(string packageRoot, string appDir, string backupDir)
+        {
+            if (Directory.Exists(backupDir)) Directory.Delete(backupDir, true);
+            Directory.CreateDirectory(backupDir);
+
+            foreach (string staged in Directory.GetFiles(packageRoot, "*", SearchOption.AllDirectories))
+            {
+                string rel = Path.GetRelativePath(packageRoot, staged);
+                string current = Path.Combine(appDir, rel);
+                if (!File.Exists(current)) continue;
+
+                string backup = Path.Combine(backupDir, rel);
+                Directory.CreateDirectory(Path.GetDirectoryName(backup));
+                File.Copy(current, backup, true);
+            }
+        }
+
         #endregion
 
         #region --- 程式結束後覆蓋檔案 ---
 
+        /// <summary>批次檔等程式結束的最長秒數; 逾時仍未結束就放棄這次更新, 不動任何檔案.</summary>
+        public const int WaitSeconds = 600;
+
         /// <summary>
-        /// 參數: %1 = 要等待結束的 PID, %2 = 更新檔資料夾, %3 = 程式資料夾, %4 = 暫存資料夾.
+        /// 參數: %1 = 要等待結束的 PID, %2 = 更新檔資料夾, %3 = 程式資料夾, %4 = 暫存資料夾, %5 = 備份資料夾.
+        /// robocopy 結束碼 8 以上表示有檔案複製失敗: 改把備份還原回程式資料夾, 再以 --update-failed 啟動;
+        /// 還原也失敗時保留暫存資料夾 (含備份), 讓使用者手動複製.
+        /// 系統工具一律以 %SystemRoot%\System32 完整路徑呼叫, 避免 PATH 上同名的工具 (例如 Git 的 find) 搶先.
+        /// robocopy 加 /IS /IT: 大小與時間相同的檔案也照樣覆蓋.
         /// 路徑由命令列傳入 (Unicode), 批次檔本身只有 ASCII, 不受主控台字碼頁影響.
         /// </summary>
-        public const string ScriptText =
+        public static readonly string ScriptText =
             "@echo off\r\n" +
             "setlocal\r\n" +
             "set \"PID=%~1\"\r\n" +
             "set \"SRC=%~2\"\r\n" +
             "set \"DST=%~3\"\r\n" +
             "set \"STAGE=%~4\"\r\n" +
+            "set \"BAK=%~5\"\r\n" +
+            "set \"SYS=%SystemRoot%\\System32\"\r\n" +
             "set /a TRIES=0\r\n" +
             ":wait\r\n" +
-            "tasklist /FI \"PID eq %PID%\" /NH 2>nul | find \" %PID% \" >nul\r\n" +
+            "\"%SYS%\\tasklist.exe\" /FI \"PID eq %PID%\" /NH 2>nul | \"%SYS%\\find.exe\" \" %PID% \" >nul\r\n" +
             "if errorlevel 1 goto copy\r\n" +
             "set /a TRIES+=1\r\n" +
-            "if %TRIES% GEQ 120 goto copy\r\n" +
-            "ping -n 2 127.0.0.1 >nul\r\n" +
+            "if %TRIES% GEQ " + WaitSeconds + " goto abort\r\n" +
+            "\"%SYS%\\ping.exe\" -n 2 127.0.0.1 >nul\r\n" +
             "goto wait\r\n" +
+            ":abort\r\n" +
+            "rd /s /q \"%STAGE%\" 2>nul\r\n" +
+            "goto end\r\n" +
             ":copy\r\n" +
-            "robocopy \"%SRC%\" \"%DST%\" /E /R:10 /W:1 /NFL /NDL /NJH /NJS /NP >nul\r\n" +
+            "\"%SYS%\\robocopy.exe\" \"%SRC%\" \"%DST%\" /E /IS /IT /R:10 /W:1 /NFL /NDL /NJH /NJS /NP >nul\r\n" +
+            "if errorlevel 8 goto rollback\r\n" +
             "start \"\" \"%DST%\\" + ExeName + "\" " + RestartArg + "\r\n" +
             "rd /s /q \"%STAGE%\" 2>nul\r\n" +
+            "goto end\r\n" +
+            ":rollback\r\n" +
+            "\"%SYS%\\robocopy.exe\" \"%BAK%\" \"%DST%\" /E /IS /IT /R:10 /W:1 /NFL /NDL /NJH /NJS /NP >nul\r\n" +
+            "if errorlevel 8 goto failed\r\n" +
+            "rd /s /q \"%STAGE%\" 2>nul\r\n" +
+            ":failed\r\n" +
+            "start \"\" \"%DST%\\" + ExeName + "\" " + FailedArg + "\r\n" +
+            ":end\r\n" +
             "(goto) 2>nul & del \"%~f0\"\r\n";
 
-        /// <summary>啟動批次檔; 呼叫後應立即關閉程式, 批次檔會等這個行程結束再覆蓋檔案.</summary>
+        /// <summary>備份會被取代的檔案並啟動批次檔; 呼叫後應立即關閉程式, 批次檔會等這個行程結束再覆蓋檔案.</summary>
         public static void LaunchReplace(string packageRoot, string appDir)
         {
+            BackupReplacedFiles(packageRoot, appDir, BackupDir);
+
             string script = Path.Combine(Path.GetTempPath(), "CrazyKTV_SongMgr_Update.cmd");
             File.WriteAllText(script, ScriptText, Encoding.ASCII);
 
             string Arg(string path) => "\"" + path.TrimEnd('\\') + "\"";
             ProcessStartInfo psi = new ProcessStartInfo("cmd.exe")
             {
-                Arguments = "/c \"" + Arg(script) + " " + Environment.ProcessId + " " + Arg(packageRoot) + " " + Arg(appDir) + " " + Arg(StageDir) + "\"",
+                Arguments = "/c \"" + Arg(script) + " " + Environment.ProcessId + " " + Arg(packageRoot) + " " + Arg(appDir) + " " + Arg(StageDir) + " " + Arg(BackupDir) + "\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -436,9 +503,17 @@ namespace CrazyKTV_SongMgr
             Process.Start(psi);
         }
 
+        /// <summary>以預設瀏覽器開啟網頁; 開不了時顯示網址讓使用者自行前往.</summary>
         public static void OpenPage(string url)
         {
-            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch
+            {
+                MessageBox.Show("無法開啟瀏覽器, 請自行前往:" + Environment.NewLine + url, "開啟下載頁面", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         #endregion
@@ -448,11 +523,15 @@ namespace CrazyKTV_SongMgr
         /// <summary>批次檔重新啟動程式時帶的參數, 讓程式知道要把視窗帶到最上層.</summary>
         public const string RestartArg = "--updated";
 
-        public static bool LaunchedAfterUpdate =>
-            Environment.GetCommandLineArgs().Skip(1).Any(a => string.Equals(a, RestartArg, StringComparison.OrdinalIgnoreCase));
+        /// <summary>覆蓋檔案失敗時批次檔帶的參數, 讓程式告知使用者更新失敗.</summary>
+        public const string FailedArg = "--update-failed";
 
-        [DllImport("user32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        public static bool LaunchedAfterUpdate => HasArg(RestartArg);
+
+        public static bool LaunchedAfterFailedUpdate => HasArg(FailedArg);
+
+        private static bool HasArg(string arg) =>
+            Environment.GetCommandLineArgs().Skip(1).Any(a => string.Equals(a, arg, StringComparison.OrdinalIgnoreCase));
 
         /// <summary>
         /// 由背景批次檔啟動的程式不會自動取得焦點, 會被其他視窗蓋住:
@@ -464,113 +543,10 @@ namespace CrazyKTV_SongMgr
             form.TopMost = true;
             form.BringToFront();
             form.Activate();
-            SetForegroundWindow(form.Handle);
+            NativeMethods.SetForegroundWindow(form.Handle);
             form.TopMost = alwaysOnTop;
         }
 
         #endregion
-    }
-
-    /// <summary>下載更新檔時顯示進度, 可取消. DialogResult.OK 表示更新檔已備妥 (PackageRoot).</summary>
-    public class AppUpdateProgressForm : Form
-    {
-        private readonly AppUpdater.UpdatePlan plan;
-        private readonly string appDir;
-        private readonly CancellationTokenSource cts = new CancellationTokenSource();
-        private readonly Label status = new Label();
-        private readonly ProgressBar bar = new ProgressBar();
-        private readonly Button cancel = new Button();
-
-        public string PackageRoot { get; private set; }
-        public Exception Error { get; private set; }
-
-        public AppUpdateProgressForm(AppUpdater.UpdatePlan plan, string appDir)
-        {
-            this.plan = plan;
-            this.appDir = appDir;
-
-            Text = "下載 CrazyKTV 加歌程式 " + plan.Release.Tag;
-            Font = new Font("微軟正黑體", 10F);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            StartPosition = FormStartPosition.CenterParent;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            ShowInTaskbar = false;
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(420, 120);
-
-            status.SetBounds(16, 14, 388, 24);
-            status.Text = "正在下載更新檔...";
-            bar.SetBounds(16, 42, 388, 22);
-            bar.Maximum = 1000;
-            cancel.SetBounds(314, 76, 90, 30);
-            cancel.Text = "取消";
-            cancel.Click += (s, e) => { cancel.Enabled = false; cts.Cancel(); };
-
-            Controls.AddRange(new Control[] { status, bar, cancel });
-        }
-
-        protected override void OnShown(EventArgs e)
-        {
-            base.OnShown(e);
-            Task.Run(() =>
-            {
-                try
-                {
-                    PackageRoot = AppUpdater.Prepare(plan, appDir, ReportProgress, cts.Token);
-                }
-                catch (Exception ex)
-                {
-                    Error = ex;
-                }
-                BeginInvoke((Action)(() =>
-                {
-                    DialogResult = PackageRoot != null ? DialogResult.OK : DialogResult.Cancel;
-                    Close();
-                }));
-            });
-        }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            // 使用者按 X: 取消下載, 等背景工作收尾後才真正關閉
-            if (PackageRoot == null && Error == null && e.CloseReason == CloseReason.UserClosing)
-            {
-                cts.Cancel();
-                cancel.Enabled = false;
-                e.Cancel = true;
-                return;
-            }
-            base.OnFormClosing(e);
-        }
-
-        private long lastReport;
-
-        private void ReportProgress(long done, long total)
-        {
-            long now = Environment.TickCount64;
-            if (now - lastReport < 100 && done != total) return;
-            lastReport = now;
-            BeginInvoke((Action)(() =>
-            {
-                string mb(long b) => (b / 1048576.0).ToString("0.0") + " MB";
-                if (total > 0)
-                {
-                    bar.Value = (int)Math.Min(1000, done * 1000 / total);
-                    status.Text = "正在下載更新檔... " + mb(done) + " / " + mb(total);
-                }
-                else
-                {
-                    status.Text = "正在下載更新檔... " + mb(done);
-                }
-                if (total > 0 && done >= total) status.Text = "正在解壓縮並檢查更新檔...";
-            }));
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) cts.Dispose();
-            base.Dispose(disposing);
-        }
     }
 }

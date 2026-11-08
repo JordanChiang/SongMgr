@@ -147,7 +147,8 @@ namespace CrazyKTV_SongMgr
                 ("MainCfgPlayerOutput", Global.MainCfgPlayerOutput),
                 ("MainCfgPlayerEnableAudioCompressor", Global.MainCfgPlayerEnableAudioCompressor),
                 ("MainCfgPlayerEnableAudioProcessor", Global.MainCfgPlayerEnableAudioProcessor),
-                ("MainCfgPlayerDefaultVolume", Global.MainCfgPlayerDefaultVolume)
+                ("MainCfgPlayerDefaultVolume", Global.MainCfgPlayerDefaultVolume),
+                ("MainCfgAutoSongFileCount", Global.MainCfgAutoSongFileCount)
             };
         }
     }

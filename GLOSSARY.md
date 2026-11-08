@@ -11,6 +11,7 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
 - **加歌模式** — what happens to a file when it enters the 歌庫: 1 move, 2 copy, 3 leave in place, 4 歌庫監視. `SongAddMode`, read with `Global.AddMode`; files move only in modes 1 and 2 (`LibraryPlacement.MovesFiles`).
 - **備份移除歌曲** — removed or replaced files go to `SongMgr\RemoveSong` instead of being deleted (`LibraryPlacement.RemoveSongFolder`).
 - **歌庫監視** — 加歌模式 4: watched folders feed new files into 歌曲分析 and drop songs whose file is gone (`SongMonitor`).
+- **歌庫檔案統計** — how many songs in `ktv_Song` have their file on disk, shown as 歌庫檔案 on the 歌庫查詢 statistics. `CommonFunc.GetSongFileCount` lists each folder once instead of checking every file. Runs when the 歌庫 loads only if 自動統計歌庫檔案 (`MainCfgAutoSongFileCount`) is on; otherwise the label reads 點此統計 and a click starts it.
 
 ## Songs and singers
 
@@ -36,3 +37,9 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
 - **媒體探測** (media probe) — everything asked of ffprobe / ffmpeg: audio stream count, which 聲道 is the 伴唱 (`DetectTrack`), duration, 重播增益 per track, whether a file decodes cleanly. `MediaProbe`.
 - **重播增益 (ReplayGain)** — measured loudness offset of the 伴唱, stored in `Song_ReplayGain`.
 - **歌曲音量** — playback volume stored in `Song_Volume`; derived from 重播增益 by `MediaProbe.SongVolume` and kept inside a `VolumeRange`: 10..100 for 加歌 and 音量平衡 (`VolumeRange.Library`), 5..100 for 音量正規化 (`VolumeRange.Normalize`).
+
+## Program updates
+
+- **自動更新** — finding a newer SongMgr on GitHub Releases and replacing the program files once SongMgr exits. `AppUpdater`; turned on by 啟用程式自動更新 (`MainCfgEnableAutoUpdate`). It waits for any 背景工作 (the UI locked by `Common_SwitchSetUI(false)`) before asking or closing, backs up the files it will replace, and restores them if overwriting fails. User files listed in `AppUpdater.KeepExisting` are never overwritten.
+- **元件** (component) — a part of the program updated on its own: App, Codec_x86, Tools. Defined only in `tools\pack-release.ps1`; SongMgr reads them from the 更新清單.
+- **更新清單** — `update.json` attached to each release: every 元件's zip and the SHA256 of each of its files. Only 元件 whose files differ are downloaded. A release without one falls back to the 完整包 (`CrazyKtv_SongMgr<版本>.zip`, `AppUpdater.FullPackagePattern`).

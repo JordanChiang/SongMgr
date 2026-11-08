@@ -60,6 +60,7 @@ namespace SongMgr.Tests.Settings
             "SongMgrMonitorFolders", "SingerMgrSyncSongSinger", "SongMgrSingerGroup", "MainCfgHideApplyCashboxIdButton",
             "MainCfgUICustomScale", "MainCfgBackupDB", "MainCfgBackupDBPath", "MainCfgPlayerCore", "MainCfgPlayerOutput",
             "MainCfgPlayerEnableAudioCompressor", "MainCfgPlayerEnableAudioProcessor", "MainCfgPlayerDefaultVolume",
+            "MainCfgAutoSongFileCount",
         };
 
         [Fact]

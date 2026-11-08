@@ -357,8 +357,13 @@ namespace CrazyKTV_SongMgr
             MainCfg_GroupBox.Enabled = status;
         }
         
+        // Common_SwitchSetUI(false) 鎖定介面期間有背景工作在進行 (加歌、歌庫維護等會寫入資料庫)
+        private bool Common_TaskRunning = false;
+
         private void Common_SwitchSetUI(bool status)
         {
+            Common_TaskRunning = !status;
+
             if (!status)
             {
                 SongLog_ListBox.DataSource = null;
@@ -1649,14 +1654,50 @@ namespace CrazyKTV_SongMgr
 
         #endregion
 
-        #region --- Common 檢查 SongMgr 版本 ---
+        #region --- Common 自動更新後重新啟動 ---
 
-        // 自動更新後由批次檔重新啟動: 把視窗帶到最上層
+        // 由更新批次檔重新啟動: 把視窗帶到最上層; 覆蓋檔案失敗時告知使用者
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            if (AppUpdater.LaunchedAfterUpdate) AppUpdater.BringToFront(this, Global.MainCfgAlwaysOnTop == "True");
+            bool alwaysOnTop = Global.MainCfgAlwaysOnTop == "True";
+
+            if (AppUpdater.LaunchedAfterUpdate)
+            {
+                AppUpdater.BringToFront(this, alwaysOnTop);
+            }
+            else if (AppUpdater.LaunchedAfterFailedUpdate)
+            {
+                AppUpdater.BringToFront(this, alwaysOnTop);
+                Common_ShowUpdateFailed();
+            }
         }
+
+        private void Common_ShowUpdateFailed()
+        {
+            string msg;
+            if (Directory.Exists(AppUpdater.BackupDir))
+            {
+                msg = "自動更新時無法覆蓋程式檔案, 也無法還原原本的檔案。" + Environment.NewLine +
+                      "原本的檔案備份在:" + Environment.NewLine + AppUpdater.BackupDir + Environment.NewLine + Environment.NewLine +
+                      "請把備份資料夾裡的檔案複製回程式資料夾, 或開啟下載頁面重新下載。" + Environment.NewLine +
+                      "要開啟下載頁面嗎?";
+            }
+            else
+            {
+                msg = "自動更新時無法覆蓋程式檔案, 已還原為原本的版本。" + Environment.NewLine +
+                      "可能是程式檔案被其他程式 (例如防毒軟體) 鎖定, 請稍後再試, 或開啟下載頁面手動更新。" + Environment.NewLine + Environment.NewLine +
+                      "要開啟下載頁面嗎?";
+            }
+            if (MessageBox.Show(this, msg, "自動更新失敗", MessageBoxButtons.YesNo, MessageBoxIcon.Error) == DialogResult.Yes)
+            {
+                AppUpdater.OpenPage(AppUpdater.ReleasesPage);
+            }
+        }
+
+        #endregion
+
+        #region --- Common 檢查 SongMgr 版本 ---
 
         // 背景向 GitHub Releases 查詢新版, 不阻塞啟動
         private void Common_CheckSongMgrVer()
@@ -1668,24 +1709,44 @@ namespace CrazyKTV_SongMgr
                 AppUpdater.ReleaseInfo release = AppUpdater.GetLatestRelease();
                 if (!AppUpdater.IsNewer(release, AppUpdater.CurrentVersion())) return;
 
-                // 比對本機檔案, 只下載有變動的元件 (主程式 / Codec_x86 / Tools)
+                // 比對本機檔案, 只下載有變動的元件
                 AppUpdater.UpdatePlan plan = AppUpdater.GetUpdatePlan(release, Application.StartupPath);
                 if (plan == null) return;
 
                 if (IsDisposed || !IsHandleCreated) return;
-                BeginInvoke((Action)(() => Common_UpdateSongMgr(plan)));
+                // 有背景工作 (例如加歌) 時, 等工作完成才詢問, 避免更新時中斷資料庫寫入
+                BeginInvoke((Action)(() => Common_RunWhenIdle(() => Common_UpdateSongMgr(plan))));
             });
+        }
+
+        /// <summary>沒有背景工作時立即執行; 否則每秒檢查一次, 等工作完成後才執行.</summary>
+        private void Common_RunWhenIdle(Action action)
+        {
+            if (!Common_TaskRunning)
+            {
+                action();
+                return;
+            }
+
+            System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer() { Interval = 1000 };
+            timer.Tick += (s, e) =>
+            {
+                if (Common_TaskRunning || IsDisposed) return;
+                timer.Stop();
+                timer.Dispose();
+                action();
+            };
+            timer.Start();
         }
 
         private void Common_UpdateSongMgr(AppUpdater.UpdatePlan plan)
         {
             AppUpdater.ReleaseInfo release = plan.Release;
-            string mb(long b) => (b / 1048576.0).ToString("0.0") + " MB";
-            string items = string.Join(Environment.NewLine, plan.Components.Select(c => "　・" + c.DisplayName + (c.Size > 0 ? " (" + mb(c.Size) + ")" : "")));
+            string items = string.Join(Environment.NewLine, plan.Components.Select(c => "　・" + c.DisplayName + (c.Size > 0 ? " (" + AppUpdater.FormatMB(c.Size) + ")" : "")));
             string msg = "偵測到 CrazyKTV 加歌程式新版本 " + release.Tag + Environment.NewLine +
                          "目前版本: " + AppUpdater.CurrentVersionText() + Environment.NewLine + Environment.NewLine +
                          "需要下載:" + Environment.NewLine + items + Environment.NewLine +
-                         (plan.Components.Count > 1 && plan.TotalSize > 0 ? "　共 " + mb(plan.TotalSize) + Environment.NewLine : "") + Environment.NewLine +
+                         (plan.Components.Count > 1 && plan.TotalSize > 0 ? "　共 " + AppUpdater.FormatMB(plan.TotalSize) + Environment.NewLine : "") + Environment.NewLine +
                          "要立即下載並更新嗎? 更新完成後程式會自動重新啟動。";
             if (MessageBox.Show(this, msg, "偵測到 CrazyKTV 加歌程式更新", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
@@ -1698,6 +1759,7 @@ namespace CrazyKTV_SongMgr
                 return;
             }
 
+            string packageRoot;
             using (AppUpdateProgressForm form = new AppUpdateProgressForm(plan, appDir))
             {
                 if (form.ShowDialog(this) != DialogResult.OK)
@@ -1712,16 +1774,28 @@ namespace CrazyKTV_SongMgr
                     }
                     return;
                 }
+                packageRoot = form.PackageRoot;
+            }
 
-                try
-                {
-                    AppUpdater.LaunchReplace(form.PackageRoot, appDir);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(this, "無法啟動更新程序: " + ex.Message, "自動更新失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
+            // 下載期間若有背景工作開始 (例如歌庫監視), 等它完成才關閉程式
+            if (Common_TaskRunning)
+            {
+                MessageBox.Show(this, "更新檔已下載完成, 目前有工作正在進行。" + Environment.NewLine + "工作完成後程式會自動關閉並更新。",
+                    "自動更新", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            Common_RunWhenIdle(() => Common_ReplaceAndClose(packageRoot, appDir));
+        }
+
+        private void Common_ReplaceAndClose(string packageRoot, string appDir)
+        {
+            try
+            {
+                AppUpdater.LaunchReplace(packageRoot, appDir);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "無法啟動更新程序: " + ex.Message, "自動更新失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
 
             // 正常關閉 (FormClosing 會壓縮資料庫), 批次檔等程式結束後覆蓋檔案並重新啟動
@@ -1922,34 +1996,6 @@ namespace CrazyKTV_SongMgr
                 }
             }
             xmldoc.Save(ConfigFile);
-        }
-
-        #endregion
-
-        #region --- CommonFunc 讀取版本更新檔 ---
-
-        public static List<string> LoadVersionXmlFile(string VersionFile, string FileName)
-        {
-            List<string> Value = new List<string>() { FileName };
-            try
-            {
-                XElement rootElement = XElement.Load(VersionFile);
-                var Query = from childNode in rootElement.Elements("File")
-                            where (string)childNode.Attribute("Name") == FileName
-                            select childNode;
-
-                foreach (XElement childNode in Query)
-                {
-                    Value.Add(childNode.Element("Ver").Value);
-                    Value.Add(childNode.Element("Url").Value);
-                    Value.Add(childNode.Element("Desc").Value);
-                }
-            }
-            catch
-            {
-                MessageBox.Show("【" + Path.GetFileName(VersionFile) + "】設定檔內容有錯誤,請刪除後再執行。");
-            }
-            return Value;
         }
 
         #endregion
@@ -2938,38 +2984,6 @@ namespace CrazyKTV_SongMgr
             }
             catch { }
             return mStream;
-        }
-
-        public static bool DownloadFile(string File, string Url)
-        {
-            bool DownloadStatus;
-            FileStream FStream = new FileStream(File, FileMode.Create);
-
-            try
-            {
-                HttpResponseMessage Response = SharedHttpClient.Send(new HttpRequestMessage(HttpMethod.Get, Url), HttpCompletionOption.ResponseHeadersRead);
-                Response.EnsureSuccessStatusCode();
-
-                Stream DataStream = Response.Content.ReadAsStream();
-                byte[] Databuffer = new byte[1024];
-                int CompletedLength = 0;
-
-                while ((CompletedLength = DataStream.Read(Databuffer, 0, 1024)) > 0)
-                {
-                    FStream.Write(Databuffer, 0, CompletedLength);
-                }
-
-                FStream.Close();
-                DataStream.Close();
-                Response.Dispose();
-                DownloadStatus = true;
-            }
-            catch
-            {
-                FStream.Close();
-                DownloadStatus = false;
-            }
-            return DownloadStatus;
         }
 
         public class CashboxPostData
