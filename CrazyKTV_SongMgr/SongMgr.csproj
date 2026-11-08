@@ -46,8 +46,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Private=false: keep CrazyKTV_MediaKit.dll out of the output root and the single-file bundle, so Program's
+         AssemblyResolve loads it from Codec_x86. MediaKit finds EvrPresenter32.dll beside its own Assembly.CodeBase,
+         which points at the wrong folder when copied to the root and throws when bundled, breaking the EVR renderer. -->
     <Reference Include="CrazyKTV_MediaKit">
       <HintPath>Codec_x86\CrazyKTV_MediaKit.dll</HintPath>
+      <Private>false</Private>
     </Reference>
   </ItemGroup>
 
