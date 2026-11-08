@@ -515,6 +515,7 @@
             this.MainCfg_HideButton_Label = new System.Windows.Forms.Label();
             this.MainCfg_BackupRemoveSongDays_ComboBox = new System.Windows.Forms.ComboBox();
             this.MainCfg_EnableAutoUpdate_CheckBox = new System.Windows.Forms.CheckBox();
+            this.MainCfg_AutoSongFileCount_CheckBox = new System.Windows.Forms.CheckBox();
             this.MainCfg_Player_GroupBox = new System.Windows.Forms.GroupBox();
             this.MainCfg_PlayerDefaultVolume_TextBox = new System.Windows.Forms.TextBox();
             this.MainCfg_PlayerDefaultVolume_Label = new System.Windows.Forms.Label();
@@ -1114,6 +1115,8 @@
             this.SongQuery_Statistics12Value_Label.Size = new System.Drawing.Size(40, 21);
             this.SongQuery_Statistics12Value_Label.TabIndex = 13;
             this.SongQuery_Statistics12Value_Label.Text = "0 個";
+            this.SongQuery_Statistics12Value_Label.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.SongQuery_Statistics12Value_Label.Click += new System.EventHandler(this.SongQuery_StatisticsSongFile_Label_Click);
             // 
             // SongQuery_Statistics12_Label
             // 
@@ -1126,6 +1129,8 @@
             this.SongQuery_Statistics12_Label.Size = new System.Drawing.Size(78, 21);
             this.SongQuery_Statistics12_Label.TabIndex = 12;
             this.SongQuery_Statistics12_Label.Text = "歌庫檔案:";
+            this.SongQuery_Statistics12_Label.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.SongQuery_Statistics12_Label.Click += new System.EventHandler(this.SongQuery_StatisticsSongFile_Label_Click);
             // 
             // SongQuery_Statistics11Value_Label
             // 
@@ -6779,6 +6784,7 @@
             this.MainCfg_General_ＧroupBox.Controls.Add(this.MainCfg_HideButton_Label);
             this.MainCfg_General_ＧroupBox.Controls.Add(this.MainCfg_BackupRemoveSongDays_ComboBox);
             this.MainCfg_General_ＧroupBox.Controls.Add(this.MainCfg_EnableAutoUpdate_CheckBox);
+            this.MainCfg_General_ＧroupBox.Controls.Add(this.MainCfg_AutoSongFileCount_CheckBox);
             this.MainCfg_General_ＧroupBox.Font = new System.Drawing.Font("微軟正黑體", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.MainCfg_General_ＧroupBox.Location = new System.Drawing.Point(18, 36);
             this.MainCfg_General_ＧroupBox.Margin = new System.Windows.Forms.Padding(8, 12, 8, 12);
@@ -6911,6 +6917,19 @@
             this.MainCfg_EnableAutoUpdate_CheckBox.Text = "啟用程式自動更新";
             this.MainCfg_EnableAutoUpdate_CheckBox.UseVisualStyleBackColor = true;
             this.MainCfg_EnableAutoUpdate_CheckBox.CheckedChanged += new System.EventHandler(this.MainCfg_EnableAutoUpdate_CheckBox_CheckedChanged);
+            //
+            // MainCfg_AutoSongFileCount_CheckBox
+            //
+            this.MainCfg_AutoSongFileCount_CheckBox.AutoSize = true;
+            this.MainCfg_AutoSongFileCount_CheckBox.Font = new System.Drawing.Font("微軟正黑體", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
+            this.MainCfg_AutoSongFileCount_CheckBox.Location = new System.Drawing.Point(335, 153);
+            this.MainCfg_AutoSongFileCount_CheckBox.Margin = new System.Windows.Forms.Padding(6);
+            this.MainCfg_AutoSongFileCount_CheckBox.Name = "MainCfg_AutoSongFileCount_CheckBox";
+            this.MainCfg_AutoSongFileCount_CheckBox.Size = new System.Drawing.Size(156, 24);
+            this.MainCfg_AutoSongFileCount_CheckBox.TabIndex = 16;
+            this.MainCfg_AutoSongFileCount_CheckBox.Text = "自動統計歌庫檔案";
+            this.MainCfg_AutoSongFileCount_CheckBox.UseVisualStyleBackColor = true;
+            this.MainCfg_AutoSongFileCount_CheckBox.CheckedChanged += new System.EventHandler(this.MainCfg_AutoSongFileCount_CheckBox_CheckedChanged);
             // 
             // MainCfg_Player_GroupBox
             // 
@@ -8771,6 +8790,7 @@
         private System.Windows.Forms.GroupBox SongMgrCfg_CustomSingerTypeStructure_GroupBox;
         private System.Windows.Forms.GroupBox SingerMgr_OtherQuery_GroupBox;
         private System.Windows.Forms.CheckBox MainCfg_EnableAutoUpdate_CheckBox;
+        private System.Windows.Forms.CheckBox MainCfg_AutoSongFileCount_CheckBox;
         private System.Windows.Forms.CheckBox SongAdd_EnableConvToTC_CheckBox;
         private System.Windows.Forms.Button SongMaintenance_PlayCountExport_Button;
         private System.Windows.Forms.Button SongMaintenance_PlayCountImport_Button;

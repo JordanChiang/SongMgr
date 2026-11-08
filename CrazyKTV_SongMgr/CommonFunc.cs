@@ -749,7 +749,6 @@ namespace CrazyKTV_SongMgr
             if (Global.CrazyktvDatabaseStatus)
             {
                 List<int> SongLangCount = new List<int>();
-                List<int> SongFileCount = new List<int>();
 
                 Label[] SongQuery_Statistics_Label =
                 {
@@ -803,21 +802,10 @@ namespace CrazyKTV_SongMgr
                     SongMaintenance_Lang10_TextBox
                 };
 
-                this.BeginInvoke((Action)delegate()
-                {
-                    SongQuery_StatisticsValue_Label[11].Text = "統計中...";
-                });
-
-                string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_Path, Song_FileName from ktv_Song";
+                string SongQuerySqlStr = "select Song_Lang from ktv_Song";
                 using (DataTable SongStatisticsDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
                 {
-                    var tasks = new List<Task<List<int>>>()
-                    {
-                        Task<List<int>>.Factory.StartNew(() => CommonFunc.GetSongLangCount(SongStatisticsDT)),
-                        Task<List<int>>.Factory.StartNew(() => CommonFunc.GetSongFileCount(SongStatisticsDT))
-                    };
-
-                    SongLangCount = tasks[0].Result;
+                    SongLangCount = CommonFunc.GetSongLangCount(SongStatisticsDT);
                     this.BeginInvoke((Action)delegate()
                     {
                         for (int i = 0; i < SongLangCount.Count; i++)
@@ -830,15 +818,86 @@ namespace CrazyKTV_SongMgr
                         }
                         SongLangCount.Clear();
                     });
+                }
 
-                    SongFileCount = tasks[1].Result;
+                if (Global.MainCfgAutoSongFileCount != "True")
+                {
                     this.BeginInvoke((Action)delegate()
                     {
-                        SongQuery_StatisticsValue_Label[11].Text = SongFileCount[10].ToString() + " 個";
-                        SongFileCount.Clear();
+                        SongQuery_Statistics12Value_Label.Text = SongFileCountClickText;
                     });
                 }
+                else
+                {
+                    Common_GetSongFileCountTask();
+                }
             }
+        }
+
+        private const string SongFileCountClickText = "點此統計";
+        private int SongFileCountRunning = 0;
+
+        /// <summary>統計歌庫裡實際存在的歌曲檔案數,顯示在「歌庫檔案」。</summary>
+        private void Common_GetSongFileCountTask()
+        {
+            if (!Global.CrazyktvDatabaseStatus) return;
+            if (Interlocked.Exchange(ref SongFileCountRunning, 1) == 1) return;
+
+            string ResultText = SongFileCountClickText;
+            this.BeginInvoke((Action)delegate()
+            {
+                SongFileCount_StartAnimation();
+            });
+
+            try
+            {
+                string SongQuerySqlStr = "select Song_Path, Song_FileName from ktv_Song";
+                using (DataTable SongFileDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                {
+                    ResultText = CommonFunc.GetSongFileCount(SongFileDT).ToString() + " 個";
+                }
+            }
+            finally
+            {
+                this.BeginInvoke((Action)delegate()
+                {
+                    SongFileCount_StopAnimation(ResultText);
+                });
+                Interlocked.Exchange(ref SongFileCountRunning, 0);
+            }
+        }
+
+        // 「統計中」動畫: 三個圓點輪流亮起,表示仍在處理中
+        private static readonly string[] SongFileCountAnimFrames = { "統計中 ●○○", "統計中 ○●○", "統計中 ○○●" };
+        private System.Windows.Forms.Timer SongFileCountAnimTimer;
+        private int SongFileCountAnimFrame = 0;
+
+        private void SongFileCount_StartAnimation()
+        {
+            if (SongFileCountAnimTimer == null)
+            {
+                SongFileCountAnimTimer = new System.Windows.Forms.Timer() { Interval = 300 };
+                SongFileCountAnimTimer.Tick += (s, e) =>
+                {
+                    SongFileCountAnimFrame = (SongFileCountAnimFrame + 1) % SongFileCountAnimFrames.Length;
+                    SongQuery_Statistics12Value_Label.Text = SongFileCountAnimFrames[SongFileCountAnimFrame];
+                };
+            }
+            SongFileCountAnimFrame = 0;
+            SongQuery_Statistics12Value_Label.Text = SongFileCountAnimFrames[0];
+            SongFileCountAnimTimer.Start();
+        }
+
+        private void SongFileCount_StopAnimation(string ResultText)
+        {
+            if (SongFileCountAnimTimer != null) SongFileCountAnimTimer.Stop();
+            SongQuery_Statistics12Value_Label.Text = ResultText;
+        }
+
+        private void SongQuery_StatisticsSongFile_Label_Click(object sender, EventArgs e)
+        {
+            if (!Global.CrazyktvDatabaseStatus) return;
+            Task.Factory.StartNew(() => Common_GetSongFileCountTask());
         }
 
         #endregion
@@ -2671,16 +2730,69 @@ namespace CrazyKTV_SongMgr
         }
 
 
-        public static List<int> GetSongFileCount(DataTable SongStatisticsDT)
+        /// <summary>
+        /// 計算歌庫裡實際存在的歌曲檔案數。
+        /// 依資料夾分組,每個資料夾只列舉一次檔案,不對每首歌各呼叫一次 File.Exists (網路磁碟上差很多)。
+        /// </summary>
+        public static int GetSongFileCount(DataTable SongStatisticsDT)
         {
-            List<int> SongFileCount = new List<int>() { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            string SongFilePath = "";
+            Dictionary<string, List<string>> FolderFiles = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            List<string> UncheckedFiles = new List<string>();
 
-            Parallel.ForEach(SongStatisticsDT.AsEnumerable(), (row, loopState) =>
+            foreach (DataRow row in SongStatisticsDT.Rows)
             {
-                SongFilePath = Path.Combine(row["Song_Path"].ToString(), row["Song_FileName"].ToString());
-                if (File.Exists(SongFilePath)) lock(LockThis) SongFileCount[10]++;
+                string SongFilePath = Path.Combine(row["Song_Path"].ToString(), row["Song_FileName"].ToString());
+                string FolderPath, FileName;
+                try
+                {
+                    FolderPath = Path.GetDirectoryName(SongFilePath);
+                    FileName = Path.GetFileName(SongFilePath);
+                }
+                catch
+                {
+                    UncheckedFiles.Add(SongFilePath);
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(FolderPath) || string.IsNullOrEmpty(FileName))
+                {
+                    UncheckedFiles.Add(SongFilePath);
+                    continue;
+                }
+
+                if (!FolderFiles.TryGetValue(FolderPath, out List<string> list))
+                {
+                    list = new List<string>();
+                    FolderFiles.Add(FolderPath, list);
+                }
+                list.Add(FileName);
+            }
+
+            int SongFileCount = 0;
+
+            Parallel.ForEach(FolderFiles, (folder, loopState) =>
+            {
+                int count = 0;
+                try
+                {
+                    if (Directory.Exists(folder.Key))
+                    {
+                        HashSet<string> ExistFiles = new HashSet<string>(Directory.EnumerateFiles(folder.Key).Select(f => Path.GetFileName(f)), StringComparer.OrdinalIgnoreCase);
+                        count = folder.Value.Count(f => ExistFiles.Contains(f));
+                    }
+                }
+                catch
+                {
+                    // 資料夾無法列舉時,改為逐一檢查
+                    count = folder.Value.Count(f => File.Exists(Path.Combine(folder.Key, f)));
+                }
+                Interlocked.Add(ref SongFileCount, count);
             });
+
+            foreach (string SongFilePath in UncheckedFiles)
+            {
+                if (File.Exists(SongFilePath)) SongFileCount++;
+            }
             return SongFileCount;
         }
 

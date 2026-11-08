@@ -360,6 +360,9 @@ namespace CrazyKTV_SongMgr
             if (cfg["MainCfgEnableAutoUpdate"] != "") Global.MainCfgEnableAutoUpdate = cfg["MainCfgEnableAutoUpdate"];
             MainCfg_EnableAutoUpdate_CheckBox.Checked = bool.Parse(Global.MainCfgEnableAutoUpdate);
 
+            if (cfg["MainCfgAutoSongFileCount"] != "") Global.MainCfgAutoSongFileCount = cfg["MainCfgAutoSongFileCount"];
+            MainCfg_AutoSongFileCount_CheckBox.Checked = bool.Parse(Global.MainCfgAutoSongFileCount);
+
             if (cfg["SongAddEnableConvToTC"] != "") Global.SongAddEnableConvToTC = cfg["SongAddEnableConvToTC"];
             SongAdd_EnableConvToTC_CheckBox.Checked = bool.Parse(Global.SongAddEnableConvToTC);
 

@@ -138,6 +138,7 @@ namespace CrazyKTV_SongMgr
 
         public static string MainCfgAlwaysOnTop = "False";
         public static string MainCfgEnableAutoUpdate = "True";
+        public static string MainCfgAutoSongFileCount = "False";
         public static string MainCfgHideSongDBConverterTabPage = "False";
         public static string MainCfgHideSongAddResultTabPage = "True";
         public static string MainCfgHideSongLogTabPage = "True";
