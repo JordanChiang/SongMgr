@@ -1592,35 +1592,72 @@ namespace CrazyKTV_SongMgr
 
         #region --- Common 檢查 SongMgr 版本 ---
 
+        // 自動更新後由批次檔重新啟動: 把視窗帶到最上層
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            if (AppUpdater.LaunchedAfterUpdate) AppUpdater.BringToFront(this, Global.MainCfgAlwaysOnTop == "True");
+        }
+
+        // 背景向 GitHub Releases 查詢新版, 不阻塞啟動
         private void Common_CheckSongMgrVer()
         {
-            string WebUpdaterFile = Application.StartupPath + @"\CrazyKTV_WebUpdater.exe";
-            if (Global.MainCfgEnableAutoUpdate == "True" && File.Exists(WebUpdaterFile))
-            {
-                string WebUpdaterTempFile = Application.StartupPath + @"\CrazyKTV_WebUpdater.tmp";
-                string WebUpdaterUrl = "https://raw.githubusercontent.com/CrazyKTV/WebUpdater/master/CrazyKTV_WebUpdater/UpdateFile/CrazyKTV_WebUpdater.ver";
+            if (Global.MainCfgEnableAutoUpdate != "True") return;
 
-                if (CommonFunc.DownloadFile(WebUpdaterTempFile, WebUpdaterUrl))
+            Task.Run(() =>
+            {
+                AppUpdater.ReleaseInfo release = AppUpdater.GetLatestRelease();
+                if (!AppUpdater.IsNewer(release, AppUpdater.CurrentVersion())) return;
+                if (IsDisposed || !IsHandleCreated) return;
+                BeginInvoke((Action)(() => Common_UpdateSongMgr(release)));
+            });
+        }
+
+        private void Common_UpdateSongMgr(AppUpdater.ReleaseInfo release)
+        {
+            string sizeText = release.ZipSize > 0 ? " (" + (release.ZipSize / 1048576.0).ToString("0.0") + " MB)" : "";
+            string msg = "偵測到 CrazyKTV 加歌程式新版本 " + release.Tag + sizeText + Environment.NewLine +
+                         "目前版本: " + AppUpdater.CurrentVersionText() + Environment.NewLine + Environment.NewLine +
+                         "要立即下載並更新嗎? 更新完成後程式會自動重新啟動。";
+            if (MessageBox.Show(this, msg, "偵測到 CrazyKTV 加歌程式更新", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+
+            string appDir = Application.StartupPath;
+            if (!AppUpdater.CanWrite(appDir))
+            {
+                MessageBox.Show(this, "程式資料夾沒有寫入權限, 無法自動更新。" + Environment.NewLine + "將開啟下載頁面, 請手動下載並解壓縮覆蓋。",
+                    "無法自動更新", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppUpdater.OpenPage(release.PageUrl);
+                return;
+            }
+
+            using (AppUpdateProgressForm form = new AppUpdateProgressForm(release, appDir))
+            {
+                if (form.ShowDialog(this) != DialogResult.OK)
                 {
-                    if (File.Exists(WebUpdaterTempFile))
+                    if (form.Error != null && !(form.Error is OperationCanceledException))
                     {
-                        List<string> RemoteSongMgrVerList = CommonFunc.LoadVersionXmlFile(WebUpdaterTempFile, "CrazyKTV_SongMgr.exe");
-                        File.Delete(WebUpdaterTempFile);
-                        if (RemoteSongMgrVerList.Count > 0)
+                        if (MessageBox.Show(this, "下載更新檔失敗: " + form.Error.Message + Environment.NewLine + Environment.NewLine + "要開啟下載頁面手動更新嗎?",
+                            "自動更新失敗", MessageBoxButtons.YesNo, MessageBoxIcon.Error) == DialogResult.Yes)
                         {
-                            if (Convert.ToInt32(RemoteSongMgrVerList[1]) > Convert.ToInt32(Global.SongMgrVer.PadRight(5, '0')))
-                            {
-                                if (MessageBox.Show("你確定要更新 CrazyKTV 加歌程式嗎?", "偵測到 CrazyKTV 加歌程式更新", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                                {
-                                    Process p = Process.Start(WebUpdaterFile);
-                                    Environment.Exit(0);
-                                }
-                            }
+                            AppUpdater.OpenPage(release.PageUrl);
                         }
                     }
+                    return;
                 }
-                File.Delete(WebUpdaterTempFile);
+
+                try
+                {
+                    AppUpdater.LaunchReplace(form.PackageRoot, appDir);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, "無法啟動更新程序: " + ex.Message, "自動更新失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
             }
+
+            // 正常關閉 (FormClosing 會壓縮資料庫), 批次檔等程式結束後覆蓋檔案並重新啟動
+            Close();
         }
 
         #endregion
