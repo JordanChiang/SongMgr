@@ -49,6 +49,11 @@ namespace CrazyKTV_SongMgr
         {
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
+            // System.Data.SQLite's first SQLiteConnection looks for SEE / Eagle plugin files beside its own dll via
+            // Assembly.Location, which is "" once the dll is bundled into the single-file exe, and then fails with
+            // "Value cannot be null. (Parameter 'path1')". SongMgr uses no such plugins, so skip that step.
+            Environment.SetEnvironmentVariable("SQLite_NoConfigure", "1");
+
             if (Environment.OSVersion.Version.Major >= 6) NativeMethods.SetProcessDPIAware();
 
             Application.EnableVisualStyles();
