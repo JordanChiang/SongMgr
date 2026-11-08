@@ -53,6 +53,10 @@
       <HintPath>Codec_x86\CrazyKTV_MediaKit.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="DirectShowLib-2005">
+      <HintPath>Codec_x86\DirectShowLib-2005.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

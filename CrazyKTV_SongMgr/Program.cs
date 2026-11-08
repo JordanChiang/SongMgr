@@ -58,6 +58,17 @@ namespace CrazyKTV_SongMgr
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            // Warn only: managing the song library needs no video renderer, just the player does.
+            if (!VideoEnvCheck.IsVmr9Available())
+            {
+                MessageBox.Show(
+                    "此電腦無法使用 VMR9 影片輸出，以 VMR9 播放歌曲時會失敗。\n\n" +
+                    "常見原因是顯示卡已停用，或尚未安裝顯示卡原廠驅動程式（裝置管理員中只顯示「Microsoft 基本顯示介面卡」）。\n\n" +
+                    "歌庫管理功能不受影響。請啟用顯示卡或安裝驅動程式後重新啟動程式，也可以試著到設定中將播放輸出改為 EVR。",
+                    "顯示環境檢查", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
             Application.Run(new MainForm());
         }
     }
