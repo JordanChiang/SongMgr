@@ -80,7 +80,7 @@ namespace CrazyKTV_SongMgr
         public static bool DatabaseUpdateFinished = false;
         public static bool InitializeSongData = false;
 
-        public static string SongMgrVer = FileVersionInfo.GetVersionInfo(Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location).FileVersion.ToString().Replace(".", "");
+        public static string SongMgrVer = FileVersionInfo.GetVersionInfo(Environment.ProcessPath).FileVersion.ToString().Replace(".", "");
         public static string SongMgrCfgFile = Application.StartupPath + @"\CrazyKTV_SongMgr.cfg";
         public static string SongMgrSupportFormat = ".avi;.flv;.dat;.mkv;.mp4;.mov;.mpeg;.mpg;.rmvb;.ts;.vob;.webm;.wmv";
         public static string SongMgrDestFolder = "";

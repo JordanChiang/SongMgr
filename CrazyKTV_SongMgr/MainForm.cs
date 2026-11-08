@@ -54,7 +54,7 @@ namespace CrazyKTV_SongMgr
         
         private void MainForm_Load(object sender, EventArgs e)
         {
-            string exePath = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
+            string exePath = Environment.ProcessPath;
             var verInfo = FileVersionInfo.GetVersionInfo(exePath);
             string CurVer = " v" + verInfo.FileMajorPart + "." +
                                    verInfo.FileMinorPart + "." +
