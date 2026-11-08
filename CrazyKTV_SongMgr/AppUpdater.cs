@@ -1,5 +1,6 @@
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -17,13 +19,17 @@ using System.Windows.Forms;
 namespace CrazyKTV_SongMgr
 {
     /// <summary>
-    /// 程式自動更新: 從 GitHub Releases 取得最新版本, 下載 zip 並解壓到暫存資料夾,
-    /// 程式結束後由批次檔把檔案覆蓋回程式資料夾並重新啟動.
+    /// 程式自動更新: 從 GitHub Releases 取得最新版本.
+    /// release 附有 update.json 時, 依清單裡每個元件 (主程式 / Codec_x86 / Tools) 的檔案雜湊值
+    /// 比對本機檔案, 只下載有變動的元件; 沒有清單時退回下載整包 zip.
+    /// 下載的檔案解壓到暫存資料夾, 程式結束後由批次檔覆蓋回程式資料夾並重新啟動.
+    /// update.json 與各元件 zip 由 tools\pack-release.ps1 產生.
     /// </summary>
     public static class AppUpdater
     {
         public const string LatestReleaseApi = "https://api.github.com/repos/JordanChiang/SongMgr/releases/latest";
         public const string ExeName = "CrazyKTV_SongMgr.exe";
+        public const string ManifestName = "update.json";
 
         /// <summary>程式資料夾已有這些檔案時保留不覆蓋 (使用者的參考資料庫、自訂語系及設定).</summary>
         public static readonly string[] KeepExisting =
@@ -39,9 +45,30 @@ namespace CrazyKTV_SongMgr
             public Version Version;
             public string Tag;
             public string PageUrl;
+            public string ManifestUrl;
             public string ZipUrl;
             public string ZipName;
             public long ZipSize;
+        }
+
+        /// <summary>更新清單裡的一個元件; Files 為 null 表示沒有清單的整包 zip.</summary>
+        public class Component
+        {
+            public string Name;
+            public string Desc;
+            public string Url;
+            public long Size;
+            public string DisplayName => string.IsNullOrEmpty(Desc) ? Name : Desc;
+            /// <summary>相對於程式資料夾的路徑 (以 / 分隔) 對應小寫 SHA256.</summary>
+            public Dictionary<string, string> Files;
+        }
+
+        public class UpdatePlan
+        {
+            public ReleaseInfo Release;
+            public List<Component> Components = new List<Component>();
+            public bool FromManifest;
+            public long TotalSize => Components.Sum(c => c.Size);
         }
 
         private static readonly HttpClient Http = CreateHttpClient();
@@ -77,7 +104,8 @@ namespace CrazyKTV_SongMgr
 
         public static bool IsNewer(ReleaseInfo release, Version current)
         {
-            if (release == null || release.Version == null || string.IsNullOrEmpty(release.ZipUrl)) return false;
+            if (release == null || release.Version == null) return false;
+            if (string.IsNullOrEmpty(release.ManifestUrl) && string.IsNullOrEmpty(release.ZipUrl)) return false;
             if (current == null) return false;
             return release.Version > current;
         }
@@ -86,7 +114,7 @@ namespace CrazyKTV_SongMgr
 
         #region --- 取得最新版本資訊 ---
 
-        /// <summary>解析 GitHub releases/latest API 的回應; 草稿、預覽版或沒有 zip 附檔時回傳 null.</summary>
+        /// <summary>解析 GitHub releases/latest API 的回應; 草稿、預覽版或沒有 update.json / zip 附檔時回傳 null.</summary>
         public static ReleaseInfo ParseRelease(string json)
         {
             try
@@ -98,18 +126,25 @@ namespace CrazyKTV_SongMgr
                 Version ver = ParseVersion(tag);
                 if (ver == null) return null;
 
-                JToken zip = (obj["assets"] as JArray)?
-                    .FirstOrDefault(a => ((string)a["name"] ?? "").EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
-                if (zip == null) return null;
+                JArray assets = obj["assets"] as JArray ?? new JArray();
+                JToken manifest = assets.FirstOrDefault(a => string.Equals((string)a["name"], ManifestName, StringComparison.OrdinalIgnoreCase));
+
+                // 沒有清單時用來整包更新的 zip: 優先取名稱含 SongMgr 的完整包
+                List<JToken> zips = assets.Where(a => ((string)a["name"] ?? "").EndsWith(".zip", StringComparison.OrdinalIgnoreCase)).ToList();
+                JToken zip = zips.FirstOrDefault(a => Regex.IsMatch((string)a["name"], @"^CrazyKTV_SongMgr[\d.]+\.zip$", RegexOptions.IgnoreCase))
+                             ?? zips.FirstOrDefault();
+
+                if (manifest == null && zip == null) return null;
 
                 return new ReleaseInfo
                 {
                     Version = ver,
                     Tag = tag,
                     PageUrl = (string)obj["html_url"],
-                    ZipUrl = (string)zip["browser_download_url"],
-                    ZipName = (string)zip["name"],
-                    ZipSize = (long?)zip["size"] ?? 0,
+                    ManifestUrl = (string)manifest?["browser_download_url"],
+                    ZipUrl = (string)zip?["browser_download_url"],
+                    ZipName = (string)zip?["name"],
+                    ZipSize = (long?)zip?["size"] ?? 0,
                 };
             }
             catch
@@ -121,18 +156,24 @@ namespace CrazyKTV_SongMgr
         /// <summary>向 GitHub 查詢最新版本; 網路錯誤時回傳 null.</summary>
         public static ReleaseInfo GetLatestRelease()
         {
+            string json = GetString(LatestReleaseApi, "application/vnd.github+json");
+            return json == null ? null : ParseRelease(json);
+        }
+
+        private static string GetString(string url, string accept)
+        {
             try
             {
-                using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, LatestReleaseApi))
+                using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, url))
                 using (CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
                 {
-                    req.Headers.Accept.ParseAdd("application/vnd.github+json");
+                    if (accept != null) req.Headers.Accept.ParseAdd(accept);
                     using (HttpResponseMessage res = Http.Send(req, cts.Token))
                     {
                         if (!res.IsSuccessStatusCode) return null;
                         using (StreamReader sr = new StreamReader(res.Content.ReadAsStream(cts.Token), Encoding.UTF8))
                         {
-                            return ParseRelease(sr.ReadToEnd());
+                            return sr.ReadToEnd();
                         }
                     }
                 }
@@ -141,6 +182,103 @@ namespace CrazyKTV_SongMgr
             {
                 return null;
             }
+        }
+
+        #endregion
+
+        #region --- 更新清單 ---
+
+        /// <summary>解析 update.json; 格式錯誤時回傳 null.</summary>
+        public static List<Component> ParseManifest(string json)
+        {
+            try
+            {
+                JObject obj = JObject.Parse(json);
+                List<Component> list = new List<Component>();
+                foreach (JToken c in obj["components"] as JArray ?? new JArray())
+                {
+                    Component comp = new Component
+                    {
+                        Name = (string)c["name"],
+                        Desc = (string)c["desc"],
+                        Url = (string)c["url"],
+                        Size = (long?)c["size"] ?? 0,
+                        Files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    };
+                    if (string.IsNullOrEmpty(comp.Name) || string.IsNullOrEmpty(comp.Url)) return null;
+                    foreach (JProperty f in (c["files"] as JObject ?? new JObject()).Properties())
+                    {
+                        comp.Files[f.Name] = ((string)f.Value ?? "").ToLowerInvariant();
+                    }
+                    if (comp.Files.Count == 0) return null;
+                    list.Add(comp);
+                }
+                return list.Count > 0 ? list : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static string LocalPath(string appDir, string relPath) =>
+            Path.Combine(appDir, relPath.Replace('/', Path.DirectorySeparatorChar));
+
+        public static bool IsKept(string relPath)
+        {
+            string rel = relPath.Replace('/', '\\');
+            return KeepExisting.Any(k => string.Equals(k, rel, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static string FileHash(string file)
+        {
+            using (FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            {
+                return Convert.ToHexString(SHA256.HashData(fs)).ToLowerInvariant();
+            }
+        }
+
+        /// <summary>元件裡有任何檔案不存在或雜湊值不同就需要更新 (使用者已有的保留檔案不算).</summary>
+        public static bool NeedsUpdate(Component comp, string appDir)
+        {
+            foreach (KeyValuePair<string, string> f in comp.Files)
+            {
+                string local = LocalPath(appDir, f.Key);
+                bool exists = File.Exists(local);
+                if (IsKept(f.Key) && exists) continue;
+                if (!exists) return true;
+                try
+                {
+                    if (!string.Equals(FileHash(local), f.Value, StringComparison.OrdinalIgnoreCase)) return true;
+                }
+                catch
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>依 release 決定要下載哪些元件; 已是最新或無法取得資訊時回傳 null.</summary>
+        public static UpdatePlan GetUpdatePlan(ReleaseInfo release, string appDir)
+        {
+            UpdatePlan plan = new UpdatePlan { Release = release };
+
+            if (!string.IsNullOrEmpty(release.ManifestUrl))
+            {
+                string json = GetString(release.ManifestUrl, null);
+                List<Component> comps = json == null ? null : ParseManifest(json);
+                if (comps != null)
+                {
+                    plan.FromManifest = true;
+                    plan.Components.AddRange(comps.Where(c => NeedsUpdate(c, appDir)));
+                    return plan.Components.Count > 0 ? plan : null;
+                }
+            }
+
+            if (string.IsNullOrEmpty(release.ZipUrl)) return null;
+            plan.Components.Add(new Component { Name = release.ZipName, Url = release.ZipUrl, Size = release.ZipSize });
+            return plan;
         }
 
         #endregion
@@ -164,23 +302,47 @@ namespace CrazyKTV_SongMgr
             }
         }
 
-        /// <summary>下載 release zip 並解壓, 回傳含 CrazyKTV_SongMgr.exe 的資料夾 (已移除要保留的檔案).</summary>
-        public static string Prepare(ReleaseInfo release, string appDir, Action<long, long> progress, CancellationToken ct)
+        /// <summary>下載並解壓計畫中的元件, 回傳要覆蓋到程式資料夾的根目錄 (已移除要保留的檔案).</summary>
+        public static string Prepare(UpdatePlan plan, string appDir, Action<long, long> progress, CancellationToken ct)
         {
             string stage = StageDir;
             if (Directory.Exists(stage)) Directory.Delete(stage, true);
             Directory.CreateDirectory(stage);
 
-            string zipFile = Path.Combine(stage, "package.zip");
             string extractDir = Path.Combine(stage, "files");
+            long total = plan.TotalSize;
+            long done = 0;
 
-            using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, release.ZipUrl))
+            for (int i = 0; i < plan.Components.Count; i++)
+            {
+                Component comp = plan.Components[i];
+                string zipFile = Path.Combine(stage, "package" + i + ".zip");
+                long before = done;
+                Download(comp.Url, zipFile, (d, t) => { done = before + d; progress?.Invoke(done, Math.Max(total, done)); }, ct);
+
+                ct.ThrowIfCancellationRequested();
+                ZipFile.ExtractToDirectory(zipFile, extractDir, Encoding.UTF8, true);
+                File.Delete(zipFile);
+
+                if (comp.Files != null) VerifyComponent(comp, extractDir);
+            }
+
+            string root = plan.FromManifest ? extractDir : FindPackageRoot(extractDir);
+            if (root == null) throw new InvalidDataException("更新檔裡找不到 " + ExeName);
+
+            RemoveKeptFiles(root, appDir);
+            return root;
+        }
+
+        private static void Download(string url, string file, Action<long, long> progress, CancellationToken ct)
+        {
+            using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, url))
             using (HttpResponseMessage res = Http.Send(req, HttpCompletionOption.ResponseHeadersRead, ct))
             {
                 res.EnsureSuccessStatusCode();
-                long total = res.Content.Headers.ContentLength ?? release.ZipSize;
+                long total = res.Content.Headers.ContentLength ?? 0;
                 using (Stream src = res.Content.ReadAsStream(ct))
-                using (FileStream dst = new FileStream(zipFile, FileMode.Create, FileAccess.Write))
+                using (FileStream dst = new FileStream(file, FileMode.Create, FileAccess.Write))
                 {
                     byte[] buffer = new byte[81920];
                     long done = 0;
@@ -194,15 +356,18 @@ namespace CrazyKTV_SongMgr
                     }
                 }
             }
+        }
 
-            ZipFile.ExtractToDirectory(zipFile, extractDir, Encoding.UTF8, true);
-            File.Delete(zipFile);
-
-            string root = FindPackageRoot(extractDir);
-            if (root == null) throw new InvalidDataException("更新檔裡找不到 " + ExeName);
-
-            RemoveKeptFiles(root, appDir);
-            return root;
+        /// <summary>確認解壓出來的檔案與清單一致, 避免下載不完整或附檔與清單不符.</summary>
+        public static void VerifyComponent(Component comp, string extractDir)
+        {
+            foreach (KeyValuePair<string, string> f in comp.Files)
+            {
+                string file = LocalPath(extractDir, f.Key);
+                if (!File.Exists(file)) throw new InvalidDataException(comp.Name + " 更新檔缺少 " + f.Key);
+                if (!string.Equals(FileHash(file), f.Value, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(comp.Name + " 更新檔的 " + f.Key + " 與更新清單不符");
+            }
         }
 
         /// <summary>zip 可能直接放檔案, 也可能多包一層資料夾: 找出 CrazyKTV_SongMgr.exe 所在的資料夾.</summary>
@@ -309,7 +474,7 @@ namespace CrazyKTV_SongMgr
     /// <summary>下載更新檔時顯示進度, 可取消. DialogResult.OK 表示更新檔已備妥 (PackageRoot).</summary>
     public class AppUpdateProgressForm : Form
     {
-        private readonly AppUpdater.ReleaseInfo release;
+        private readonly AppUpdater.UpdatePlan plan;
         private readonly string appDir;
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
         private readonly Label status = new Label();
@@ -319,12 +484,12 @@ namespace CrazyKTV_SongMgr
         public string PackageRoot { get; private set; }
         public Exception Error { get; private set; }
 
-        public AppUpdateProgressForm(AppUpdater.ReleaseInfo release, string appDir)
+        public AppUpdateProgressForm(AppUpdater.UpdatePlan plan, string appDir)
         {
-            this.release = release;
+            this.plan = plan;
             this.appDir = appDir;
 
-            Text = "下載 CrazyKTV 加歌程式 " + release.Tag;
+            Text = "下載 CrazyKTV 加歌程式 " + plan.Release.Tag;
             Font = new Font("微軟正黑體", 10F);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
@@ -352,7 +517,7 @@ namespace CrazyKTV_SongMgr
             {
                 try
                 {
-                    PackageRoot = AppUpdater.Prepare(release, appDir, ReportProgress, cts.Token);
+                    PackageRoot = AppUpdater.Prepare(plan, appDir, ReportProgress, cts.Token);
                 }
                 catch (Exception ex)
                 {
@@ -398,7 +563,7 @@ namespace CrazyKTV_SongMgr
                 {
                     status.Text = "正在下載更新檔... " + mb(done);
                 }
-                if (total > 0 && done >= total) status.Text = "正在解壓縮更新檔...";
+                if (total > 0 && done >= total) status.Text = "正在解壓縮並檢查更新檔...";
             }));
         }
 

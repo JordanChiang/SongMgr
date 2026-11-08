@@ -1608,16 +1608,25 @@ namespace CrazyKTV_SongMgr
             {
                 AppUpdater.ReleaseInfo release = AppUpdater.GetLatestRelease();
                 if (!AppUpdater.IsNewer(release, AppUpdater.CurrentVersion())) return;
+
+                // 比對本機檔案, 只下載有變動的元件 (主程式 / Codec_x86 / Tools)
+                AppUpdater.UpdatePlan plan = AppUpdater.GetUpdatePlan(release, Application.StartupPath);
+                if (plan == null) return;
+
                 if (IsDisposed || !IsHandleCreated) return;
-                BeginInvoke((Action)(() => Common_UpdateSongMgr(release)));
+                BeginInvoke((Action)(() => Common_UpdateSongMgr(plan)));
             });
         }
 
-        private void Common_UpdateSongMgr(AppUpdater.ReleaseInfo release)
+        private void Common_UpdateSongMgr(AppUpdater.UpdatePlan plan)
         {
-            string sizeText = release.ZipSize > 0 ? " (" + (release.ZipSize / 1048576.0).ToString("0.0") + " MB)" : "";
-            string msg = "偵測到 CrazyKTV 加歌程式新版本 " + release.Tag + sizeText + Environment.NewLine +
+            AppUpdater.ReleaseInfo release = plan.Release;
+            string mb(long b) => (b / 1048576.0).ToString("0.0") + " MB";
+            string items = string.Join(Environment.NewLine, plan.Components.Select(c => "　・" + c.DisplayName + (c.Size > 0 ? " (" + mb(c.Size) + ")" : "")));
+            string msg = "偵測到 CrazyKTV 加歌程式新版本 " + release.Tag + Environment.NewLine +
                          "目前版本: " + AppUpdater.CurrentVersionText() + Environment.NewLine + Environment.NewLine +
+                         "需要下載:" + Environment.NewLine + items + Environment.NewLine +
+                         (plan.Components.Count > 1 && plan.TotalSize > 0 ? "　共 " + mb(plan.TotalSize) + Environment.NewLine : "") + Environment.NewLine +
                          "要立即下載並更新嗎? 更新完成後程式會自動重新啟動。";
             if (MessageBox.Show(this, msg, "偵測到 CrazyKTV 加歌程式更新", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
@@ -1630,7 +1639,7 @@ namespace CrazyKTV_SongMgr
                 return;
             }
 
-            using (AppUpdateProgressForm form = new AppUpdateProgressForm(release, appDir))
+            using (AppUpdateProgressForm form = new AppUpdateProgressForm(plan, appDir))
             {
                 if (form.ShowDialog(this) != DialogResult.OK)
                 {
