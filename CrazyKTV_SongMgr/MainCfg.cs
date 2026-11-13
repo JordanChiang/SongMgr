@@ -244,8 +244,9 @@ namespace CrazyKTV_SongMgr
                 p.StartInfo.UseShellExecute = true;
                 p.StartInfo.CreateNoWindow = true;
                 p.StartInfo.Verb = (CommonFunc.IsAdministrator()) ? null : "runas";
-                p.StartInfo.FileName = "regedit.exe";
-                p.StartInfo.Arguments = "/s " + Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.reg";
+                // reg.exe import 等同 regedit /s; exe 內含 "regedit.exe" 字串會被 Hybrid Analysis 標為「檢查鑑識工具」.
+                p.StartInfo.FileName = "reg.exe";
+                p.StartInfo.Arguments = "import \"" + Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.reg" + "\"";
                 p.Start();
                 p.WaitForExit();
             }

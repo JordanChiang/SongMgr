@@ -10,7 +10,7 @@
 
 | 元件 | 內容 | 多久變一次 |
 |---|---|---|
-| `App` | 根目錄的檔案（目前只有 `CrazyKTV_SongMgr.exe`，不含 `.pdb`）、`SongMgr\` | 每次發佈 |
+| `App` | 根目錄的檔案（`CrazyKTV_SongMgr.exe`、`SQLite.Interop.dll`，不含 `.pdb`）、`SongMgr\` | 每次發佈 |
 | `Codec_x86` | 影音解碼器 | 很少，換 LAV 版本時才會變 |
 | `Tools` | ffmpeg / ffplay / ffprobe | 很少 |
 
@@ -60,6 +60,16 @@ CrazyKtv_SongMgr2.12.1.zip
 - **tag 和版本號要一致。** 清單裡的下載網址是用 tag 組出來的，不一致就會下載失敗。
 - 在 `Publish` 資料夾執行過程式留下的 `.cfg`、`.log` 不會被打包。
 - 使用者電腦上已經存在的參考資料庫、自訂語系和設定檔，自動更新不會覆蓋。清單在 `AppUpdater.KeepExisting`。
+
+### 避免防毒誤判
+
+發佈的 exe 曾在 VirusTotal 被 ML 引擎 (APEX、Cylance) 判為惡意、Hybrid Analysis 49 分。以下設定是為了避免誤判，不要改回去：
+
+- **原生 DLL 不包進 exe** (`FolderProfile.pubxml` 的 `IncludeNativeLibrariesForSelfExtract=false`)，`SQLite.Interop.dll` 放在 exe 旁邊。這是影響最大的一項：包進去時 exe 會符合 ChaCha20 加密演算法的 YARA 規則 (SQLite 的亂數產生器)，執行時還會解壓 DLL 到暫存資料夾再載入。實測其他修正都做了、只把 DLL 包回 exe，VirusTotal 仍有 Cylance、Hybrid Analysis 仍是 suspicious 45 分。
+- **程式圖示每個尺寸都是未壓縮的 32bpp BMP。** PNG 壓縮的圖示會讓 exe 資源區段的熵接近亂數，Hybrid Analysis 會標「資源熵異常」。換圖示時用 `python tools/ico-png-to-bmp.py <原.ico> <新.ico>` 重新封裝，像素不變。
+- 程式碼裡不要出現 `regedit.exe` 字串 (會被標為「檢查鑑識工具」)，匯入 `.reg` 用 `reg.exe import`。
+
+修正後 VirusTotal 剩 APEX 1 個 (拿掉 256x256 圖示也一樣)，Hybrid Analysis 為 no specific threat。發佈後可把 exe 上傳到 [VirusTotal](https://www.virustotal.com/) 和 [Hybrid Analysis](https://hybrid-analysis.com/) 檢查。
 
 ### 參數
 

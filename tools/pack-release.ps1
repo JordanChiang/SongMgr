@@ -53,7 +53,7 @@ $OutDir = [IO.Path]::GetFullPath($OutDir).TrimEnd('\')
 
 # --- 元件定義 (rel 為相對於發佈資料夾的路徑, 以 \ 分隔) ---
 # 元件清單只定義在這裡; 程式端 (AppUpdater) 依 update.json 處理, 不寫死元件名稱.
-# App 收根目錄所有檔案 (目前只有 exe, 以後多出的檔案也會一起收進來, 不含 .pdb) 及 SongMgr\.
+# App 收根目錄所有檔案 (exe、SQLite.Interop.dll, 以後多出的檔案也會一起收進來, 不含 .pdb) 及 SongMgr\.
 $components = @(
     @{ Name = 'App';       Desc = '加歌程式';               Zip = "SongMgr_App_$version.zip"
        Match = { param($rel) (($rel -notmatch '\\') -and ($rel -notmatch '\.pdb$')) -or $rel.StartsWith('SongMgr\', 'OrdinalIgnoreCase') } },
