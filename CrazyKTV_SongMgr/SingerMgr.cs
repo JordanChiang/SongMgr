@@ -313,7 +313,7 @@ namespace CrazyKTV_SongMgr
 
                         try
                         {
-                            singerStore.UpdateSinger(SingerTable.Default, valuelist[7], valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4], valuelist[5], valuelist[6]);
+                            singerStore.UpdateSinger(SingerTable.Default, valuelist[7], valuelist[0], valuelist[1], valuelist[2], new NameSpell(spell: valuelist[3], strokes: valuelist[4], spellNum: valuelist[5], penStyle: valuelist[6]));
                             lock (LockThis) { Global.TotalList[0]++; }
                         }
                         catch
@@ -629,7 +629,7 @@ namespace CrazyKTV_SongMgr
 
                 try
                 {
-                    store.InsertSinger(SingerTable.Default, SingerId, SingerName, SingerType);
+                    store.InsertSinger(SingerTable.Default, SingerId, SingerName, SingerType, NameSpell.Of(SingerName));
                     this.BeginInvoke((Action)delegate()
                     {
                         SingerMgr_Tooltip_Label.Text = "已成功將歌手【" + SingerName + "】加入至" + ((SingerTable.Default.IsLibrary) ? "歌庫" : "預設") + "歌手資料表。";
@@ -738,7 +738,7 @@ namespace CrazyKTV_SongMgr
                 {
                     case "ktv_Singer":
                     case "ktv_AllSinger":
-                        store.InsertSinger(SingerTable.Default, singerid, list[2], list[3], list[4], list[5], list[6], list[7]);
+                        store.InsertSinger(SingerTable.Default, singerid, list[2], list[3], new NameSpell(spell: list[4], strokes: list[5], spellNum: list[6], penStyle: list[7]));
                         lock (LockThis)
                         {
                             Global.TotalList[0]++;

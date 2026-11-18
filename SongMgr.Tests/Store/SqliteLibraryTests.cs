@@ -137,13 +137,42 @@ namespace SongMgr.Tests.Store
             using (SongLibraryStore store = SongLibraryStore.Open(SingerTable.Library))
             {
                 store.DeleteAllSingers(SingerTable.Library);
-                store.InsertSinger(SingerTable.Library, "3", "周杰倫", "0", "ㄓㄐㄌ", "8", "524", "丨一");
-                store.InsertSinger(SingerTable.Library, "7", "蔡依林", "1", "ㄘㄧㄌ", "17", "612", "一丨");
+                store.InsertSinger(SingerTable.Library, "3", "周杰倫", "0", new NameSpell(spell: "ㄓㄐㄌ", strokes: "8", spellNum: "524", penStyle: "丨一"));
+                store.InsertSinger(SingerTable.Library, "7", "蔡依林", "1", new NameSpell(spell: "ㄘㄧㄌ", strokes: "17", spellNum: "612", penStyle: "一丨"));
+                Assert.Equal(1, store.UpdateSingerSpell(SingerTable.Library, "7", new NameSpell(spell: "ㄘㄌ", strokes: "9", spellNum: "61", penStyle: "丿")));
             }
+
+            Assert.Equal("ㄘㄌ|9|61|丿", Db.GetDataTable(db, "select * from ktv_Singer where Singer_Id = '7'").AsEnumerable()
+                .Select(r => r["Singer_Spell"] + "|" + r["Singer_Strokes"] + "|" + r["Singer_SpellNum"] + "|" + r["Singer_PenStyle"]).Single());
 
             Assert.Equal(7, CommonFunc.GetMaxSingerId("ktv_Singer", db));
             Assert.Equal(new[] { "周杰倫", "蔡依林" }, Db.GetDataTable(db, "select Singer_Name from ktv_Singer order by Singer_Id").AsEnumerable().Select(r => r["Singer_Name"].ToString()));
         }
+
+        [Fact]
+        public void Favorites_AddReplaceAndRemoveUsersOnSqlite()
+        {
+            using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
+            {
+                store.ClearFavoriteUsers();
+                store.AddFavoriteUser("0001", "小明");
+                Assert.Equal(2, store.AddFavorites("0001", new[] { "000001", "000002", "000001" }));
+                Assert.Equal(0, store.AddFavorites("0001", new[] { "000002" }));
+                Assert.Equal(1, store.ReplaceFavoriteUser("^CB1", "錢櫃新歌排行榜 (國語)", new[] { "000003", "000003" }));
+                Assert.Equal(1, store.ReplaceFavoriteUser("^CB1", "錢櫃新歌排行榜 (國語)", new[] { "000002" }));
+                Assert.Equal(1, store.RemoveFavorites("0001", new[] { "000001" }));
+            }
+            Assert.Equal(new[] { "0001:000002", "^CB1:000002" }, Rows("select User_Id, Song_Id from ktv_Favorite order by User_Id, Song_Id"));
+
+            using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
+            {
+                Assert.Equal(1, store.RemoveFavoriteUser("0001"));
+            }
+            Assert.Equal(new[] { "^CB1:錢櫃新歌排行榜 (國語)" }, Rows("select User_Id, User_Name from ktv_User order by User_Id"));
+            Assert.Equal(new[] { "^CB1:000002" }, Rows("select User_Id, Song_Id from ktv_Favorite order by User_Id, Song_Id"));
+        }
+
+        List<string> Rows(string sql) => Db.GetDataTable(db, sql).AsEnumerable().Select(r => r[0] + ":" + r[1]).ToList();
 
         [Fact]
         public void YoutubeSongStore_CreatesEditsAndDeletesOnSqlite()

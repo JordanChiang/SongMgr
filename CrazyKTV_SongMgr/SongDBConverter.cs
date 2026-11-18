@@ -442,7 +442,7 @@ namespace CrazyKTV_SongMgr
 
                     try
                     {
-                        store.InsertSinger(SingerTable.Library, NextSingerId, valuelist[0], valuelist[1]);
+                        store.InsertSinger(SingerTable.Library, NextSingerId, valuelist[0], valuelist[1], NameSpell.Of(valuelist[0]));
                     }
                     catch
                     {

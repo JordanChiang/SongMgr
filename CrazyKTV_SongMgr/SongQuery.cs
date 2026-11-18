@@ -2089,55 +2089,17 @@ namespace CrazyKTV_SongMgr
 
         private void SongQuery_FavoriteRemove(object SongIdlist, object UserId)
         {
-            DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
-            string FavoriteRemoveSqlStr = "delete from ktv_Favorite where User_Id = @UserId and Song_Id = @SongId";
-            DbCommand cmd = Db.Command(FavoriteRemoveSqlStr, conn);
-
-            foreach (string str in (List<string>)SongIdlist)
+            using (SongLibraryStore store = SongLibraryStore.Open())
             {
-                cmd.Parameters.AddWithValue("@UserId", (string)UserId);
-                cmd.Parameters.AddWithValue("@SongId", str);
-                cmd.ExecuteNonQuery();
-                cmd.Parameters.Clear();
+                store.RemoveFavorites((string)UserId, (List<string>)SongIdlist);
             }
-            conn.Close();
         }
 
         private void SongQuery_FavoriteAdd(object SongIdlist, object UserId)
         {
-            List<string> SongIdAddlist = (List<string>)SongIdlist;
-            string SongQuerySqlStr = "select User_Id, Song_Id from ktv_Favorite";
-            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+            using (SongLibraryStore store = SongLibraryStore.Open())
             {
-                var query = from row in dt.AsEnumerable()
-                            where row.Field<string>("User_Id").Equals((string)UserId)
-                            select row;
-
-                foreach (DataRow row in query)
-                {
-                    if (SongIdAddlist.Contains(row["Song_Id"].ToString()))
-                    {
-                        SongIdAddlist.Remove(row["Song_Id"].ToString());
-                    }
-                }
-            }
-
-            using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
-            {
-                DbCommand cmd = null;
-                string sqlColumnStr = "User_Id, Song_Id";
-                string sqlValuesStr = "@UserId, @SongId";
-                string FavoriteAddSqlStr = "insert into ktv_Favorite ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-                using (cmd = Db.Command(FavoriteAddSqlStr, conn))
-                {
-                    foreach (string str in SongIdAddlist)
-                    {
-                        cmd.Parameters.AddWithValue("@UserId", (string)UserId);
-                        cmd.Parameters.AddWithValue("@SongId", str);
-                        cmd.ExecuteNonQuery();
-                        cmd.Parameters.Clear();
-                    }
-                }
+                store.AddFavorites((string)UserId, (List<string>)SongIdlist);
             }
         }
 

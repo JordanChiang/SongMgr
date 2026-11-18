@@ -661,7 +661,7 @@ namespace CrazyKTV_SongMgr
 
                                 try
                                 {
-                                    store.InsertSinger(SingerTable.Library, NextSingerId, song.Singer, song.SingerType);
+                                    store.InsertSinger(SingerTable.Library, NextSingerId, song.Singer, song.SingerType, NameSpell.Of(song.Singer));
                                 }
                                 catch
                                 {
@@ -748,7 +748,7 @@ namespace CrazyKTV_SongMgr
 
                             try
                             {
-                                store.InsertSinger(SingerTable.Library, NextSingerId, singer, singertype);
+                                store.InsertSinger(SingerTable.Library, NextSingerId, singer, singertype, NameSpell.Of(singer));
                                 Global.TotalList[4]++;
                             }
                             catch
