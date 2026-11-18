@@ -98,6 +98,33 @@ namespace SongMgr.Tests.EndToEnd
         }
 
         [DesktopFact]
+        public void 套用錢櫃編號_moves_songs_in_a_chain_makes_room_and_keeps_我的最愛()
+        {
+            // 002034, 002035 and 002036 are 錢櫃 songs in the bundled CrazySongMgr.mdb.
+            using (var app = new AppSession("cashbox"))
+            {
+                app.WriteSettings(6, ("MainCfgHideApplyCashboxIdButton", "False"));
+                app.InsertSong("100001", "國語", "派偉俊", "去年下的那場雪"); // → 002034
+                app.InsertSong("100002", "國語", "派偉俊", "別戀");           // → 002035, where Want Me Back is
+                app.InsertSong("002035", "國語", "郁欣Ivy", "Want Me Back");  // → 002036
+                app.InsertSong("002034", "國語", "歌手", "不在錢櫃的歌");      // sits on 002034: gets a new 國語 number
+                app.InsertFavorite("0001", "100001");
+                app.InsertFavorite("0001", "002035");
+                app.InsertFavorite("0001", "002034");
+
+                app.Start();
+                app.Click("套用錢櫃編號", onTab: "錢櫃資料");
+                app.Answer("確認提示", "是(Y)");
+                AppSession.WaitUntil(() => app.Songs().Any(s => s.Name == "去年下的那場雪" && s.Id == "002034"), 60, "套用錢櫃編號 to finish");
+
+                Assert.Equal(new[] { ("002034", "去年下的那場雪"), ("002035", "別戀"), ("002036", "Want Me Back"), ("100003", "不在錢櫃的歌") },
+                    app.Songs().Select(s => (s.Id, s.Name)));
+                Assert.Equal(new[] { "0001:002034", "0001:002036", "0001:100003" }, app.Favorites());
+                Assert.False(File.Exists(Path.Combine(app.AppDir, "SongMgr", "Backup", "Favorite.txt")), "我的最愛 are no longer exported to Favorite.txt");
+            }
+        }
+
+        [DesktopFact]
         public void 轉換為6位數_renumbers_every_song_keeps_我的最愛_and_saves_the_digit_count()
         {
             using (var app = new AppSession("to6"))

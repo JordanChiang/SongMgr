@@ -1238,52 +1238,16 @@ namespace CrazyKTV_SongMgr
 
             if (Global.CrazyktvDatabaseStatus)
             {
-                List<string> FavoriteList = new List<string>();
-
-                string SongQuerySqlStr = "select User_Id, User_Name from ktv_User";
-                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                // The 我的最愛 move with each song (SongLibraryStore.RenumberSong), so nothing is exported and re-imported.
+                var library = new List<CashboxIdPlan.Song>();
+                for (int i = 0; i < Cashbox.SongIdList.Count; i++)
                 {
-                    if (dt.Rows.Count > 0)
-                    {
-                        foreach (DataRow row in dt.AsEnumerable())
-                        {
-                            FavoriteList.Add("ktv_User|" + row["User_Id"].ToString() + "|" + row["User_Name"].ToString());
-                        }
-                    }
+                    string[] data = Cashbox.SongDataList[i].Split('|');
+                    library.Add(new CashboxIdPlan.Song(Cashbox.SongIdList[i], data[0], data[1], data[2]));
                 }
-
-                SongQuerySqlStr = "select User_Id, Song_Id from ktv_Favorite";
-                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
-                {
-                    if (dt.Rows.Count > 0)
-                    {
-                        foreach (DataRow row in dt.AsEnumerable())
-                        {
-                            if (Cashbox.SongIdList.IndexOf(row["Song_Id"].ToString()) >= 0)
-                            {
-                                int i = Cashbox.SongIdList.IndexOf(row["Song_Id"].ToString());
-                                List<string> list = new List<string>(Regex.Split(Cashbox.SongDataList[i], @"\|", RegexOptions.None));
-
-                                FavoriteList.Add("ktv_Favorite|" + row["User_Id"].ToString() + "|" + list[0] + "|" + list[1] + "|" + list[2]);
-                            }
-                        }
-                    }
-                }
-
-                if (!Directory.Exists(Application.StartupPath + @"\SongMgr\Backup")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\Backup");
-                StreamWriter sw = new StreamWriter(Application.StartupPath + @"\SongMgr\Backup\Favorite.txt");
-                foreach (string str in FavoriteList)
-                {
-                    sw.WriteLine(str);
-                }
-                sw.Close();
-                FavoriteList.Clear();
-
-                List<string> ReNewList = new List<string>();
-                List<string> ReOldList = new List<string>();
+                var matches = new List<(CashboxIdPlan.Song Song, string CashboxId)>();
 
                 string MaxDigitCode = (Global.SongMgrMaxDigitCode == "1") ? "D5" : "D6";
-                SongIdAllocator songIds = SongIdAllocator.FromLibrary();
 
                 string SqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox";
                 using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
@@ -1307,16 +1271,7 @@ namespace CrazyKTV_SongMgr
 
                                     if (CashboxId != Cashbox.SongIdList[SongDataIndex])
                                     {
-                                        List<string> list = new List<string>(Cashbox.SongDataList[SongDataIndex].Split('|'));
-                                        if (Cashbox.SongIdList.IndexOf(CashboxId) >= 0)
-                                        {
-                                            lock (LockThis) { ReOldList.Add(CashboxId + "|" + Cashbox.SongIdList[SongDataIndex] + "|" + list[0] + "|" + list[1] + "|" + list[2]); }
-                                        }
-                                        else
-                                        {
-                                            lock (LockThis) { ReNewList.Add(CashboxId + "|" + Cashbox.SongIdList[SongDataIndex] + "|" + list[0] + "|" + list[1] + "|" + list[2]); }
-                                        }
-                                        list.Clear();
+                                        lock (LockThis) { matches.Add((library[SongDataIndex], CashboxId)); }
                                     }
 
                                     this.BeginInvoke((Action)delegate()
@@ -1328,123 +1283,39 @@ namespace CrazyKTV_SongMgr
                         }
                     });
                 }
-                ReOldList.Sort();
-                ReNewList.Sort();
+                CashboxIdPlan.Result plan = CashboxIdPlan.Plan(library, matches, SongIdAllocator.FromSettings);
+                foreach (var skipped in plan.Skipped)
+                {
+                    Global.SongLog.Add("略過套用編號: " + skipped.Song.Id + " => " + skipped.CashboxId + " (" + skipped.Song + "),此錢櫃編號已分配給其它歌曲或此歌曲已有錢櫃編號");
+                }
+
+                // Each song once, from where it was to where it ends up (a swap stops on a spare number in between).
+                var changes = plan.Moves.GroupBy(m => m.Song)
+                    .Select(g => (Song: g.Key, From: g.First().From, To: g.Last().To, Cashbox: g.Any(m => m.Why == CashboxIdPlan.Reason.Cashbox)))
+                    .ToList();
 
                 using (SongLibraryStore store = SongLibraryStore.Open())
                 {
-                    List<string> valuelist;
-                    foreach (string str in ReOldList)
+                    if (CashboxIdPlan.Apply(store, plan.Moves, out Exception error))
                     {
-                        valuelist = new List<string>(str.Split('|'));
-                        string NextSongId = songIds.Take(valuelist[2]);
-                        try
+                        foreach (var c in changes)
                         {
-                            store.UpdateSong(new SongRecord { Id = NextSongId, OldId = valuelist[0] }, SongColumns.Id);
-                            store.UpdateSong(new SongRecord { Id = valuelist[0], OldId = valuelist[1] }, SongColumns.Id);
-
-                            Global.TotalList[0]++;
-                            Global.SongLog.Add("已成功套用編號: " + valuelist[0] + " => " + NextSongId + " 及 " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
+                            if (c.Cashbox)
+                            {
+                                Global.TotalList[0]++;
+                                Global.SongLog.Add("已成功套用編號: " + c.From + " => " + c.To + " (" + c.Song + ")");
+                            }
+                            else
+                            {
+                                Global.SongLog.Add("已成功讓出編號: " + c.From + " => " + c.To + " (" + c.Song + ")");
+                            }
                         }
-                        catch
-                        {
-                            Global.TotalList[1]++;
-                            Global.SongLog.Add("分配編號時發生未知的錯誤: " + valuelist[0] + " => " + NextSongId + " 及 " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
-                        }
-                        this.BeginInvoke((Action)delegate()
-                        {
-                            Cashbox_QueryStatus_Label.Text = "已成功將 " + Global.TotalList[0] + " 首歌曲變更為錢櫃編號,失敗 " + Global.TotalList[1] + " 首...";
-                        });
-                        valuelist.Clear();
                     }
-                    ReOldList.Clear();
-
-                    foreach (string str in ReNewList)
+                    else
                     {
-                        valuelist = new List<string>(str.Split('|'));
-
-                        try
-                        {
-                            store.UpdateSong(new SongRecord { Id = valuelist[0], OldId = valuelist[1] }, SongColumns.Id);
-                            Global.TotalList[0]++;
-                            Global.SongLog.Add("已成功套用編號: " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
-                        }
-                        catch
-                        {
-                            Global.TotalList[1]++;
-                            Global.SongLog.Add("分配編號時發生未知的錯誤: " + valuelist[1] + " => " + valuelist[0] + " (" + valuelist[2] + "-" + valuelist[3] + "-" + valuelist[4] + ")");
-                        }
-
-                        this.BeginInvoke((Action)delegate()
-                        {
-                            Cashbox_QueryStatus_Label.Text = "已成功將 " + Global.TotalList[0] + " 首歌曲變更錢櫃編號,失敗 " + Global.TotalList[1] + " 首...";
-                        });
-                        valuelist.Clear();
+                        Global.TotalList[1] += changes.Count(c => c.Cashbox);
+                        Global.SongLog.Add("套用錢櫃編號時發生錯誤,已還原所有變更: " + error.Message);
                     }
-                    ReNewList.Clear();
-                }
-
-                using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
-                {
-                    DbCommand Ucmd = null;
-                    DbCommand Fcmd = null;
-
-                    string TruncateSqlStr = "";
-
-                    TruncateSqlStr = "delete * from ktv_User";
-                    Ucmd = Db.Command(TruncateSqlStr, conn);
-                    Ucmd.ExecuteNonQuery();
-
-                    TruncateSqlStr = "delete * from ktv_Favorite";
-                    Fcmd = Db.Command(TruncateSqlStr, conn);
-                    Fcmd.ExecuteNonQuery();
-
-                    List<string> Addlist = new List<string>();
-                    StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\Favorite.txt", Encoding.UTF8);
-                    while (!sr.EndOfStream)
-                    {
-                        Addlist.Add(sr.ReadLine());
-                    }
-                    sr.Close();
-
-                    string UserColumnStr = "User_Id, User_Name";
-                    string UserValuesStr = "@UserId, @UserName";
-                    string UserAddSqlStr = "insert into ktv_User ( " + UserColumnStr + " ) values ( " + UserValuesStr + " )";
-                    Ucmd = Db.Command(UserAddSqlStr, conn);
-
-                    string FavoriteColumnStr = "User_Id, Song_Id";
-                    string FavoriteValuesStr = "@UserId, @SongId";
-                    string FavoriteAddSqlStr = "insert into ktv_Favorite ( " + FavoriteColumnStr + " ) values ( " + FavoriteValuesStr + " )";
-                    Fcmd = Db.Command(FavoriteAddSqlStr, conn);
-
-                    List<string> list = new List<string>();
-                    foreach (string AddStr in Addlist)
-                    {
-                        list = new List<string>(Regex.Split(AddStr, @"\|", RegexOptions.None));
-                        switch (list[0])
-                        {
-                            case "ktv_User":
-                                Ucmd.Parameters.AddWithValue("@UserId", list[1]);
-                                Ucmd.Parameters.AddWithValue("@UserName", list[2]);
-                                Ucmd.ExecuteNonQuery();
-                                Ucmd.Parameters.Clear();
-                                break;
-                            case "ktv_Favorite":
-                                string SongData = list[2] + "|" + list[3].ToLower() + "|" + list[4].ToLower();
-
-                                if (Cashbox.SongDataLowCaseList.IndexOf(SongData) > 0)
-                                {
-                                    string SongId = Cashbox.SongIdList[Cashbox.SongDataLowCaseList.IndexOf(SongData)];
-                                    Fcmd.Parameters.AddWithValue("@UserId", list[1]);
-                                    Fcmd.Parameters.AddWithValue("@SongId", SongId);
-                                    Fcmd.ExecuteNonQuery();
-                                    Fcmd.Parameters.Clear();
-                                }
-                                break;
-                        }
-                        list.Clear();
-                    }
-                    Addlist.Clear();
                 }
             }
         }

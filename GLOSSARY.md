@@ -24,6 +24,7 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
   - **語系編號區段** — the run of 歌曲編號 each 語系 owns: the ten start numbers in `SongMgrLangCode`; each runs up to the next one's start, the last up to 99999 or 999999.
   - **缺號** — an unused 歌曲編號 between a 語系's start number and its highest used number. Handed out before going past the highest. _Avoid_: 斷號.
   - **歌曲編號配置** — handing out 歌曲編號 within one operation: taking the next one, claiming a 自訂編號, counting what is left. `SongIdAllocator`: build one per operation from the 歌庫 (`FromLibrary`) and drop it afterwards.
+- **套用錢櫃編號** — giving the 歌庫's songs the numbers 錢櫃 uses for them. `CashboxIdPlan`: every move is worked out before anything is written; a song sitting on a number another song gets moves to a new 歌曲編號 outside all 錢櫃 numbers; written in one transaction, the 我的最愛 moving with the songs.
 - **語系**, **歌手類別**, **歌曲類別**, **聲道 (Song_Track)**, **點播次數 (Song_PlayCount)**, **拼音 / 筆劃 / 筆形** — columns of `ktv_Song`; see `SongColumns`.
 
 ## Storage and files
