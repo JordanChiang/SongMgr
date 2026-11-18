@@ -1002,7 +1002,7 @@ namespace CrazyKTV_SongMgr
         private void SingerMgr_EditSyncSongSinger_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
             Global.SingerMgrSyncSongSinger = SingerMgr_EditSyncSongSinger_CheckBox.Checked.ToString();
-            if (Global.SongMgrInitializeStatus) CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SingerMgrSyncSongSinger", Global.SingerMgrSyncSongSinger);
+            if (Global.SongMgrInitializeStatus) SongMgrSettings.Save("SingerMgrSyncSongSinger");
         }
 
         private void SingerMgr_EditApplyChanges_Button_Click(object sender, EventArgs e)

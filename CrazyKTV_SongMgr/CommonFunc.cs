@@ -1017,8 +1017,7 @@ namespace CrazyKTV_SongMgr
                             Global.CrazyktvSongLangKeyWordList = LangKeyWordlist;
                             Global.TotalList = new List<int>() { 0, 0, 0, 0 };
 
-                            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangStr", string.Join(",", Global.CrazyktvSongLangList));
-                            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangKeyWord", string.Join("|", Global.CrazyktvSongLangKeyWordList));
+                            SongMgrSettings.Save("CrazyktvSongLangStr", "CrazyktvSongLangKeyWord");
 
                             var tasks = new List<Task>()
                             {

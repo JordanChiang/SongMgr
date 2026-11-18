@@ -21,25 +21,7 @@ namespace CrazyKTV_SongMgr
 
         private void MainCfg_Save_Button_Click(object sender, EventArgs e)
         {
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgAlwaysOnTop", Global.MainCfgAlwaysOnTop);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgEnableAutoUpdate", Global.MainCfgEnableAutoUpdate);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgAutoSongFileCount", Global.MainCfgAutoSongFileCount);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongDBConverterTabPage", Global.MainCfgHideSongDBConverterTabPage);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongAddResultTabPage", Global.MainCfgHideSongAddResultTabPage);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideSongLogTabPage", Global.MainCfgHideSongLogTabPage);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgHideApplyCashboxIdButton", Global.MainCfgHideApplyCashboxIdButton);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupRemoveSongDays", Global.MainCfgBackupRemoveSongDays);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUIScale", Global.MainCfgUIScale);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUIFont", Global.MainCfgUIFont);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgEnableUIScale", Global.MainCfgEnableUIScale);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgUICustomScale", Global.MainCfgUICustomScale);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupDB", Global.MainCfgBackupDB);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgBackupDBPath", Global.MainCfgBackupDBPath);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerCore", Global.MainCfgPlayerCore);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerOutput", Global.MainCfgPlayerOutput);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerEnableAudioCompressor", Global.MainCfgPlayerEnableAudioCompressor);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerEnableAudioProcessor", Global.MainCfgPlayerEnableAudioProcessor);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "MainCfgPlayerDefaultVolume", Global.MainCfgPlayerDefaultVolume);
+            SongMgrSettings.Save(SettingsGroup.MainCfg);
         }
 
         private void MainCfg_AlwaysOnTop_CheckBox_CheckedChanged(object sender, EventArgs e)
