@@ -28,6 +28,9 @@ namespace CrazyKTV_SongMgr
         public static List<string> AllSingerDataLowCaseList;
         public static List<string> AllSingerDataTypeList;
 
+        /// <summary>The batch's 歌曲編號配置, built from the 歌庫 when the batch starts.</summary>
+        public static SongIdAllocator SongIds;
+
         public static DataTable DupSongAddDT;
         public static List<SongRecord> SongAddValueList;
         public static List<string> ChorusSingerList;
@@ -308,148 +311,10 @@ namespace CrazyKTV_SongMgr
                     }
                 }
 
-                bool UseCustomSongID = false;
-                if (Global.SongAddUseCustomSongID == "True")
+                // 自訂編號; 不合用時自動分配編號
+                if (!(Global.SongAddUseCustomSongID == "True" && SongId != "" && SongIds.TryClaim(SongId, SongLang)))
                 {
-                    if (SongId != "")
-                    {
-                        List<string> StartIdlist = new List<string>();
-                        StartIdlist = new List<string>(Regex.Split(Global.SongMgrLangCode, ",", RegexOptions.None));
-
-                        switch (Global.SongMgrMaxDigitCode)
-                        {
-                            case "1":
-                                if (SongId.Length == 5 && SongDataIdList.IndexOf(SongId) < 0)
-                                {
-                                    if (Global.CrazyktvSongLangList.IndexOf(SongLang) < 9)
-                                    {
-                                        if (Convert.ToInt32(SongId) >= Convert.ToInt32(StartIdlist[Global.CrazyktvSongLangList.IndexOf(SongLang)]) &&
-                                        Convert.ToInt32(SongId) < Convert.ToInt32(StartIdlist[Global.CrazyktvSongLangList.IndexOf(SongLang) + 1]))
-                                        {
-                                            UseCustomSongID = true;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (Convert.ToInt32(SongId) >= Convert.ToInt32(StartIdlist[Global.CrazyktvSongLangList.IndexOf(SongLang)]) &&
-                                        Convert.ToInt32(SongId) < 100000)
-                                        {
-                                            UseCustomSongID = true;
-                                        }
-                                    }
-                                }
-                                break;
-                            case "2":
-                                if (SongId.Length == 6 && SongDataIdList.IndexOf(SongId) < 0)
-                                {
-                                    if (Convert.ToInt32(SongId) >= 0 && Convert.ToInt32(SongId) <= 99999)
-                                    {
-                                        UseCustomSongID = true;
-                                    }
-                                    else
-                                    {
-                                        if (Global.CrazyktvSongLangList.IndexOf(SongLang) < 9)
-                                        {
-                                            if (Convert.ToInt32(SongId) >= Convert.ToInt32(StartIdlist[Global.CrazyktvSongLangList.IndexOf(SongLang)]) &&
-                                            Convert.ToInt32(SongId) < Convert.ToInt32(StartIdlist[Global.CrazyktvSongLangList.IndexOf(SongLang) + 1]))
-                                            {
-                                                UseCustomSongID = true;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            if (Convert.ToInt32(SongId) >= Convert.ToInt32(StartIdlist[Global.CrazyktvSongLangList.IndexOf(SongLang)]) &&
-                                            Convert.ToInt32(SongId) < 1000000)
-                                            {
-                                                UseCustomSongID = true;
-                                            }
-                                        }
-                                    }
-                                }
-                                break;
-                        }
-                    }
-                }
-
-                // 自訂編號
-                if (UseCustomSongID)
-                {
-                    if (SongId.Length == 6 && Convert.ToInt32(SongId) >= 0 && Convert.ToInt32(SongId) <= 99999)
-                    {
-                        List<string> StartIdlist = new List<string>();
-                        StartIdlist = new List<string>(Regex.Split(Global.SongMgrLangCode, ",", RegexOptions.None));
-                        bool RefreshID = false;
-                        foreach (string startid in StartIdlist)
-                        {
-                            if (Convert.ToInt32(startid) <= 99999)
-                            {
-                                RefreshID = true;
-                            }
-                        }
-                        if (RefreshID)
-                        {
-                            Parallel.ForEach(Global.CrazyktvSongLangList, (SongLangStr, loopState) =>
-                            {
-                                if (Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLangStr)].Count > 0)
-                                {
-                                    if (Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLangStr)].IndexOf(SongId) >= 0)
-                                    {
-                                        lock (LockThis)
-                                        {
-                                            Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLangStr)].Remove(SongId);
-                                            if (Convert.ToInt32(SongId) > Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLangStr)])
-                                            {
-                                                Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLangStr)] = Convert.ToInt32(SongId);
-                                                GetUnUsedSongId(SongId, SongLangStr);
-                                            }
-                                            loopState.Break();
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                    }
-                    else
-                    {
-                        if (Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Count > 0)
-                        {
-                            if (Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].IndexOf(SongId) >= 0)
-                            {
-                                lock (LockThis)
-                                {
-                                    Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Remove(SongId);
-                                }
-                            }
-                        }
-
-                        if (Convert.ToInt32(SongId) > Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLang)])
-                        {
-                            lock (LockThis)
-                            {
-                                Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLang)] = Convert.ToInt32(SongId);
-                                GetUnUsedSongId(SongId, SongLang);
-                            }
-                        }
-                    }
-                }
-                else //自動分配編號
-                {
-                    SongId = "";
-
-                    // 查詢歌曲編號有無斷號
-                    if (Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Count > 0)
-                    {
-                        SongId = Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)][0];
-                        Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Remove(SongId);
-                    }
-                    
-                    // 若無斷號查詢各語系下個歌曲編號
-                    if (SongId == "")
-                    {
-                        string MaxDigitCode = (Global.SongMgrMaxDigitCode == "1") ? "D5" : "D6";
-                        Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLang)]++;
-                        SongId = Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLang)].ToString(MaxDigitCode);
-                    }
+                    SongId = SongIds.Take(SongLang);
                 }
 
                 SongPath = Path.GetDirectoryName(SongSrcPath) + @"\";
@@ -651,28 +516,6 @@ namespace CrazyKTV_SongMgr
 
         #endregion
 
-        #region --- SongAddSong 取得未使用的編號 ---
-
-        public static void GetUnUsedSongId(string MaxSongID, string SongLang)
-        {
-            string MaxDigitCode = (Global.SongMgrMaxDigitCode == "1") ? "D5" : "D6";
-
-            List<string> StartIdlist = new List<string>(Regex.Split(Global.SongMgrLangCode, ",", RegexOptions.None));
-            int iMin = Convert.ToInt32(StartIdlist[Global.CrazyktvSongLangList.IndexOf(SongLang)]);
-            int iMax = Convert.ToInt32(MaxSongID);
-
-            Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Clear();
-
-            for (int i = iMin; i < iMax; i++)
-            {
-                if (SongDataIdList.IndexOf(i.ToString(MaxDigitCode)) < 0)
-                {
-                    Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Add(i.ToString(MaxDigitCode));
-                }
-            }
-        }
-
-        #endregion
 
     }
 }

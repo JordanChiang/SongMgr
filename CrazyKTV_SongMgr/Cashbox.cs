@@ -1283,8 +1283,7 @@ namespace CrazyKTV_SongMgr
                 List<string> ReOldList = new List<string>();
 
                 string MaxDigitCode = (Global.SongMgrMaxDigitCode == "1") ? "D5" : "D6";
-                CommonFunc.GetMaxSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
-                CommonFunc.GetUnusedSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
+                SongIdAllocator songIds = SongIdAllocator.FromLibrary();
 
                 string SqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox";
                 using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SqlStr, ""))
@@ -1338,7 +1337,7 @@ namespace CrazyKTV_SongMgr
                     foreach (string str in ReOldList)
                     {
                         valuelist = new List<string>(str.Split('|'));
-                        string NextSongId = Cashbox.GetNextSongId(valuelist[2]);
+                        string NextSongId = songIds.Take(valuelist[2]);
                         try
                         {
                             store.UpdateSong(new SongRecord { Id = NextSongId, OldId = valuelist[0] }, SongColumns.Id);
@@ -1892,31 +1891,6 @@ namespace CrazyKTV_SongMgr
                     break;
             }
             return list;
-        }
-
-        #endregion
-
-        #region --- Cashbox 取得下個歌曲編號 ---
-
-        public static string GetNextSongId(string SongLang)
-        {
-            string NewSongID = "";
-
-            // 查詢歌曲編號有無斷號
-            if (Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Count > 0)
-            {
-                NewSongID = Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)][0];
-                Global.UnusedSongIdList[Global.CrazyktvSongLangList.IndexOf(SongLang)].Remove(NewSongID);
-            }
-
-            // 若無斷號查詢各語系下個歌曲編號
-            if (NewSongID == "")
-            {
-                string MaxDigitCode = (Global.SongMgrMaxDigitCode == "1") ? "D5" : "D6";
-                Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLang)]++;
-                NewSongID = Global.MaxIDList[Global.CrazyktvSongLangList.IndexOf(SongLang)].ToString(MaxDigitCode);
-            }
-            return NewSongID;
         }
 
         #endregion

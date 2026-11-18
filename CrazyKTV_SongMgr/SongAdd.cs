@@ -490,6 +490,7 @@ namespace CrazyKTV_SongMgr
                 }
                 else
                 {
+                    SongIdAllocator songIds = SongIdAllocator.FromLibrary();
                     foreach (string langstr in Global.CrazyktvSongLangList)
                     {
                         var langquery = from row in dt.AsEnumerable()
@@ -498,10 +499,9 @@ namespace CrazyKTV_SongMgr
 
                         if (Global.CrazyktvSongLangList.IndexOf(langstr) >= 0)
                         {
-                            int LangIndex = Global.CrazyktvSongLangList.IndexOf(langstr);
                             int SongCount = langquery.Count<DataRow>() + 1;
 
-                            if (SongCount > Global.RemainingSongIdCountList[LangIndex])
+                            if (SongCount > songIds.Remaining(langstr))
                             {
                                 SongAdd.RemainingSongIdCountStr = langstr + "歌曲的剩餘歌曲編號已不夠所加入的" + langstr + "歌曲使用!";
                                 SongAdd_Edit_GroupBox.Enabled = false;
@@ -578,8 +578,7 @@ namespace CrazyKTV_SongMgr
                 Global.TotalList = new List<int>() { 0, 0, 0, 0, 0 };
                 SongAddSong.CreateSongDataTable();
 
-                CommonFunc.GetMaxSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
-                CommonFunc.GetUnusedSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6);
+                SongAddSong.SongIds = SongIdAllocator.FromLibrary();
 
                 int count = SongAddSong.SongAddDT.Rows.Count;
 
@@ -827,9 +826,6 @@ namespace CrazyKTV_SongMgr
                     
                     Task.Factory.StartNew(() => Common_GetSongStatisticsTask());
                     Task.Factory.StartNew(() => Common_GetSingerStatisticsTask());
-                    Task.Factory.StartNew(() => CommonFunc.GetMaxSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6));
-                    Task.Factory.StartNew(() => CommonFunc.GetUnusedSongId((Global.SongMgrMaxDigitCode == "1") ? 5 : 6));
-                    Task.Factory.StartNew(() => CommonFunc.GetRemainingSongIdCount((Global.SongMgrMaxDigitCode == "1") ? 5 : 6));
 
                     SongAdd_Save_Button.Text = "儲存設定";
                     SongAdd_DataGridView.Size = new Size(Convert.ToInt32(952 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor), Convert.ToInt32(296 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor));
@@ -942,12 +938,6 @@ namespace CrazyKTV_SongMgr
                     
                     Task.Factory.StartNew(() => Common_GetSongStatisticsTask());
                     Task.Factory.StartNew(() => Common_GetSingerStatisticsTask());
-
-                    int MaxDigitCode;
-                    if (Global.SongMgrMaxDigitCode == "1") { MaxDigitCode = 5; } else { MaxDigitCode = 6; }
-                    Task.Factory.StartNew(() => CommonFunc.GetMaxSongId(MaxDigitCode));
-                    Task.Factory.StartNew(() => CommonFunc.GetUnusedSongId(MaxDigitCode));
-                    Task.Factory.StartNew(() => CommonFunc.GetRemainingSongIdCount((Global.SongMgrMaxDigitCode == "1") ? 5 : 6));
 
                     SongAdd_Add_Button.Text = "加入歌庫";
                     SongAdd_Save_Button.Text = "儲存設定";

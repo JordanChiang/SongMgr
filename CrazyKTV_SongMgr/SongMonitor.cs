@@ -203,7 +203,6 @@ namespace CrazyKTV_SongMgr
 
                         Task.Factory.StartNew(() => Common_GetSongStatisticsTask());
                         Task.Factory.StartNew(() => Common_GetSingerStatisticsTask());
-                        Task.Factory.StartNew(() => CommonFunc.GetRemainingSongIdCount((Global.SongMgrMaxDigitCode == "1") ? 5 : 6));
                     }
                 }
 
@@ -615,7 +614,6 @@ namespace CrazyKTV_SongMgr
 
                     Task.Factory.StartNew(() => Common_GetSongStatisticsTask());
                     Task.Factory.StartNew(() => Common_GetSingerStatisticsTask());
-                    Task.Factory.StartNew(() => CommonFunc.GetRemainingSongIdCount((Global.SongMgrMaxDigitCode == "1") ? 5 : 6));
                 }
             }
             catch (Exception ex)

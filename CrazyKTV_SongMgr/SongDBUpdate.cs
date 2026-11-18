@@ -867,9 +867,6 @@ namespace CrazyKTV_SongMgr
                 // 檢查備份移除歌曲是否要刪除
                 Task.Factory.StartNew(() => Common_CheckBackupRemoveSongTask());
 
-                // 取得可用歌曲編號
-                Task.Factory.StartNew(() => CommonFunc.GetRemainingSongIdCount((Global.SongMgrMaxDigitCode == "1") ? 5 : 6));
-
                 this.BeginInvoke((Action)delegate()
                 {
                     // 載入我的最愛清單

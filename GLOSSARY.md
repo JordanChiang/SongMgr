@@ -20,6 +20,10 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
   - **SongAnalysisSettings** — the 加歌 settings 歌曲分析 reads, captured once per run.
   - **SingerLookup** — the singers 歌曲分析 recognises: `ktv_AllSinger`, then any `ktv_Singer` entry not already there.
 - **歌手資料表** — `ktv_Singer` (in the 歌庫 database, the 歌庫's own singers) or `ktv_AllSinger` (in the 參考資料庫, the 預設 list). `SingerTable`; 歌手管理 works on `SingerTable.Default`.
+- **歌曲編號 (Song_Id)** — a song's number in `ktv_Song`: 5 or 6 digits (`SongMgrMaxDigitCode`), inside its 語系's 語系編號區段.
+  - **語系編號區段** — the run of 歌曲編號 each 語系 owns: the ten start numbers in `SongMgrLangCode`; each runs up to the next one's start, the last up to 99999 or 999999.
+  - **缺號** — an unused 歌曲編號 between a 語系's start number and its highest used number. Handed out before going past the highest. _Avoid_: 斷號.
+  - **歌曲編號配置** — handing out 歌曲編號 within one operation: taking the next one, claiming a 自訂編號, counting what is left. `SongIdAllocator`: build one per operation from the 歌庫 (`FromLibrary`) and drop it afterwards.
 - **語系**, **歌手類別**, **歌曲類別**, **聲道 (Song_Track)**, **點播次數 (Song_PlayCount)**, **拼音 / 筆劃 / 筆形** — columns of `ktv_Song`; see `SongColumns`.
 
 ## Storage and files

@@ -472,7 +472,7 @@ namespace CrazyKTV_SongMgr
 
         #region --- Common 初始化歌曲資料 ---
 
-        private void Common_InitializeSongData(bool InitSongId, bool InitPhonetics, bool InitCashbox, bool InitSpecialStr, bool InitSingerGroup, bool InitCashboxHaveSong)
+        private void Common_InitializeSongData(bool WaitDatabaseUpdate, bool InitPhonetics, bool InitCashbox, bool InitSpecialStr, bool InitSingerGroup, bool InitCashboxHaveSong)
         {
             if (File.Exists(Global.CrazyktvSongMgrDatabaseFile) && !Global.SongMgrDatabaseError)
             {
@@ -487,13 +487,9 @@ namespace CrazyKTV_SongMgr
 
                 var tasks = new List<Task>();
 
-                if (InitSongId)
+                if (WaitDatabaseUpdate)
                 {
                     SpinWait.SpinUntil(() => Global.DatabaseUpdateFinished == true);
-                    int MaxDigitCode;
-                    if (Global.SongMgrMaxDigitCode == "1") { MaxDigitCode = 5; } else { MaxDigitCode = 6; }
-                    tasks.Add(Task.Factory.StartNew(() => CommonFunc.GetMaxSongId(MaxDigitCode)));
-                    tasks.Add(Task.Factory.StartNew(() => CommonFunc.GetUnusedSongId(MaxDigitCode)));
                 }
 
                 if (InitPhonetics)
@@ -2136,163 +2132,6 @@ namespace CrazyKTV_SongMgr
                 Str = Value.ToString();
             }
             return Str;
-        }
-
-        #endregion
-
-        #region --- CommonFunc 取得剩餘的歌曲編號 ---
-
-        public static void GetRemainingSongIdCount(int DigitCode)
-        {
-            if (Global.CrazyktvDatabaseStatus)
-            {
-                List<string> StartIdlist = new List<string>(Regex.Split(Global.SongMgrLangCode, ",", RegexOptions.None));
-                Global.RemainingSongIdCountList = new List<int>() { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-                StartIdlist.Add((DigitCode == 5) ? "100000" : "1000000");
-
-                string SongQuerySqlStr = "select Song_Id, Song_Lang from ktv_Song order by Song_Id";
-                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
-                {
-                    int RemainingSongId;
-
-                    foreach (string StartIdStr in StartIdlist)
-                    {
-                        if (StartIdStr == ((DigitCode == 5) ? "100000" : "1000000")) break;
-
-                        int sid = Convert.ToInt32(StartIdStr);
-                        int eid = Convert.ToInt32(StartIdlist[StartIdlist.IndexOf(StartIdStr) + 1]) - 1;
-                        int tid = eid - sid + 1;
-
-                        var query = from row in dt.AsEnumerable()
-                                    where Convert.ToInt32(row.Field<string>("Song_Id")) >= sid &&
-                                          Convert.ToInt32(row.Field<string>("Song_Id")) <= eid &&
-                                          row.Field<string>("Song_Id").Length == DigitCode
-                                    select row;
-
-                        if (query.Count<DataRow>() > 0)
-                        {
-                            RemainingSongId = tid - query.Count<DataRow>();
-                        }
-                        else
-                        {
-                            RemainingSongId = tid;
-                        }
-                        Global.RemainingSongIdCountList[StartIdlist.IndexOf(StartIdStr)] = RemainingSongId;
-                    }
-                }
-            }
-        }
-
-        #endregion
-
-        #region --- CommonFunc 取得歌曲最大編號及缺號 ---
-
-        public static void GetMaxSongId(int DigitCode)
-        {
-            Global.MaxIDList = new List<int>();
-            List<string> StartIdlist = new List<string>(Regex.Split(Global.SongMgrLangCode, ",", RegexOptions.None));
-
-            for (int i = 0; i < 10; i++)
-            {
-                Global.MaxIDList.Add(Convert.ToInt32(StartIdlist[i]) - 1);
-            }
-
-            string SongQuerySqlStr = "select Song_Id from ktv_Song order by Song_Id desc";
-            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
-            {
-                if (dt.Rows.Count > 0)
-                {
-                    Parallel.For(0, Global.CrazyktvSongLangList.Count, i =>
-                    {
-                        int sid = Convert.ToInt32(StartIdlist[i]);
-                        int eid;
-                        if (i < 9)
-                        {
-                            eid = Convert.ToInt32(StartIdlist[i + 1]) - 1;
-                        }
-                        else
-                        {
-                            eid = (Global.SongMgrMaxDigitCode == "1") ? 99999 : 999999;
-                        }
-
-                        foreach (DataRow row in dt.Rows)
-                        {
-                            string songIdStr = row["Song_Id"].ToString();
-                            if (songIdStr.Length == DigitCode)
-                            {
-                                int id = Convert.ToInt32(songIdStr);
-                                if (id >= sid && id <= eid)
-                                {
-                                    Global.MaxIDList[i] = id;
-                                    break;
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-        }
-
-        public static void GetUnusedSongId(int DigitCode)
-        {
-            string MaxDigitCode = (Global.SongMgrMaxDigitCode == "1") ? "D5" : "D6";
-            List<string> StartIdlist = new List<string>(Regex.Split(Global.SongMgrLangCode, ",", RegexOptions.None));
-
-            Global.UnusedSongIdList = new List<List<string>>();
-            for (int i = 0; i < Global.CrazyktvSongLangList.Count; i++)
-            {
-                Global.UnusedSongIdList.Add(new List<string>());
-            }
-
-            string SongQuerySqlStr = "select Song_Id from ktv_Song";
-            using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
-            {
-                if (dt.Rows.Count > 0)
-                {
-                    HashSet<string> allUsedIds = new HashSet<string>();
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        allUsedIds.Add(row["Song_Id"].ToString());
-                    }
-
-                    Parallel.For(0, Global.CrazyktvSongLangList.Count, i =>
-                    {
-                        int sid = Convert.ToInt32(StartIdlist[i]);
-                        int eid;
-                        if (i < 9)
-                        {
-                            eid = Convert.ToInt32(StartIdlist[i + 1]) - 1;
-                        }
-                        else
-                        {
-                            eid = (Global.SongMgrMaxDigitCode == "1") ? 99999 : 999999;
-                        }
-
-                        // find max id for this lang to limit search
-                        int currentMax = sid;
-                        foreach (string usedId in allUsedIds)
-                        {
-                            if (usedId.Length == DigitCode)
-                            {
-                                int idVal = Convert.ToInt32(usedId);
-                                if (idVal >= sid && idVal <= eid && idVal > currentMax)
-                                {
-                                    currentMax = idVal;
-                                }
-                            }
-                        }
-
-                        for (int id = sid; id <= currentMax; id++)
-                        {
-                            string idStr = id.ToString(MaxDigitCode);
-                            if (!allUsedIds.Contains(idStr))
-                            {
-                                Global.UnusedSongIdList[i].Add(idStr);
-                            }
-                        }
-                    });
-                }
-            }
         }
 
         #endregion

@@ -173,8 +173,6 @@ namespace CrazyKTV_SongMgr
 
         public static List<int> MTotalList = new List<int>();
         public static List<int> TotalList = new List<int>();
-        public static List<int> MaxIDList = new List<int>();
-        public static List<int> RemainingSongIdCountList = new List<int>();
 
         public static List<string> CrazyktvSongLangList = new List<string>() { "國語", "台語", "粵語", "日語", "英語", "客語", "原住民語", "韓語", "兒歌", "其它" };
         public static List<string> CrazyktvSongLangKeyWordList = new List<string>() { "國語,國", "台語,台,閩南,閩,臺語,臺", "粵語,粵,廣東", "日語,日文,日", "英語,英文,英", "客語,客", "原住民語,民謠", "韓語,韓", "兒歌,兒", "其它" };
@@ -271,8 +269,6 @@ namespace CrazyKTV_SongMgr
         public static PlayerTrackUpdate PlayerTrackUpdate;
         public static List<string> PlayerRandomVideoList = new List<string>();
         public static bool PlayerInitialized = false;
-
-        public static List<List<string>> UnusedSongIdList = new List<List<string>>();
 
         public static List<string> CrtchorusSeparateList = new List<string>() { "&", "+" };
 
