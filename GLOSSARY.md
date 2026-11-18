@@ -14,6 +14,8 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
 - **歌庫檔案統計** — how many songs in `ktv_Song` have their file on disk, shown as 歌庫檔案 on the 歌庫查詢 statistics. `CommonFunc.GetSongFileCount` lists each folder once instead of checking every file. Runs when the 歌庫 loads only if 自動統計歌庫檔案 (`MainCfgAutoSongFileCount`) is on; otherwise the label reads 點此統計 and a click starts it.
 
 - **歌庫查詢條件** — what one 歌庫查詢 looks for: the kind (歌曲名稱, 歌手名稱, 歌曲編號, 全部, 新進, 合唱, 歌曲類別, 歌手類別, 歌曲聲道, 錢櫃編號, 我的最愛), the value, the 語系 filter, 模糊查詢 and 同義字查詢. `SongSearchCriteria`; `SongSearch.Run` finds the songs in either kind of 歌庫 with parameters, comparing text without regard to case, matching against a `SongSearchReference` (同義字, 歌手群組, special singer names, 錢櫃 numbers) captured once.
+- **異常查詢** — the 歌庫查詢 kinds that look for problems across the whole 歌庫, whatever the 語系 filter: 無檔案歌曲, 同檔案歌曲, the 重複歌曲 and 同名歌曲 kinds, 檔名不符 (歌曲聲道), 歌手未在資料庫, 歌手類別不符, 語系類別不符 (錢櫃). Also `SongSearch.Run`.
+- **重複歌曲** — songs whose `DuplicateSongKey` under one rule is equal. Each field compares the same way under every rule: 語系 exactly; 歌名 trimmed, whatever the case; 歌曲類別 whatever the case, empty matching only empty; 歌手 as a set — split as a 合唱 (special singer names stay whole), each singer taken as its 歌手群組, in any order. The rules (重複歌曲, 忽略歌曲類別, 忽略括號及歌曲類別, 忽略歌手及歌曲類別, 同名歌曲 忽略括號及歌曲類別) only choose which fields to compare. Listed by 語系 and key, so each group sits together.
 
 ## Songs and singers
 

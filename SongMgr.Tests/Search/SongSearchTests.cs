@@ -14,49 +14,60 @@ namespace SongMgr.Tests.Search
     /// One 歌庫 written to CrazySong.mdb and exported to CrazySong.db, searched through both: the songs are chosen to
     /// differ in case, width, 合唱 order and separator, 歌手群組 and 同義字.
     /// </summary>
-    public sealed class SearchLibrary : IDisposable
+    public abstract class ScratchLibrary : IDisposable
     {
-        readonly string root = TestEnv.NewTempDir("search");
+        protected readonly string Root = TestEnv.NewTempDir("search");
 
-        public SearchLibrary()
+        /// <summary>Writes the songs, favorites (User_Id, Song_Id) and ktv_Singer rows (name, 歌手類別) to a scratch .mdb and exports it to .db.</summary>
+        private protected void Build(IEnumerable<SongRecord> songs, IEnumerable<(string User, string Song)> favorites, IEnumerable<(string Name, string Type)> singers)
         {
             string savedSong = Global.CrazyktvDatabaseFile, savedMgr = Global.CrazyktvSongMgrDatabaseFile;
-            TestEnv.UseScratchDatabases(root);
+            TestEnv.UseScratchDatabases(Root);
             Access = Global.CrazyktvDatabaseFile;
             Global.CrazyktvDatabaseFile = savedSong;
             Global.CrazyktvSongMgrDatabaseFile = savedMgr;
 
             using (SongLibraryStore store = SongLibraryStore.OpenFile(Access))
             {
-                foreach (SongRecord s in Songs()) store.InsertSong(s, SongColumns.AllButReplayGain);
+                foreach (SongRecord s in songs) store.InsertSong(s, SongColumns.AllButReplayGain);
+                int id = 1;
+                foreach (var (name, type) in singers) store.InsertSinger(SingerTable.Library, (id++).ToString("D4"), name, type);
             }
             using (DbConnection conn = Db.Open(Access))
             {
-                foreach (string id in new[] { "000002", "000005" })
+                foreach (var (user, song) in favorites)
                 {
-                    using (DbCommand cmd = Db.Command("insert into ktv_Favorite (User_Id, Song_Id) values ('0001', @SongId)", conn))
+                    using (DbCommand cmd = Db.Command("insert into ktv_Favorite (User_Id, Song_Id) values (@UserId, @SongId)", conn))
                     {
-                        cmd.Parameters.AddWithValue("@SongId", id);
+                        cmd.Parameters.AddWithValue("@UserId", user);
+                        cmd.Parameters.AddWithValue("@SongId", song);
                         cmd.ExecuteNonQuery();
                     }
                 }
-                using (DbCommand cmd = Db.Command("insert into ktv_Favorite (User_Id, Song_Id) values ('0002', '000001')", conn)) cmd.ExecuteNonQuery();
             }
 
-            SQLite = Path.Combine(root, "CrazySong.db");
+            SQLite = Path.Combine(Root, "CrazySong.db");
             var results = SqliteExport.Run(new[] { new SqliteExport.Job(Access, SQLite, SqliteExport.CrazySongDBVer) });
             Assert.True(results.Single().Succeeded, results.Single().Error?.ToString());
         }
 
-        public string Access { get; }
-        public string SQLite { get; }
+        public string Access { get; private set; }
+        public string SQLite { get; private set; }
 
         public string File(string kind) => kind == "Access" ? Access : SQLite;
 
         public void Dispose()
         {
             System.Data.SQLite.SQLiteConnection.ClearAllPools();
-            TestEnv.DeleteDir(root);
+            TestEnv.DeleteDir(Root);
+        }
+    }
+
+    public sealed class SearchLibrary : ScratchLibrary
+    {
+        public SearchLibrary()
+        {
+            Build(Songs(), new[] { ("0001", "000002"), ("0001", "000005"), ("0002", "000001") }, new (string, string)[0]);
         }
 
         static IEnumerable<SongRecord> Songs()

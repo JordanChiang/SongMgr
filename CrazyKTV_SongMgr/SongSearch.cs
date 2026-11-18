@@ -9,7 +9,10 @@ using System.Text.RegularExpressions;
 
 namespace CrazyKTV_SongMgr
 {
-    /// <summary>What a 歌庫查詢 looks for: one kind per entry of the 歌庫查詢 menu, plus 我的最愛.</summary>
+    /// <summary>
+    /// What a 歌庫查詢 looks for: one kind per entry of the 歌庫查詢 menu, 我的最愛, and one per entry of the 異常查詢
+    /// menu. The 異常查詢 kinds look at the whole 歌庫, whatever the 語系 filter.
+    /// </summary>
     enum SongSearchKind
     {
         SongName,
@@ -23,6 +26,31 @@ namespace CrazyKTV_SongMgr
         SongTrack,
         CashboxId,
         Favorite,
+
+        /// <summary>無檔案歌曲: the song's file is not on disk.</summary>
+        MissingFile,
+        /// <summary>同檔案歌曲: more than one song uses the same file.</summary>
+        SameFile,
+        /// <summary>重複歌曲 (<see cref="DuplicateSongKey.Rule.Full"/>).</summary>
+        Duplicate,
+        /// <summary>重複歌曲 (忽略歌曲類別).</summary>
+        DuplicateIgnoreSongType,
+        /// <summary>重複歌曲 (忽略括號及歌曲類別).</summary>
+        DuplicateIgnoreBrackets,
+        /// <summary>重複歌曲 (忽略歌手及歌曲類別).</summary>
+        DuplicateIgnoreSinger,
+        /// <summary>重複歌曲 (合唱歌曲): 合唱 songs with the same 語系 and 歌名, whoever sings them.</summary>
+        DuplicateChorus,
+        /// <summary>同名歌曲 (忽略括號及歌曲類別).</summary>
+        SameNameIgnoreBrackets,
+        /// <summary>檔名不符 (歌曲聲道): the file name does not carry the song's 聲道.</summary>
+        TrackNotInFileName,
+        /// <summary>歌手未在資料庫: the singer, or one singer of a 合唱, is not in ktv_Singer.</summary>
+        SingerNotInLibrary,
+        /// <summary>歌手類別不符: the song's 歌手類別 is not the one ktv_Singer gives its singer (合唱 left out).</summary>
+        SingerTypeMismatch,
+        /// <summary>語系類別不符 (錢櫃): 錢櫃 has the song under another 語系.</summary>
+        LangMismatch,
     }
 
     /// <summary>
@@ -62,11 +90,16 @@ namespace CrazyKTV_SongMgr
     sealed class SongSearchReference
     {
         public SongSearchReference(IEnumerable<string> synonymousWords = null, IEnumerable<string> singerGroups = null,
-                                   IEnumerable<string> specialSingerNames = null, IEnumerable<string> cashboxIds = null)
+                                   IEnumerable<string> specialSingerNames = null, IEnumerable<string> cashboxIds = null,
+                                   string songInfoSeparator = "_", IEnumerable<string> trackWords = null,
+                                   Func<string, string, string, bool> isCashboxLangMismatch = null)
         {
             SynonymousWords = (synonymousWords ?? Enumerable.Empty<string>()).ToList();
             SpecialSingerNames = (specialSingerNames ?? Enumerable.Empty<string>()).Where(s => s != "").ToList();
             CashboxIds = new HashSet<string>(cashboxIds ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
+            SongInfoSeparator = songInfoSeparator ?? "_";
+            TrackWords = (trackWords ?? Enumerable.Empty<string>()).ToList();
+            IsCashboxLangMismatch = isCashboxLangMismatch ?? ((lang, singer, name) => false);
 
             groupOf = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
             foreach (string group in singerGroups ?? Enumerable.Empty<string>())
@@ -87,6 +120,30 @@ namespace CrazyKTV_SongMgr
         public IReadOnlyList<string> SpecialSingerNames { get; }
         /// <summary>The 錢櫃 numbers, written with as many digits as the 歌庫's 歌曲編號.</summary>
         public ISet<string> CashboxIds { get; }
+        /// <summary>What separates the parts of a song's file name: "_" or "-" (SongMgrSongInfoSeparate).</summary>
+        public string SongInfoSeparator { get; }
+        /// <summary>The word for each 聲道 (Song_Track 0..5) that a song's file name carries.</summary>
+        public IReadOnlyList<string> TrackWords { get; }
+        /// <summary>Whether 錢櫃 has the song (語系, 歌手, 歌名) under another 語系 and not under its own.</summary>
+        public Func<string, string, string, bool> IsCashboxLangMismatch { get; }
+
+        /// <summary>
+        /// The name a singer is compared by: its 歌手群組's first name, or the singer itself when in none; trimmed and
+        /// lower case.
+        /// </summary>
+        public string GroupOf(string singer)
+        {
+            string name = (singer ?? "").Trim();
+            if (groupOf.TryGetValue(name, out IReadOnlyList<string> names) && names.Count > 0) name = names[0];
+            return name.ToLowerInvariant();
+        }
+
+        /// <summary>The word a song's file name carries for <paramref name="track"/>.</summary>
+        public string TrackWord(int track)
+        {
+            if (track < 0 || track > 5) track = 0;
+            return track < TrackWords.Count ? TrackWords[track] : "";
+        }
 
         /// <summary>The other names of <paramref name="singer"/>'s 歌手群組; empty when it is in none.</summary>
         public IEnumerable<string> OtherGroupNames(string singer)
@@ -125,11 +182,25 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
+            Func<string, string, string, bool> langMismatch = null;
+            if (kind == SongSearchKind.LangMismatch)
+            {
+                langMismatch = (lang, singer, name) =>
+                {
+                    int i = CommonFunc.MatchCashboxSong("CashboxLang", null, lang, singer, name, Global.CashboxSongDataLowCaseList, Global.CashboxSongDataFuzzyList);
+                    if (i < 0 || lang == Global.CashboxSongDataLangList[i]) return false;
+                    return Global.CashboxSongDataFullList.IndexOf(lang + "|" + singer.ToLower() + "|" + name.ToLower()) < 0;
+                };
+            }
+
             return new SongSearchReference(
                 Global.SynonymousWordList,
                 Global.SingerGroupList,
                 (Global.SongAddSpecialStr ?? "").Split('|'),
-                cashboxIds);
+                cashboxIds,
+                (Global.SongMgrSongInfoSeparate == "1") ? "_" : "-",
+                Global.CrazyktvSongTrackList,
+                langMismatch);
         }
     }
 
@@ -245,13 +316,165 @@ namespace CrazyKTV_SongMgr
                     q.Where("Song_Id in (select Song_Id from ktv_Favorite where User_Id = @UserId)", ("@UserId", v)).OrderBy("Song_Id");
                     break;
 
+                case SongSearchKind.MissingFile:
+                    return new SongSearchResult(MissingFiles(q.OrderBy("Song_Id").Run(databaseFile)));
+
+                case SongSearchKind.SameFile:
+                    return new SongSearchResult(Groups(q.Run(databaseFile), row => (row["Song_FileName"] + "\u0001" + row["Song_Path"]).ToLowerInvariant()));
+
+                case SongSearchKind.Duplicate:
+                case SongSearchKind.DuplicateIgnoreSongType:
+                case SongSearchKind.DuplicateIgnoreBrackets:
+                case SongSearchKind.DuplicateIgnoreSinger:
+                case SongSearchKind.DuplicateChorus:
+                case SongSearchKind.SameNameIgnoreBrackets:
+                {
+                    DuplicateSongKey.Rule rule = RuleOf(criteria.Kind);
+                    if (criteria.Kind == SongSearchKind.DuplicateChorus) q.Where("Song_SingerType = @SingerType", ("@SingerType", ChorusSingerType));
+                    return new SongSearchResult(Groups(q.Run(databaseFile), row => DuplicateSongKey.Of(rule,
+                        row["Song_Lang"].ToString(), row["Song_Singer"].ToString(), row["Song_SongName"].ToString(), row["Song_SongType"].ToString(), reference)));
+                }
+
+                case SongSearchKind.TrackNotInFileName:
+                    q.OrderBy("Song_Id");
+                    keep = row => !row["Song_FileName"].ToString().Contains(reference.SongInfoSeparator + reference.TrackWord(Convert.ToInt32(row["Song_Track"])));
+                    break;
+
+                case SongSearchKind.SingerNotInLibrary:
+                {
+                    var singers = new HashSet<string>(LibrarySingers(databaseFile).Keys, StringComparer.OrdinalIgnoreCase);
+                    DataTable songs = q.Run(databaseFile);
+                    RemoveRowsWhere(songs, row =>
+                    {
+                        string singer = row["Song_Singer"].ToString();
+                        if (Convert.ToInt32(row["Song_SingerType"]) != ChorusSingerType) return singers.Contains(singer);
+                        return reference.SplitChorus(singer).All(s => singers.Contains(s));
+                    });
+                    return new SongSearchResult(SortedBySinger(songs));
+                }
+
+                case SongSearchKind.SingerTypeMismatch:
+                {
+                    Dictionary<string, string> typeOf = LibrarySingers(databaseFile);
+                    q.Where("Song_SingerType <> @SingerType", ("@SingerType", ChorusSingerType));
+                    DataTable songs = q.Run(databaseFile);
+                    RemoveRowsWhere(songs, row => typeOf.TryGetValue(row["Song_Singer"].ToString(), out string type) && type == row["Song_SingerType"].ToString());
+                    return new SongSearchResult(SortedBySinger(songs));
+                }
+
+                case SongSearchKind.LangMismatch:
+                    q.OrderBy("Song_Id");
+                    keep = row => reference.IsCashboxLangMismatch(row["Song_Lang"].ToString(), row["Song_Singer"].ToString(), row["Song_SongName"].ToString());
+                    break;
+
                 default:
                     throw new ArgumentOutOfRangeException(nameof(criteria), criteria.Kind, "不支援的查詢種類");
             }
 
-            DataTable songs = q.Run(databaseFile);
-            if (keep != null) RemoveRowsWhere(songs, row => !keep(row));
-            return new SongSearchResult(songs);
+            DataTable found = q.Run(databaseFile);
+            if (keep != null) RemoveRowsWhere(found, row => !keep(row));
+            return new SongSearchResult(found);
+        }
+
+        public static DuplicateSongKey.Rule RuleOf(SongSearchKind kind)
+        {
+            switch (kind)
+            {
+                case SongSearchKind.Duplicate: return DuplicateSongKey.Rule.Full;
+                case SongSearchKind.DuplicateIgnoreSongType: return DuplicateSongKey.Rule.IgnoreSongType;
+                case SongSearchKind.DuplicateIgnoreBrackets: return DuplicateSongKey.Rule.IgnoreBracketsAndSongType;
+                case SongSearchKind.DuplicateIgnoreSinger:
+                case SongSearchKind.DuplicateChorus: return DuplicateSongKey.Rule.NameOnly;
+                case SongSearchKind.SameNameIgnoreBrackets: return DuplicateSongKey.Rule.NameOnlyIgnoreBrackets;
+                default: throw new ArgumentOutOfRangeException(nameof(kind), kind, "不是重複歌曲的查詢種類");
+            }
+        }
+
+        /// <summary>The rows whose key some other row shares, each group together, groups in key order, by 歌曲編號 within one.</summary>
+        private static DataTable Groups(DataTable songs, Func<DataRow, string> keyOf)
+        {
+            var keyed = songs.AsEnumerable().Select(row => (Key: keyOf(row), Row: row)).ToList();
+            var dups = keyed.GroupBy(k => k.Key, StringComparer.Ordinal)
+                            .Where(g => g.Count() > 1)
+                            .OrderBy(g => g.Key, StringComparer.Ordinal)
+                            .SelectMany(g => g.OrderBy(k => k.Row["Song_Id"].ToString(), StringComparer.Ordinal))
+                            .Select(k => k.Row)
+                            .ToList();
+
+            DataTable result = songs.Clone();
+            foreach (DataRow row in dups) result.ImportRow(row);
+            return result;
+        }
+
+        private static DataTable SortedBySinger(DataTable songs)
+        {
+            DataTable result = songs.Clone();
+            foreach (DataRow row in songs.AsEnumerable()
+                                         .OrderBy(r => r["Song_Singer"].ToString(), StringComparer.OrdinalIgnoreCase)
+                                         .ThenBy(r => r["Song_Id"].ToString(), StringComparer.Ordinal))
+            {
+                result.ImportRow(row);
+            }
+            return result;
+        }
+
+        /// <summary>ktv_Singer of the 歌庫: each singer's name and 歌手類別, whatever the case of the name.</summary>
+        private static Dictionary<string, string> LibrarySingers(string databaseFile)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            using (DataTable dt = Db.GetDataTable(databaseFile, "select Singer_Name, Singer_Type from ktv_Singer", ""))
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    string name = row["Singer_Name"].ToString();
+                    if (!result.ContainsKey(name)) result.Add(name, row["Singer_Type"].ToString());
+                }
+            }
+            return result;
+        }
+
+        /// <summary>The songs whose file is not on disk. Each folder is listed once instead of one File.Exists per song.</summary>
+        private static DataTable MissingFiles(DataTable songs)
+        {
+            var filesIn = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> FilesIn(string folder)
+            {
+                if (!filesIn.TryGetValue(folder, out HashSet<string> files))
+                {
+                    files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    try
+                    {
+                        if (System.IO.Directory.Exists(folder))
+                        {
+                            foreach (string f in System.IO.Directory.EnumerateFiles(folder)) files.Add(System.IO.Path.GetFileName(f));
+                        }
+                    }
+                    catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+                    {
+                        // An unreadable folder counts as holding no files.
+                    }
+                    filesIn.Add(folder, files);
+                }
+                return files;
+            }
+
+            RemoveRowsWhere(songs, row =>
+            {
+                string folder, file;
+                try
+                {
+                    string path = System.IO.Path.Combine(row["Song_Path"].ToString(), row["Song_FileName"].ToString());
+                    folder = System.IO.Path.GetDirectoryName(path);
+                    file = System.IO.Path.GetFileName(path);
+                }
+                catch (ArgumentException)
+                {
+                    return false;
+                }
+                if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(file)) return false;
+                return FilesIn(folder).Contains(file);
+            });
+            return songs;
         }
 
         /// <summary>Whether <paramref name="singer"/> (a song's Song_Singer) is <paramref name="wanted"/>, alone or in a 合唱.</summary>
