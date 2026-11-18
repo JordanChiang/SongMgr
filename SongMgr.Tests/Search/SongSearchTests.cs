@@ -31,7 +31,7 @@ namespace SongMgr.Tests.Search
             {
                 foreach (SongRecord s in songs) store.InsertSong(s, SongColumns.AllButReplayGain);
                 int id = 1;
-                foreach (var (name, type) in singers) store.InsertSinger(SingerTable.Library, (id++).ToString("D4"), name, type);
+                foreach (var (name, type) in singers) store.InsertSinger(SingerTable.Library, (id++).ToString("D4"), name, type, NameSpell.Of(name));
             }
             using (DbConnection conn = Db.Open(Access))
             {

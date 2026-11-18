@@ -36,7 +36,7 @@ namespace SongMgr.Tests.Allocation
         {
             using (SongLibraryStore store = SongLibraryStore.Open(SingerTable.Library))
             {
-                foreach (int id in ids) store.InsertSinger(SingerTable.Library, id.ToString(), "歌手" + id, "0");
+                foreach (int id in ids) store.InsertSinger(SingerTable.Library, id.ToString(), "歌手" + id, "0", NameSpell.Of("歌手" + id));
             }
         }
 
