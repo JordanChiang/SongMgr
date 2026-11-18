@@ -118,3 +118,21 @@ powershell -ExecutionPolicy Bypass -File tools\pack-release.ps1 -Tag 2.12.0 -Pre
 - 批次檔最多等程式結束 10 分鐘（關閉時會壓縮資料庫）。逾時仍未結束就放棄這次更新，不動任何檔案。
 - 覆蓋失敗（robocopy 結束碼 8 以上）時，把備份還原回程式資料夾，再以 `--update-failed` 啟動舊版並提示使用者。
 - 還原也失敗時保留備份（`%TEMP%\CrazyKTV_SongMgr_Update\backup`），提示使用者手動複製回去。
+
+## compare-with-release.ps1
+
+新舊版比對：用真實歌庫比較目前的程式和已發佈的版本，使用者看到的結果是否相同。發佈前、或大範圍重構後跑一次。
+
+```bash
+powershell -ExecutionPolicy Bypass -File tools\compare-with-release.ps1
+```
+
+- 預設比較 `2.11.4`，用專案根目錄的 `CrazySong.mdb` 和 `CrazyKTV_SongMgr.cfg`；可用 `-Baseline`、`-Database`、`-Settings` 指定其他的。歌庫只用副本，原檔不會被修改。
+- 已發佈的版本會取到暫存的 git worktree，跑完就移除（`-KeepWorktree` 可保留）。
+- 兩版都在畫面外開啟真正的主視窗，對話框自動回答。需要互動桌面，全部約 15 到 20 分鐘。
+- 比較的內容：
+  - 歌庫查詢：一般查詢、異常查詢、我的最愛的清單和狀態列
+  - 加歌：新歌、所有歌曲檔、新歌加上已在歌庫的歌（重複歌曲判斷）的歌曲分析清單、加歌結果、操作記錄，以及加歌後的 `ktv_Song`、`ktv_Singer`、`ktv_Favorite`
+- 報告在 `%TEMP%\SongMgrCompare\report.txt`，第一行是相同的段落數。列出的差異要逐一判斷是刻意的修改，還是回歸。
+
+程式在 `SongMgr.Tests\Compare\`：`CompareData` 準備資料，`LibraryCompare` 操作主視窗並記錄結果，`CompareReport` 寫報告。一般跑測試時這三個測試會略過。
