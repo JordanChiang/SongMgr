@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace CrazyKTV_SongMgr
@@ -66,6 +67,71 @@ namespace CrazyKTV_SongMgr
                                              .Where(s => s != "")
                                              .Distinct(StringComparer.Ordinal)
                                              .OrderBy(s => s, StringComparer.Ordinal));
+        }
+
+        /// <summary>
+        /// Finds a song's duplicates, under <see cref="Rule.Full"/>, in a list of "語系|歌手|歌名|歌曲類別" texts, as 加歌,
+        /// 歌曲分析 and 歌庫查詢 editing keep the 歌庫's songs. The list may grow between lookups (歌曲分析 adds each song
+        /// it keeps); entries already in it never change. One index per list, shared by every thread.
+        /// </summary>
+        public sealed class Index
+        {
+            private static readonly ConditionalWeakTable<List<string>, Index> indexes = new ConditionalWeakTable<List<string>, Index>();
+
+            private readonly List<string> source;
+            private readonly SongSearchReference reference;
+            private readonly Dictionary<string, List<int>> byKey = new Dictionary<string, List<int>>(StringComparer.Ordinal);
+            private int seen;
+
+            public Index(List<string> songData, SongSearchReference reference)
+            {
+                source = songData;
+                this.reference = reference;
+            }
+
+            /// <summary>The index of <paramref name="songData"/>, matching against SongMgr's current 歌手群組 and special singer names.</summary>
+            public static Index For(List<string> songData)
+            {
+                lock (indexes)
+                {
+                    if (!indexes.TryGetValue(songData, out Index index))
+                    {
+                        index = new Index(songData, SongSearchReference.Capture(SongSearchKind.Duplicate));
+                        indexes.Add(songData, index);
+                    }
+                    return index;
+                }
+            }
+
+            /// <summary>The positions in the list of the songs that duplicate this one, first one first.</summary>
+            public List<int> Find(string lang, string singer, string songName, string songType)
+            {
+                string key = Of(Rule.Full, lang, singer, songName, songType, reference);
+                lock (byKey)
+                {
+                    lock (source)
+                    {
+                        if (seen > source.Count) { byKey.Clear(); seen = 0; }
+                        for (; seen < source.Count; seen++) Add(source[seen], seen);
+                    }
+                    return byKey.TryGetValue(key, out List<int> found) ? new List<int>(found) : new List<int>();
+                }
+            }
+
+            private void Add(string songData, int position)
+            {
+                string[] parts = songData.Split('|');
+                string key = (parts.Length < 4)
+                    ? songData
+                    : Of(Rule.Full, parts[0], string.Join("|", parts.Skip(1).Take(parts.Length - 3)), parts[parts.Length - 2], parts[parts.Length - 1], reference);
+
+                if (!byKey.TryGetValue(key, out List<int> positions))
+                {
+                    positions = new List<int>();
+                    byKey.Add(key, positions);
+                }
+                positions.Add(position);
+            }
         }
     }
 }

@@ -3520,120 +3520,14 @@ namespace CrazyKTV_SongMgr
             public int DupSongIndex { get; set; }
         }
 
+        /// <summary>
+        /// Whether the song duplicates one in <paramref name="SongDataLowCaseList"/> ("語系|歌手|歌名|歌曲類別" texts), as
+        /// 重複歌曲 (<see cref="DuplicateSongKey.Rule.Full"/>) defines it; <c>DupSongIndex</c> is the first one's position.
+        /// </summary>
         public static DupSongStatus IsDupSong(string SongLang, string SongSinger, int SongSingerType, string SongSongName, string SongSongType, List<string> SongDataLowCaseList)
         {
-            DupSongStatus result = new DupSongStatus { IsDupSong = false, DupSongIndex = -1 };
-
-            string SongData = SongLang + "|" + SongSinger.ToLower() + "|" + SongSongName.ToLower() + "|" + SongSongType.ToLower();
-
-            if (SongDataLowCaseList.Count > 0)
-            {
-                if (SongDataLowCaseList.IndexOf(SongData) >= 0)
-                {
-                    result.DupSongIndex = SongDataLowCaseList.IndexOf(SongData);
-                    result.IsDupSong = true;
-                }
-                else
-                {
-                    if (Global.GroupSingerLowCaseList.IndexOf(SongSinger.ToLower()) >= 0)
-                    {
-                        int SingerGroupId = Global.GroupSingerIdList[Global.GroupSingerLowCaseList.IndexOf(SongSinger.ToLower())];
-                        List<string> GroupSingerList = new List<string>(Global.SingerGroupList[SingerGroupId].Split(','));
-                        if (GroupSingerList.Count > 0)
-                        {
-                            foreach (string GroupSingerName in GroupSingerList)
-                            {
-                                if (GroupSingerName.ToLower() != SongSinger.ToLower())
-                                {
-                                    SongData = SongLang + "|" + GroupSingerName.ToLower() + "|" + SongSongName.ToLower() + "|" + SongSongType.ToLower();
-                                }
-
-                                if (SongDataLowCaseList.IndexOf(SongData) >= 0)
-                                {
-                                    result.DupSongIndex = SongDataLowCaseList.IndexOf(SongData);
-                                    result.IsDupSong = true;
-                                    break;
-                                }
-                            }
-                            GroupSingerList.Clear();
-                        }
-                    }
-                }
-
-                if (!result.IsDupSong && SongSingerType == 3)
-                {
-                    List<string> ChorusSongDatalist = new List<string>()
-                    {
-                        SongLang,
-                        SongSongName.ToLower()
-                    };
-                    if (SongSongType != "") ChorusSongDatalist.Add(SongSongType.ToLower());
-
-                    List<string> ChorusGroupSongDatalist = new List<string>()
-                    {
-                        SongLang,
-                        SongSongName.ToLower()
-                    };
-                    if (SongSongType != "") ChorusGroupSongDatalist.Add(SongSongType.ToLower());
-
-                    ChorusSongSingerStatus SingerStatus = GetChorusSongSingerStatus(SongSinger);
-                    if (SingerStatus.SongDataSingerList.Count > 0) ChorusSongDatalist.AddRange(SingerStatus.SongDataSingerList);
-
-                    List<string> FindResultList = new List<string>();
-                    if (!result.IsDupSong && SingerStatus.ChorusSingerList.Count > 0)
-                    {
-                        FindResultList = SongDataLowCaseList.FindAll(SongInfo => SongInfo.ContainsAll(ChorusSongDatalist.ToArray()));
-                        if (FindResultList.Count > 0)
-                        {
-                            foreach (string FindResult in FindResultList)
-                            {
-                                List<string> list = new List<string>(FindResult.Split('|'));
-                                ChorusSongSingerStatus MatchSingerStatus = GetChorusSongSingerStatus(list[1]);
-
-                                if (MatchSingerStatus.ChorusSongSingerCount == SingerStatus.ChorusSongSingerCount)
-                                {
-                                    if (list[1].ContainsAll(SingerStatus.ChorusSingerList.ToArray()) && list[2] == SongSongName.ToLower())
-                                    {
-                                        result.DupSongIndex = SongDataLowCaseList.IndexOf(FindResult);
-                                        result.IsDupSong = true;
-                                        break;
-                                    }
-                                }
-                                list.Clear();
-                            }
-                        }
-                        FindResultList.Clear();
-                    }
-
-                    if (!result.IsDupSong && SingerStatus.MatchChorusGroupSongSinger)
-                    {
-                        FindResultList = SongDataLowCaseList.FindAll(SongInfo => SongInfo.ContainsAll(ChorusGroupSongDatalist.ToArray()));
-                        if (FindResultList.Count > 0)
-                        {
-                            foreach (string FindResult in FindResultList)
-                            {
-                                List<string> list = new List<string>(FindResult.Split('|'));
-                                ChorusSongSingerStatus MatchSingerStatus = GetChorusSongSingerStatus(list[1]);
-
-                                if (MatchSingerStatus.ChorusGroupSongSingerCount == SingerStatus.ChorusGroupSongSingerCount)
-                                {
-                                    if (list[1].ContainsCount(SingerStatus.ChorusGroupSongSingerCount, SingerStatus.ChorusGroupSingerList.ToArray()) && list[2] == SongSongName.ToLower())
-                                    {
-                                        result.DupSongIndex = SongDataLowCaseList.IndexOf(FindResult);
-                                        result.IsDupSong = true;
-                                        break;
-                                    }
-                                }
-                                list.Clear();
-                            }
-                        }
-                        FindResultList.Clear();
-                    }
-                    ChorusGroupSongDatalist.Clear();
-                    ChorusSongDatalist.Clear();
-                }
-            }
-            return result;
+            List<int> found = DuplicateSongKey.Index.For(SongDataLowCaseList).Find(SongLang, SongSinger, SongSongName, SongSongType);
+            return new DupSongStatus { IsDupSong = found.Count > 0, DupSongIndex = (found.Count > 0) ? found[0] : -1 };
         }
 
         #endregion

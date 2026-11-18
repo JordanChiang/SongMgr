@@ -176,6 +176,22 @@ namespace SongMgr.Tests.Search
         }
 
         [Fact]
+        public void Index_finds_duplicates_in_a_growing_list()
+        {
+            var list = new List<string> { "國語|周杰倫&費玉清|千里之外|", "國語|周杰倫|晴天|mv" };
+            var index = new DuplicateSongKey.Index(list, Reference);
+
+            Assert.Equal(new[] { 0 }, index.Find("國語", "費玉清+周杰倫", "千里之外", ""));
+            Assert.Equal(new[] { 1 }, index.Find("國語", "JAY", " 晴天 ", "MV"));
+            Assert.Empty(index.Find("國語", "周杰倫", "晴天", ""));
+
+            list.Add("國語|jay|晴天|");
+            list.Add("國語|周杰倫|晴天|");
+            Assert.Equal(new[] { 2, 3 }, index.Find("國語", "周杰倫", "晴天", ""));
+            Assert.Empty(index.Find("國語", "AB&C", "說好", ""));
+        }
+
+        [Fact]
         public void Empty_song_type_matches_only_empty()
         {
             Assert.NotEqual(DuplicateSongKey.Of(DuplicateSongKey.Rule.Full, "國語", "周杰倫", "晴天", "", Reference),
