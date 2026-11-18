@@ -120,9 +120,9 @@ namespace SongMgr.Tests.Store
                 }
             }
 
-            string sql = Cashbox.GetSongQuerySqlStr("SongDate", new DateTime(2024, 1, 2).ToShortDateString(), null);
+            DataTable found = CashboxSearch.Run(new CashboxSearchCriteria(CashboxSearchKind.UpdatedOn, date: new DateTime(2024, 1, 2)), new SongSearchReference(), db).Songs;
 
-            Assert.Contains("SQLITE2", Db.GetDataTable(db, sql).AsEnumerable().Select(r => r["Cashbox_Id"].ToString()));
+            Assert.Contains("SQLITE2", found.AsEnumerable().Select(r => r["Cashbox_Id"].ToString()));
 
             // the 更新日期 list of 錢櫃資料, newest first
             DataTable dates = Db.GetDataTable(db, "SELECT First(Song_CreatDate) AS Song_CreatDate, Count(Song_CreatDate) AS Song_CreatDateCount FROM ktv_Cashbox GROUP BY Song_CreatDate HAVING (Count(Song_CreatDate)>0) ORDER BY First(Song_CreatDate) desc");

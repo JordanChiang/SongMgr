@@ -92,8 +92,10 @@ namespace CrazyKTV_SongMgr
         public SongSearchReference(IEnumerable<string> synonymousWords = null, IEnumerable<string> singerGroups = null,
                                    IEnumerable<string> specialSingerNames = null, IEnumerable<string> cashboxIds = null,
                                    string songInfoSeparator = "_", IEnumerable<string> trackWords = null,
-                                   Func<string, string, string, bool> isCashboxLangMismatch = null)
+                                   Func<string, string, string, bool> isCashboxLangMismatch = null,
+                                   Func<DataRow, bool> hasLibrarySong = null)
         {
+            HasLibrarySong = hasLibrarySong ?? (row => false);
             SynonymousWords = (synonymousWords ?? Enumerable.Empty<string>()).ToList();
             SpecialSingerNames = (specialSingerNames ?? Enumerable.Empty<string>()).Where(s => s != "").ToList();
             CashboxIds = new HashSet<string>(cashboxIds ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
@@ -126,6 +128,8 @@ namespace CrazyKTV_SongMgr
         public IReadOnlyList<string> TrackWords { get; }
         /// <summary>Whether 錢櫃 has the song (語系, 歌手, 歌名) under another 語系 and not under its own.</summary>
         public Func<string, string, string, bool> IsCashboxLangMismatch { get; }
+        /// <summary>Whether the 歌庫 has the 錢櫃 song in the row (Song_Lang, Song_Singer, Song_SongName), as 錢櫃比對 matches them.</summary>
+        public Func<DataRow, bool> HasLibrarySong { get; }
 
         /// <summary>
         /// The name a singer is compared by: its 歌手群組's first name, or the singer itself when in none; trimmed and
@@ -233,7 +237,7 @@ namespace CrazyKTV_SongMgr
 
         public static SongSearchResult Run(SongSearchCriteria criteria, SongSearchReference reference, string databaseFile)
         {
-            var q = new Query();
+            var q = new Query("ktv_Song", Columns);
             Func<DataRow, bool> keep = null;
             string v = criteria.Value;
 
@@ -391,13 +395,13 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>The rows whose key some other row shares, each group together, groups in key order, by 歌曲編號 within one.</summary>
-        private static DataTable Groups(DataTable songs, Func<DataRow, string> keyOf)
+        internal static DataTable Groups(DataTable songs, Func<DataRow, string> keyOf, string idColumn = "Song_Id")
         {
             var keyed = songs.AsEnumerable().Select(row => (Key: keyOf(row), Row: row)).ToList();
             var dups = keyed.GroupBy(k => k.Key, StringComparer.Ordinal)
                             .Where(g => g.Count() > 1)
                             .OrderBy(g => g.Key, StringComparer.Ordinal)
-                            .SelectMany(g => g.OrderBy(k => k.Row["Song_Id"].ToString(), StringComparer.Ordinal))
+                            .SelectMany(g => g.OrderBy(k => k.Row[idColumn].ToString(), StringComparer.Ordinal))
                             .Select(k => k.Row)
                             .ToList();
 
@@ -478,14 +482,14 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>Whether <paramref name="singer"/> (a song's Song_Singer) is <paramref name="wanted"/>, alone or in a 合唱.</summary>
-        private static bool IsSingerOf(string singer, string wanted, SongSearchReference reference)
+        internal static bool IsSingerOf(string singer, string wanted, SongSearchReference reference)
         {
             if (singer.Equals(wanted, StringComparison.OrdinalIgnoreCase)) return true;
             return reference.SplitChorus(singer).Any(s => s.Equals(wanted.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>The song name with each of its characters that has 同義字 replaced by each of them.</summary>
-        private static IEnumerable<string> SynonymousNames(string songName, SongSearchReference reference)
+        internal static IEnumerable<string> SynonymousNames(string songName, SongSearchReference reference)
         {
             var words = new HashSet<string>(reference.SynonymousWords.SelectMany(s => s.Split('|')));
             var result = new List<string>();
@@ -505,7 +509,7 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>Each text, and its half-width and full-width forms when it has characters with both.</summary>
-        private static List<string> WithWidthForms(IEnumerable<string> texts)
+        internal static List<string> WithWidthForms(IEnumerable<string> texts)
         {
             var result = new List<string>();
             void Add(string s) { if (!result.Contains(s)) result.Add(s); }
@@ -521,7 +525,7 @@ namespace CrazyKTV_SongMgr
             return result;
         }
 
-        private static int ParseNumber(string value, string what)
+        internal static int ParseNumber(string value, string what)
         {
             if (!int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int n))
             {
@@ -539,11 +543,20 @@ namespace CrazyKTV_SongMgr
         }
 
         /// <summary>
-        /// One select on ktv_Song, written as Access SQL (rewritten for SQLite by <see cref="Db"/>) with every value
-        /// bound as a parameter. Parameters are added in the order they appear, as OleDb binds them by position.
+        /// One select on one table (ktv_Song, ktv_Cashbox), written as Access SQL (rewritten for SQLite by
+        /// <see cref="Db"/>) with every value bound as a parameter. Parameters are added in the order they appear, as
+        /// OleDb binds them by position.
         /// </summary>
-        private sealed class Query
+        internal sealed class Query
         {
+            public Query(string table, string columns)
+            {
+                this.table = table;
+                this.columns = columns;
+            }
+
+            private readonly string table;
+            private readonly string columns;
             private readonly List<string> conditions = new List<string>();
             private readonly List<(string Name, object Value)> parameters = new List<(string, object)>();
             private string order = "";
@@ -597,7 +610,7 @@ namespace CrazyKTV_SongMgr
                 {
                     var sql = new StringBuilder("select ");
                     if (top > 0) sql.Append("top ").Append(top.ToString(CultureInfo.InvariantCulture)).Append(' ');
-                    sql.Append(Columns).Append(" from ktv_Song");
+                    sql.Append(columns).Append(" from ").Append(table);
                     if (conditions.Count > 0) sql.Append(" where ").Append(string.Join(" and ", conditions));
                     if (order != "") sql.Append(" order by ").Append(order);
                     return sql.ToString();
