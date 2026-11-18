@@ -555,6 +555,19 @@ namespace CrazyKTV_SongMgr
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            // 背景工作寫入資料庫途中不能壓縮或備份歌庫.
+            // 還沒遷移到 BackgroundJobRunner 的工作若出錯可能一直鎖著畫面, 所以仍讓使用者選擇強制關閉 (不壓縮也不備份)
+            if (Jobs.IsBusy)
+            {
+                if (MessageBox.Show(this, "目前有工作正在進行, 請等工作完成後再關閉程式。" + Environment.NewLine + Environment.NewLine +
+                        "仍要強制關閉嗎? 強制關閉不會壓縮及備份歌庫, 進行中的工作可能只完成一部分。",
+                        "工作進行中", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                {
+                    e.Cancel = true;
+                }
+                return;
+            }
+
             if (File.Exists(Global.CrazyktvDatabaseFile))
             {
                 try

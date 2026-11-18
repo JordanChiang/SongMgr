@@ -53,8 +53,15 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
 - **影片輸出** — the video renderer the player uses, VMR9 or EVR (`MainCfgPlayerOutput`). `PlayerOutput`; VMR9 is probed (`VideoEnvCheck`) only when chosen, once the settings are loaded.
 - **歌曲音量** — playback volume stored in `Song_Volume`; derived from 重播增益 by `MediaProbe.SongVolume` and kept inside a `VolumeRange`: 10..100 for 加歌 and 音量平衡 (`VolumeRange.Library`), 5..100 for 音量正規化 (`VolumeRange.Normalize`).
 
+## Background work
+
+- **背景工作** — a long write to the 歌庫 (加歌, 歌庫維護, 歌庫監視 …) run off the UI thread while the UI is locked. `BackgroundJobRunner` (`MainForm.Jobs`) owns the lock, runs one job at a time, times it, catches and logs its exception (操作記錄 「【作業名】發生錯誤: …」, status 「…作業失敗」), shows its summary and always unlocks. A job (`BackgroundJob`) supplies only its work, its summary sentence and where its status shows. While pages are still being moved over, code that calls `Common_SwitchSetUI(false)` directly shares the same busy flag (`Jobs.IsBusy`).
+  - **JobContext** — what the work gets: its own counts (`JobCounts`, numbered like the old `Global.TotalList[n]`) and `Report` for progress text, which the runner coalesces to at most one screen update per 100 ms. Work written against it runs without the UI, e.g. `SongPathChange`.
+  - A second job asked for while one runs does not start; 歌庫監視 skips that tick and tries again next second. SongMgr will not close during a job unless the user chooses to force it (then without compacting or backing up the 歌庫).
+- **變更歌曲路徑** — 歌庫維護 replacing one folder with another in every song's `Song_Path`. `SongPathChange`; written in batches of 500, a song counts as updated only once its batch is committed.
+
 ## Program updates
 
-- **自動更新** — finding a newer SongMgr on GitHub Releases and replacing the program files once SongMgr exits. `AppUpdater`; turned on by 啟用程式自動更新 (`MainCfgEnableAutoUpdate`). It waits for any 背景工作 (the UI locked by `Common_SwitchSetUI(false)`) before asking or closing, backs up the files it will replace, and restores them if overwriting fails. User files listed in `AppUpdater.KeepExisting` are never overwritten.
+- **自動更新** — finding a newer SongMgr on GitHub Releases and replacing the program files once SongMgr exits. `AppUpdater`; turned on by 啟用程式自動更新 (`MainCfgEnableAutoUpdate`). It waits until no 背景工作 runs (`Jobs.RunWhenIdle`) before asking or closing, backs up the files it will replace, and restores them if overwriting fails. User files listed in `AppUpdater.KeepExisting` are never overwritten.
 - **元件** (component) — a part of the program updated on its own: App, Codec_x86, Tools. Defined only in `tools\pack-release.ps1`; SongMgr reads them from the 更新清單.
 - **更新清單** — `update.json` attached to each release: every 元件's zip and the SHA256 of each of its files. Only 元件 whose files differ are downloaded. A release without one falls back to the 完整包 (`CrazyKtv_SongMgr<版本>.zip`, `AppUpdater.FullPackagePattern`).

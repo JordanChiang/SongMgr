@@ -27,30 +27,32 @@ namespace CrazyKTV_SongMgr
 
             if (Global.AddMode == SongAddMode.Monitor && Global.SongMgrEnableMonitorFolders == "True")
             {
-                Global.TimerStartTime = DateTime.Now;
-                DateTime TimerStartTime = DateTime.Now;
-                Global.TotalList = new List<int>() { 0, 0, 0, 0, 0 };
-                Global.MTotalList = new List<int>() { 0, 0, 0, 0 };
-                Common_SwitchSetUI(false);
-
-                var tasks = new List<Task>()
-                {
-                    Task.Factory.StartNew(() => SongMonitor_CheckCurSongTask())
-                };
-
-                Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
-                {
-                    DateTime TimerEndTime = DateTime.Now;
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        SongQuery_QueryStatus_Label.Text = "總共加入 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,移除 " + Global.MTotalList[0] + " 首,共花費 " + (long)(TimerEndTime - TimerStartTime).TotalSeconds + " 秒完成監視。";
-                        SongAdd_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
-                        SongMgrCfg_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
-
-                        Common_SwitchSetUI(true);
-                    });
-                });
+                Jobs.TryStart(SongMonitor_Job("檢查監視資料夾", SongMonitor_CheckCurSongTask, null));
             }
+        }
+
+        /// <summary>歌庫監視的背景工作: 摘要顯示在歌庫查詢, 加歌, 歌庫設定三頁.</summary>
+        private BackgroundJob SongMonitor_Job(string name, Action task, Action completed)
+        {
+            return new BackgroundJob
+            {
+                Name = name,
+                Status = text =>
+                {
+                    SongQuery_QueryStatus_Label.Text = text;
+                    SongAdd_Tooltip_Label.Text = text;
+                    SongMgrCfg_Tooltip_Label.Text = text;
+                },
+                Work = ctx =>
+                {
+                    Global.MTotalList = new List<int>() { 0, 0, 0, 0 };
+                    task();
+                    // SongAdd_SongAddTask 會換掉 Global.TotalList; 加歌頁遷移到 BackgroundJobRunner 後移除
+                    ctx.Counts.CopyFrom(Global.TotalList);
+                },
+                Summary = (c, secs) => "總共加入 " + c[0] + " 首歌曲,忽略重複歌曲 " + c[1] + " 首,移除 " + Global.MTotalList[0] + " 首,共花費 " + secs + " 秒完成監視。",
+                Completed = completed,
+            };
         }
 
         private void SongMonitor_CheckCurSongTask()
@@ -491,47 +493,29 @@ namespace CrazyKTV_SongMgr
                 {
                     System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongMonitorTimer_Tick] Triggered. DeletedList: {Global.SongMonitorDeletedList.Count}, CreatedList: {Global.SongMonitorCreatedList.Count}");
                     Global.SongMonitorETime = DateTime.Now;
-                    if ((long)(Global.SongMonitorETime - Global.SongMonitorSTime).TotalSeconds >= 3)
+                    // 有其他背景工作 (例如歌庫維護) 時先不同步, 下一秒再試
+                    if ((long)(Global.SongMonitorETime - Global.SongMonitorSTime).TotalSeconds >= 3 && !Jobs.IsBusy)
                     {
                         Global.SongMonitorTimer.Stop();
-                        Global.TimerStartTime = DateTime.Now;
-                        DateTime TimerStartTime = DateTime.Now;
-                        Global.TotalList = new List<int>() { 0, 0, 0, 0, 0 };
-                        Global.MTotalList = new List<int>() { 0, 0, 0, 0 };
-                        Common_SwitchSetUI(false);
+
+                        Jobs.TryStart(SongMonitor_Job("同步監視資料夾", SongMonitor_UpdateSongDBTask, () =>
+                        {
+                            if (Global.SongMonitorDT != null)
+                            {
+                                Global.SongMonitorDT.Dispose();
+                                Global.SongMonitorDT = null;
+                            }
+
+                            Global.SongMonitorDT = new DataTable();
+                            string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_FileName, Song_Path from ktv_Song order by Song_Id";
+                            Global.SongMonitorDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
+
+                            Global.SongMonitorTimer.Start();
+                        }));
 
                         SongQuery_QueryStatus_Label.Text = "正在同步檔案及資料庫,請稍待...";
                         SongAdd_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
                         SongMgrCfg_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
-
-                        var tasks = new List<Task>()
-                        {
-                            Task.Factory.StartNew(() => SongMonitor_UpdateSongDBTask())
-                        };
-
-                        Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
-                        {
-                            DateTime TimerEndTime = DateTime.Now;
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                SongQuery_QueryStatus_Label.Text = "總共加入 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首,移除 " + Global.MTotalList[0] + " 首,共花費 " + (long)(TimerEndTime - TimerStartTime).TotalSeconds + " 秒完成監視。";
-                                SongAdd_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
-                                SongMgrCfg_Tooltip_Label.Text = SongQuery_QueryStatus_Label.Text;
-
-                                if (Global.SongMonitorDT != null)
-                                {
-                                    Global.SongMonitorDT.Dispose();
-                                    Global.SongMonitorDT = null;
-                                }
-
-                                Global.SongMonitorDT = new DataTable();
-                                string SongQuerySqlStr = "select Song_Id, Song_Lang, Song_FileName, Song_Path from ktv_Song order by Song_Id";
-                                Global.SongMonitorDT = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
-
-                                Common_SwitchSetUI(true);
-                                Global.SongMonitorTimer.Start();
-                            });
-                        });
                     }
                 }
             }
