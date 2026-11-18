@@ -781,18 +781,22 @@ namespace CrazyKTV_SongMgr
                             ControlExtensions.BeginInvokeIfRequired(SongMgrCfg_MaxDigitCode_ComboBox, cb => cb.Enabled = false);
                             if (Global.SongMgrMaxDigitCode != "1")
                             {
-                                ControlExtensions.BeginInvokeIfRequired(SongMgrCfg_MaxDigitCode_ComboBox, cb => cb.SelectedValue = 1);
-                                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMaxDigitCode", Global.SongMgrMaxDigitCode);
-                                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrLangCode", Global.SongMgrLangCode);
+                                ControlExtensions.BeginInvokeIfRequired(SongMgrCfg_MaxDigitCode_ComboBox, cb =>
+                                {
+                                    cb.SelectedValue = 1;
+                                    SongMgrCfg_SaveMaxDigitCode();
+                                });
                             }
                             break;
                         case 6:
                             ControlExtensions.BeginInvokeIfRequired(SongMgrCfg_MaxDigitCode_ComboBox, cb => cb.Enabled = false);
                             if (Global.SongMgrMaxDigitCode != "2")
                             {
-                                ControlExtensions.BeginInvokeIfRequired(SongMgrCfg_MaxDigitCode_ComboBox, cb => cb.SelectedValue = 2);
-                                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMaxDigitCode", Global.SongMgrMaxDigitCode);
-                                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrLangCode", Global.SongMgrLangCode);
+                                ControlExtensions.BeginInvokeIfRequired(SongMgrCfg_MaxDigitCode_ComboBox, cb =>
+                                {
+                                    cb.SelectedValue = 2;
+                                    SongMgrCfg_SaveMaxDigitCode();
+                                });
                             }
                             break;
                     }

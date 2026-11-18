@@ -632,6 +632,7 @@ namespace CrazyKTV_SongMgr
 
                         Global.TimerEndTime = DateTime.Now;
                         SongMaintenance_Tooltip_Label.Text = "總共轉換 " + Global.TotalList[2] + " 首歌曲的歌曲編號,失敗 " + Global.TotalList[3] + " 首,共花費 " + (long)(Global.TimerEndTime - Global.TimerStartTime).TotalSeconds + " 秒完成。";
+                        SongMgrCfg_SaveMaxDigitCode();
                         SongDBUpdate_CheckDatabaseFile();
                         Common_SwitchSetUI(true);
                         SongMaintenance.DisposeSongDataTable();
@@ -755,6 +756,7 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.TimerEndTime = DateTime.Now;
                         SongMaintenance_Tooltip_Label.Text = "總共校正 " + Global.TotalList[0] + " 首歌曲的歌曲編號,失敗 " + Global.TotalList[1] + " 首,共花費 " + (long)(Global.TimerEndTime - Global.TimerStartTime).TotalSeconds + " 秒完成。";
+                        SongMgrCfg_SaveMaxDigitCode();
                         SongDBUpdate_CheckDatabaseFile();
                         Common_SwitchSetUI(true);
                         SongMaintenance.DisposeSongDataTable();

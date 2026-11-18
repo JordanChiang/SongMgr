@@ -280,6 +280,13 @@ namespace CrazyKTV_SongMgr
             }
         }
 
+        /// <summary>Saves the 歌曲編號 digit count and the 語系編號區段 that goes with it to the 設定檔.</summary>
+        private void SongMgrCfg_SaveMaxDigitCode()
+        {
+            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMaxDigitCode", Global.SongMgrMaxDigitCode);
+            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrLangCode", Global.SongMgrLangCode);
+        }
+
         private void SongMgrCfg_MaxDigitCode_ComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             switch (SongMgrCfg_MaxDigitCode_ComboBox.SelectedValue.ToString())
