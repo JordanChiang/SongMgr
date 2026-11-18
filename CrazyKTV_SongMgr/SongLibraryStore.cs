@@ -154,16 +154,21 @@ namespace CrazyKTV_SongMgr
             });
         }
 
-        /// <summary>歌曲編號 change guarded by name and 語系, so a row renumbered meanwhile is left alone.</summary>
+        /// <summary>
+        /// 歌曲編號 change guarded by name and 語系, so a row renumbered meanwhile is left alone.
+        /// The song's 我的最愛 move to the new number with it.
+        /// </summary>
         public int RenumberSong(string oldId, string newId, string songName, string lang)
         {
-            return Execute("update ktv_Song set Song_Id = @SongId where Song_Id = @OldSongId and Song_SongName = @SongSongName and Song_Lang = @SongLang", cmd =>
+            int rows = Execute("update ktv_Song set Song_Id = @SongId where Song_Id = @OldSongId and Song_SongName = @SongSongName and Song_Lang = @SongLang", cmd =>
             {
                 cmd.Parameters.AddWithValue("@SongId", newId);
                 cmd.Parameters.AddWithValue("@OldSongId", oldId);
                 cmd.Parameters.AddWithValue("@SongSongName", songName);
                 cmd.Parameters.AddWithValue("@SongLang", lang);
             });
+            if (rows > 0) RenumberFavorite(oldId, newId);
+            return rows;
         }
 
         /// <summary>Forgets every measured 重播增益.</summary>

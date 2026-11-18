@@ -192,6 +192,8 @@ namespace SongMgr.Tests.Store
             {
                 var t = Twins("renumber" + name);
                 Legacy(t.legacySong, "update ktv_Song set Song_Id = @SongId where Song_Id = @OldSongId and Song_SongName = @SongSongName and Song_Lang = @SongLang", "000100", "000001", name, "國語");
+                // Deliberate: the renumbered song's 我的最愛 follow it (校正編碼位數 used to leave them on the old number).
+                if (name == "晴天") Legacy(t.legacySong, "update ktv_Favorite set Song_Id = @SongId where Song_Id = @OldSongId", "000100", "000001");
                 Module(t.moduleSong, st => st.RenumberSong("000001", "000100", name, "國語"));
                 AssertSame(t);
             }
