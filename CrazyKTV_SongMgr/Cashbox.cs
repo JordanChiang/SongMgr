@@ -206,319 +206,161 @@ namespace CrazyKTV_SongMgr
         {
             if (Global.CrazyktvDatabaseStatus)
             {
-                Cashbox_Query_Button.Enabled = false;
-                Common_SwitchSetUI(false);
-
-                Cashbox_DataGridView.DataSource = null;
-                Cashbox_QueryStatus_Label.Text = "";
-                GC.Collect();
-
-                string SongQueryType = "None";
-                string SongQueryValue = "";
-                string SongQueryStatusText = "";
-
-                var tasks = new List<Task>();
+                string QueryText = Cashbox_QueryValue_TextBox.Text;
+                CashboxSearchKind Kind;
+                string SongQueryStatusText;
 
                 switch (Cashbox_QueryType_ComboBox.SelectedValue.ToString())
                 {
                     case "1":
-                        SongQueryType = "SongName";
-                        SongQueryValue = Cashbox_QueryValue_TextBox.Text;
-                        SongQueryStatusText = Cashbox_QueryValue_TextBox.Text;
+                        Kind = CashboxSearchKind.SongName;
+                        SongQueryStatusText = QueryText;
                         Cashbox_QueryStatus_Label.Text = "正在查詢歌曲名稱為『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "2":
-                        SongQueryType = "SingerName";
-                        SongQueryValue = Cashbox_QueryValue_TextBox.Text;
-                        SongQueryStatusText = Cashbox_QueryValue_TextBox.Text;
+                        Kind = CashboxSearchKind.SingerName;
+                        SongQueryStatusText = QueryText;
                         Cashbox_QueryStatus_Label.Text = "正在查詢歌手名稱為『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "3":
-                        SongQueryType = "SongID";
-                        SongQueryValue = Cashbox_QueryValue_TextBox.Text;
-                        SongQueryStatusText = "歌曲編號中包含 " + Cashbox_QueryValue_TextBox.Text;
+                        Kind = CashboxSearchKind.CashboxId;
+                        SongQueryStatusText = "歌曲編號中包含 " + QueryText;
                         Cashbox_QueryStatus_Label.Text = "正在查詢『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "4":
-                        SongQueryType = "AllSong";
-                        SongQueryValue = Cashbox_QueryValue_TextBox.Text;
+                        Kind = CashboxSearchKind.AllSongs;
                         SongQueryStatusText = "全部歌曲";
                         Cashbox_QueryStatus_Label.Text = "正在查詢" + SongQueryStatusText + ",請稍待...";
                         break;
                     case "5":
-                        SongQueryType = "NewSong";
-                        SongQueryValue = Cashbox_QueryValue_TextBox.Text;
+                        Kind = CashboxSearchKind.NewSongs;
                         SongQueryStatusText = "新進歌曲";
                         Cashbox_QueryStatus_Label.Text = "正在查詢" + SongQueryStatusText + ",請稍待...";
                         break;
+                    default:
+                        return;
                 }
-                tasks.Add(Task.Factory.StartNew(() => Cashbox_QueryTask(SongQueryType, SongQueryValue, SongQueryStatusText)));
 
-                Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
+                // 必須輸入查詢條件: the kinds that read the text box need some text.
+                if (Kind != CashboxSearchKind.AllSongs && QueryText == "")
                 {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        Common_SwitchSetUI(true);
-                        Cashbox_Query_Button.Enabled = true;
-                        if (Cashbox_DataGridView.Rows.Count > 0) Cashbox_DataGridView.Focus();
-                    });
-                });
+                    Cashbox_DataGridView.DataSource = null;
+                    Cashbox_ShowNoResult("必須輸入查詢條件才能查詢...");
+                    return;
+                }
+
+                var Criteria = new CashboxSearchCriteria(Kind, QueryText, Global.CashboxQueryFilter, Global.CashboxFuzzyQuery, Global.CashboxSynonymousQuery);
+                Cashbox_RunSearch(Criteria,
+                    "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...",
+                    Count => "總共查詢到 " + Count + " 筆有關『" + SongQueryStatusText + "』的歌曲。");
             }
         }
 
-        private void Cashbox_QueryTask(string SongQueryType, string SongQueryValue, string SongQueryStatusText)
+        /// <summary>Runs a 錢櫃查詢 in the background with the UI locked, then shows the songs found.</summary>
+        private void Cashbox_RunSearch(CashboxSearchCriteria criteria, string noResultText, Func<int, string> resultText)
         {
-            Thread.CurrentThread.Priority = ThreadPriority.Lowest;
+            Cashbox_Query_Button.Enabled = false;
+            Common_SwitchSetUI(false);
 
-            if (Global.CrazyktvDatabaseStatus)
+            Cashbox_DataGridView.DataSource = null;
+            GC.Collect();
+
+            Task.Factory.StartNew(() =>
             {
-                if (SongQueryValue == "")
+                Thread.CurrentThread.Priority = ThreadPriority.Lowest;
+                DataTable dt = null;
+                try
                 {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        Cashbox_EditMode_CheckBox.Enabled = false;
-                        Cashbox_LangFilter_ComboBox.Enabled = false;
-                        Cashbox_SongSingerFilter_ComboBox.Enabled = false;
-                        Cashbox_QueryStatus_Label.Text = "必須輸入查詢條件才能查詢...";
-                    });
+                    SongSearchReference reference = CashboxSearch.CaptureReference(criteria.Kind);
+                    dt = CashboxSearch.Run(criteria, reference, Global.CrazyktvSongMgrDatabaseFile).Songs;
                 }
-                else
+                catch
                 {
-                    DataTable dt;
-                    try
-                    {
-                        switch (SongQueryType)
-                        {
-                            case "SongName":
-                                if (Global.CashboxSynonymousQuery)
-                                {
-                                    List<string> SynonymousSongNameList = new List<string>();
-                                    SynonymousSongNameList = CommonFunc.GetSynonymousSongNameList(SongQueryValue);
+                    dt = null;
+                }
 
-                                    if (SynonymousSongNameList.Count > 0)
-                                    {
-                                        dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, SynonymousSongNameList), "");
-                                    }
-                                    else
-                                    {
-                                        dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                    }
-                                    SynonymousSongNameList.Clear();
-                                    SynonymousSongNameList = null;
-                                }
-                                else
-                                {
-                                    dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                }
-                                break;
-                            case "SingerName":
-                                if (Global.GroupSingerLowCaseList.IndexOf(SongQueryValue.ToLower()) >= 0)
-                                {
-                                    List<string> GroupSingerList = new List<string>();
+                this.BeginInvoke((Action)delegate()
+                {
+                    if (dt == null) Cashbox_ShowNoResult("查詢條件輸入錯誤,請重新輸入...");
+                    else if (dt.Rows.Count == 0) Cashbox_ShowNoResult(noResultText);
+                    else Cashbox_ShowResult(dt, resultText(dt.Rows.Count));
 
-                                    int i = Global.GroupSingerIdList[Global.GroupSingerLowCaseList.IndexOf(SongQueryValue.ToLower())];
-                                    List<string> list = new List<string>(Global.SingerGroupList[i].Split(','));
-                                    foreach (string GroupSingerName in list)
-                                    {
-                                        if (GroupSingerName.ToLower() != SongQueryValue.ToLower())
-                                        {
-                                            GroupSingerList.Add(GroupSingerName);
-                                        }
-                                    }
-                                    list.Clear();
-                                    list = null;
+                    Common_SwitchSetUI(true);
+                    Cashbox_Query_Button.Enabled = true;
+                    if (Cashbox_DataGridView.Rows.Count > 0) Cashbox_DataGridView.Focus();
+                });
+            });
+        }
 
-                                    dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, GroupSingerList), "");
-                                    GroupSingerList.Clear();
-                                    GroupSingerList = null;
-                                }
-                                else
-                                {
-                                    dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                }
-                                break;
-                            default:
-                                dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                break;
-                        }
+        private void Cashbox_ShowNoResult(string statusText)
+        {
+            Cashbox_EditMode_CheckBox.Enabled = false;
+            Cashbox_LangFilter_ComboBox.Enabled = false;
+            Cashbox_SongSingerFilter_ComboBox.Enabled = false;
+            Cashbox_QueryStatus_Label.Text = statusText;
+        }
 
-                        if (dt.Rows.Count == 0)
-                        {
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                Cashbox_EditMode_CheckBox.Enabled = false;
-                                Cashbox_LangFilter_ComboBox.Enabled = false;
-                                Cashbox_SongSingerFilter_ComboBox.Enabled = false;
-                                Cashbox_QueryStatus_Label.Text = "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...";
-                            });
-                        }
-                        else
-                        {
-                            if (SongQueryType == "SingerName" && !Global.CashboxFuzzyQuery)
-                            {
-                                var query = from row in dt.AsEnumerable()
-                                            where row.Field<string>("Song_Singer") != SongQueryValue
-                                            select row;
+        /// <summary>Binds the 錢櫃 songs found to the 錢櫃 list, with the 語系 and 歌手 filters.</summary>
+        private void Cashbox_ShowResult(DataTable dt, string statusText)
+        {
+            Cashbox_EditMode_CheckBox.Enabled = true;
+            Cashbox_QueryStatus_Label.Text = statusText;
 
-                                if (query.Count<DataRow>() > 0)
-                                {
-                                    List<int> RemoveRowsIdxlist = new List<int>();
+            Cashbox_DataGridView.DataSource = dt;
 
-                                    foreach (DataRow row in query)
-                                    {
-                                        string RemoveThisRow = "True";
+            List<string> LangFilterList = dt.AsEnumerable().Select(row => row["Song_Lang"].ToString()).Distinct().ToList();
+            List<string> SongSingerFilterList = new List<string>();
 
-                                        List<string> list = CommonFunc.GetChorusSingerList(row["Song_Singer"].ToString());
-                                        foreach (string str in list)
-                                        {
-                                            if (str.ToLower() == SongQueryValue.ToLower()) { RemoveThisRow = "False"; }
-                                        }
-                                        list.Clear();
-                                        list = null;
-                                        if (RemoveThisRow == "True") RemoveRowsIdxlist.Add(dt.Rows.IndexOf(row));
-                                    }
-
-                                    RemoveRowsIdxlist.Sort();
-                                    if (RemoveRowsIdxlist.Count > 0)
-                                    {
-                                        for (int i = RemoveRowsIdxlist.Count - 1; i >= 0; i--)
-                                        {
-                                            dt.Rows.RemoveAt(RemoveRowsIdxlist[i]);
-                                        }
-                                    }
-                                    RemoveRowsIdxlist.Clear();
-                                }
-                            }
-
-                            if (dt.Rows.Count == 0)
-                            {
-                                this.BeginInvoke((Action)delegate()
-                                {
-                                    Cashbox_EditMode_CheckBox.Enabled = false;
-                                    Cashbox_LangFilter_ComboBox.Enabled = false;
-                                    Cashbox_SongSingerFilter_ComboBox.Enabled = false;
-                                    Cashbox_QueryStatus_Label.Text = "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...";
-                                });
-                            }
-                            else
-                            {
-                                this.BeginInvoke((Action)delegate()
-                                {
-                                    Cashbox_EditMode_CheckBox.Enabled = (dt.Rows.Count > 0) ? true : false;
-                                    Cashbox_QueryStatus_Label.Text = "總共查詢到 " + dt.Rows.Count + " 筆有關『" + SongQueryStatusText + "』的歌曲。";
-
-                                    Cashbox_DataGridView.DataSource = dt;
-
-                                    List<string> LangFilterList = new List<string>();
-                                    List<string> SongSingerFilterList = new List<string>();
-
-                                    using (DataTable LangDistinctDT = dt.DefaultView.ToTable(true, "Song_Lang"))
-                                    {
-                                        if (LangDistinctDT.Rows.Count > 0)
-                                        {
-                                            foreach (DataRow row in LangDistinctDT.AsEnumerable())
-                                            {
-                                                LangFilterList.Add(row["Song_Lang"].ToString());
-                                            }
-                                        }
-                                    }
-
-                                    using (DataTable SongSingerDistinctDT = dt.DefaultView.ToTable(true, "Song_Singer"))
-                                    {
-                                        if (SongSingerDistinctDT.Rows.Count > 0)
-                                        {
-                                            string SongSinger = string.Empty;
-                                            foreach (DataRow row in SongSingerDistinctDT.AsEnumerable())
-                                            {
-                                                SongSinger = row["Song_Singer"].ToString();
-                                                
-                                                if (SongSinger.Contains("&"))
-                                                {
-                                                    string ChorusSongSingerName = SongSinger;
-
-                                                    List<string> list = CommonFunc.GetChorusSingerList(ChorusSongSingerName);
-                                                    foreach (string str in list)
-                                                    {
-                                                        string SingerStr = Regex.Replace(str, @"^\s*|\s*$", ""); //去除頭尾空白
-                                                        if (SongSingerFilterList.IndexOf(SingerStr) < 0)
-                                                        {
-                                                            SongSingerFilterList.Add(SingerStr);
-                                                        }
-                                                    }
-                                                    list.Clear();
-                                                    list = null;
-                                                }
-                                                else
-                                                {
-                                                    if (SongSingerFilterList.IndexOf(SongSinger) < 0)
-                                                    {
-                                                        SongSingerFilterList.Add(SongSinger);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if (LangFilterList.Count > 0)
-                                    {
-                                        Cashbox_LangFilter_ComboBox.Enabled = true;
-                                        Cashbox_LangFilter_ComboBox.DataSource = Cashbox.GetQueryFilterList(LangFilterList);
-                                        Cashbox_LangFilter_ComboBox.DisplayMember = "Display";
-                                        Cashbox_LangFilter_ComboBox.ValueMember = "Value";
-                                        LangFilterList.Clear();
-                                    }
-
-                                    if (SongSingerFilterList.Count > 0)
-                                    {
-                                        SongSingerFilterList.Sort();
-                                        Cashbox_SongSingerFilter_ComboBox.Enabled = true;
-                                        Cashbox_SongSingerFilter_ComboBox.DataSource = Cashbox.GetQueryFilterList(SongSingerFilterList);
-                                        Cashbox_SongSingerFilter_ComboBox.DisplayMember = "Display";
-                                        Cashbox_SongSingerFilter_ComboBox.ValueMember = "Value";
-                                        SongSingerFilterList.Clear();
-                                    }
-
-                                    for (int i = 0; i < Cashbox_DataGridView.ColumnCount; i++)
-                                    {
-                                        List<string> DataGridViewColumnName = Cashbox.GetDataGridViewColumnSet(Cashbox_DataGridView.Columns[i].Name);
-                                        Cashbox_DataGridView.Columns[i].HeaderText = DataGridViewColumnName[0];
-
-                                        if (DataGridViewColumnName[1].ToString() == "0")
-                                        {
-                                            Cashbox_DataGridView.Columns[i].Visible = false;
-                                        }
-
-                                        if (DataGridViewColumnName[2].ToString() != "none")
-                                        {
-                                            ((DataGridViewTextBoxColumn)Cashbox_DataGridView.Columns[i]).MaxInputLength = int.Parse(DataGridViewColumnName[2]);
-                                        }
-
-                                        Cashbox_DataGridView.Columns[i].Width = int.Parse(DataGridViewColumnName[1]);
-                                    }
-
-                                    int ColumnWidth_140 = Convert.ToInt32(140 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
-                                    Cashbox_DataGridView.Columns["Song_CreatDate"].MinimumWidth = ColumnWidth_140;
-                                    Cashbox_DataGridView.Columns["Song_CreatDate"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                                    dt.Dispose();
-                                    dt = null;
-                                });
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        this.BeginInvoke((Action)delegate()
-                        {
-                            Cashbox_EditMode_CheckBox.Enabled = false;
-                            Cashbox_LangFilter_ComboBox.Enabled = false;
-                            Cashbox_SongSingerFilter_ComboBox.Enabled = false;
-                            Cashbox_QueryStatus_Label.Text = "查詢條件輸入錯誤,請重新輸入...";
-                        });
-                    }
+            foreach (string SongSinger in dt.AsEnumerable().Select(row => row["Song_Singer"].ToString()).Distinct())
+            {
+                IEnumerable<string> singers = SongSinger.Contains("&")
+                    ? CommonFunc.GetChorusSingerList(SongSinger).Select(s => Regex.Replace(s, @"^\s*|\s*$", ""))
+                    : new[] { SongSinger };
+                foreach (string singer in singers)
+                {
+                    if (SongSingerFilterList.IndexOf(singer) < 0) SongSingerFilterList.Add(singer);
                 }
             }
-        }    
+
+            if (LangFilterList.Count > 0)
+            {
+                Cashbox_LangFilter_ComboBox.Enabled = true;
+                Cashbox_LangFilter_ComboBox.DataSource = Cashbox.GetQueryFilterList(LangFilterList);
+                Cashbox_LangFilter_ComboBox.DisplayMember = "Display";
+                Cashbox_LangFilter_ComboBox.ValueMember = "Value";
+            }
+
+            if (SongSingerFilterList.Count > 0)
+            {
+                SongSingerFilterList.Sort();
+                Cashbox_SongSingerFilter_ComboBox.Enabled = true;
+                Cashbox_SongSingerFilter_ComboBox.DataSource = Cashbox.GetQueryFilterList(SongSingerFilterList);
+                Cashbox_SongSingerFilter_ComboBox.DisplayMember = "Display";
+                Cashbox_SongSingerFilter_ComboBox.ValueMember = "Value";
+            }
+
+            for (int i = 0; i < Cashbox_DataGridView.ColumnCount; i++)
+            {
+                List<string> DataGridViewColumnName = Cashbox.GetDataGridViewColumnSet(Cashbox_DataGridView.Columns[i].Name);
+                Cashbox_DataGridView.Columns[i].HeaderText = DataGridViewColumnName[0];
+
+                if (DataGridViewColumnName[1].ToString() == "0")
+                {
+                    Cashbox_DataGridView.Columns[i].Visible = false;
+                }
+
+                if (DataGridViewColumnName[2].ToString() != "none")
+                {
+                    ((DataGridViewTextBoxColumn)Cashbox_DataGridView.Columns[i]).MaxInputLength = int.Parse(DataGridViewColumnName[2]);
+                }
+
+                Cashbox_DataGridView.Columns[i].Width = int.Parse(DataGridViewColumnName[1]);
+            }
+
+            int ColumnWidth_140 = Convert.ToInt32(140 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
+            Cashbox_DataGridView.Columns["Song_CreatDate"].MinimumWidth = ColumnWidth_140;
+            Cashbox_DataGridView.Columns["Song_CreatDate"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+        }
 
         #endregion
 
@@ -528,48 +370,23 @@ namespace CrazyKTV_SongMgr
         {
             if (Global.CrazyktvDatabaseStatus && Cashbox_OtherQuery_ComboBox.SelectedValue.ToString() != "System.Data.DataRowView")
             {
-                string SongQueryType = "None";
-                string SongQueryValue = "";
-                string SongQueryStatusText = "";
+                string SongQueryStatusText = Cashbox_OtherQuery_ComboBox.Text;
 
                 switch (Cashbox_OtherQuery_ComboBox.SelectedValue.ToString())
                 {
                     case "1":
-                        SongQueryType = "NonSong";
-                        SongQueryValue = "NA";
-                        SongQueryStatusText = Cashbox_OtherQuery_ComboBox.Text;
                         Cashbox_QueryStatus_Label.Text = "正在查詢" + SongQueryStatusText + ",請稍待...";
+                        Cashbox_RunSearch(new CashboxSearchCriteria(CashboxSearchKind.Missing),
+                            "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...",
+                            Count => "總共查詢到 " + Count + " 筆歌庫所沒有的錢櫃歌曲。");
                         break;
                     case "2":
-                        SongQueryType = "DuplicateSong";
-                        SongQueryValue = "NA";
-                        SongQueryStatusText = Cashbox_OtherQuery_ComboBox.Text;
                         Cashbox_QueryStatus_Label.Text = "正在查詢" + SongQueryStatusText + ",請稍待...";
+                        Cashbox_RunSearch(new CashboxSearchCriteria(CashboxSearchKind.Duplicate),
+                            "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...",
+                            Count => "總共查詢到 " + Count + " 筆有關『" + SongQueryStatusText + "』的歌曲。");
                         break;
                 }
-
-                Cashbox_Query_Button.Enabled = false;
-                Cashbox.CreateSongDataTable();
-                Common_SwitchSetUI(false);
-
-                Cashbox_DataGridView.DataSource = null;
-                Cashbox_QueryStatus_Label.Text = "";
-                GC.Collect();
-
-                var tasks = new List<Task>()
-                {
-                    Task.Factory.StartNew(() => Cashbox_OtherQueryTask(SongQueryType, SongQueryValue, SongQueryStatusText))
-                };
-
-                Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
-                {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        Common_SwitchSetUI(true);
-                        Cashbox_Query_Button.Enabled = true;
-                    });
-                    Cashbox.DisposeSongDataTable();
-                });
             }
         }
 
@@ -577,276 +394,13 @@ namespace CrazyKTV_SongMgr
         {
             if (Global.CrazyktvDatabaseStatus && Cashbox_DateQuery_ComboBox.SelectedValue.ToString() != "System.Data.DataRowView")
             {
-                string SongQueryType = "SongDate";
-                string SongQueryValue = DateTime.Parse(Cashbox_DateQuery_ComboBox.Text).ToShortDateString();
                 string SongQueryStatusText = Cashbox_DateQuery_ComboBox.Text;
+                if (!DateTime.TryParseExact(SongQueryStatusText, "yyyy/MM/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime Date)) return;
 
                 Cashbox_QueryStatus_Label.Text = "正在查詢更新日期為『" + SongQueryStatusText + "』的歌曲,請稍待...";
-
-                Cashbox_Query_Button.Enabled = false;
-                Cashbox.CreateSongDataTable();
-                Common_SwitchSetUI(false);
-
-                Cashbox_DataGridView.DataSource = null;
-                Cashbox_QueryStatus_Label.Text = "";
-                GC.Collect();
-
-                var tasks = new List<Task>()
-                {
-                    Task.Factory.StartNew(() => Cashbox_OtherQueryTask(SongQueryType, SongQueryValue, SongQueryStatusText))
-                };
-
-                Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
-                {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        Common_SwitchSetUI(true);
-                        Cashbox_Query_Button.Enabled = true;
-                    });
-                    Cashbox.DisposeSongDataTable();
-                });
-            }
-        }
-
-        private void Cashbox_OtherQueryTask(string SongQueryType, string SongQueryValue, string SongQueryStatusText)
-        {
-            Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-
-            if (Global.CrazyktvDatabaseStatus)
-            {
-                if (SongQueryValue == "")
-                {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        Cashbox_EditMode_CheckBox.Enabled = false;
-                        Cashbox_LangFilter_ComboBox.Enabled = false;
-                        Cashbox_SongSingerFilter_ComboBox.Enabled = false;
-                        Cashbox_QueryStatus_Label.Text = "必須輸入查詢條件才能查詢...";
-                    });
-                }
-                else
-                {
-                    DataTable dt;
-                    try
-                    {
-                        switch (SongQueryType)
-                        {
-                            case "NonSong":
-                                dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-
-                                if (dt.Rows.Count > 0)
-                                {
-                                    List<int> RemoveRowsIdxlist = new List<int>();
-
-                                    Parallel.ForEach(Global.CashboxSongLangList, (langstr, loopState) =>
-                                    {
-                                        var query = from row in dt.AsEnumerable()
-                                                    where row.Field<string>("Song_Lang").Equals(langstr)
-                                                    select row;
-
-                                        if (query.Count<DataRow>() > 0)
-                                        {
-                                            foreach (DataRow row in query)
-                                            {
-                                                bool RemoveRowStatus = (CommonFunc.MatchCashboxSong("CashboxSong", row, "", "", "", Cashbox.SongDataLowCaseList, Cashbox.SongDataFuzzyList) >= 0) ? true : false;
-
-                                                if (RemoveRowStatus)
-                                                {
-                                                    lock (LockThis) RemoveRowsIdxlist.Add(dt.Rows.IndexOf(row));
-                                                    this.BeginInvoke((Action)delegate()
-                                                    {
-                                                        Cashbox_QueryStatus_Label.Text = "已在歌庫找到 " + RemoveRowsIdxlist.Count + " 首錢櫃歌曲...";
-                                                    });
-                                                }
-                                            }
-                                        }
-                                    });
-
-                                    RemoveRowsIdxlist.Sort();
-                                    if (RemoveRowsIdxlist.Count > 0)
-                                    {
-                                        for (int i = RemoveRowsIdxlist.Count - 1; i >= 0; i--)
-                                        {
-                                            dt.Rows.RemoveAt(RemoveRowsIdxlist[i]);
-                                        }
-                                    }
-                                    RemoveRowsIdxlist.Clear();
-                                }
-                                break;
-                            case "SongDate":
-                                dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-
-                                string DateStr = DateTime.Parse(SongQueryValue).ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
-
-                                if (dt.Rows.Count > 0)
-                                {
-                                    List<int> RemoveRowsIdxlist = new List<int>();
-
-                                    var query = from row in dt.AsEnumerable()
-                                                where !row.Field<DateTime>("Song_CreatDate").ToString("yyyy/MM/dd", CultureInfo.InvariantCulture).Equals(DateStr)
-                                                select row;
-
-                                    if (query.Count<DataRow>() > 0)
-                                    {
-                                        foreach (DataRow row in query)
-                                        {
-                                            RemoveRowsIdxlist.Add(dt.Rows.IndexOf(row));
-                                        }
-                                    }
-
-                                    RemoveRowsIdxlist.Sort();
-                                    if (RemoveRowsIdxlist.Count > 0)
-                                    {
-                                        for (int i = RemoveRowsIdxlist.Count - 1; i >= 0; i--)
-                                        {
-                                            dt.Rows.RemoveAt(RemoveRowsIdxlist[i]);
-                                        }
-                                    }
-                                    RemoveRowsIdxlist.Clear();
-                                }
-                                break;
-                            default:
-                                dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, Cashbox.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                break;
-                        }
-
-                        if (dt.Rows.Count == 0)
-                        {
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                Cashbox_EditMode_CheckBox.Enabled = false;
-                                Cashbox_LangFilter_ComboBox.Enabled = false;
-                                Cashbox_SongSingerFilter_ComboBox.Enabled = false;
-                                Cashbox_QueryStatus_Label.Text = "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...";
-                            });
-                        }
-                        else
-                        {
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                Cashbox_EditMode_CheckBox.Enabled = (dt.Rows.Count > 0 ) ? true : false;
-
-                                switch (SongQueryType)
-                                {
-                                    case "NonSong":
-                                        Cashbox_QueryStatus_Label.Text = "總共查詢到 " + dt.Rows.Count + " 筆歌庫所沒有的錢櫃歌曲。";
-                                        break;
-                                    case "SongDate":
-                                        Cashbox_QueryStatus_Label.Text = "總共查詢到 " + dt.Rows.Count + " 筆更新日期為『" + SongQueryStatusText + "』的歌曲。";
-                                        break;
-                                    default:
-                                        Cashbox_QueryStatus_Label.Text = "總共查詢到 " + dt.Rows.Count + " 筆有關『" + SongQueryStatusText + "』的歌曲。";
-                                        break;
-                                }
-                                
-                                Cashbox_DataGridView.DataSource = dt;
-
-                                List<string> LangFilterList = new List<string>();
-                                List<string> SongSingerFilterList = new List<string>();
-
-                                using (DataTable LangDistinctDT = dt.DefaultView.ToTable(true, "Song_Lang"))
-                                {
-                                    if (LangDistinctDT.Rows.Count > 0)
-                                    {
-                                        foreach (DataRow row in LangDistinctDT.AsEnumerable())
-                                        {
-                                            LangFilterList.Add(row["Song_Lang"].ToString());
-                                        }
-                                    }
-                                }
-
-                                using (DataTable SongSingerDistinctDT = dt.DefaultView.ToTable(true, "Song_Singer"))
-                                {
-                                    if (SongSingerDistinctDT.Rows.Count > 0)
-                                    {
-                                        string SongSinger = string.Empty;
-                                        foreach (DataRow row in SongSingerDistinctDT.AsEnumerable())
-                                        {
-                                            SongSinger = row["Song_Singer"].ToString();
-
-                                            if (SongSinger.Contains("&"))
-                                            {
-                                                string ChorusSongSingerName = SongSinger;
-
-                                                List<string> list = CommonFunc.GetChorusSingerList(ChorusSongSingerName);
-                                                foreach (string str in list)
-                                                {
-                                                    string SingerStr = Regex.Replace(str, @"^\s*|\s*$", ""); //去除頭尾空白
-                                                    if (SongSingerFilterList.IndexOf(SingerStr) < 0)
-                                                    {
-                                                        SongSingerFilterList.Add(SingerStr);
-                                                    }
-                                                }
-                                                list.Clear();
-                                                list = null;
-                                            }
-                                            else
-                                            {
-                                                if (SongSingerFilterList.IndexOf(SongSinger) < 0)
-                                                {
-                                                    SongSingerFilterList.Add(SongSinger);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (LangFilterList.Count > 0)
-                                {
-                                    Cashbox_LangFilter_ComboBox.Enabled = true;
-                                    Cashbox_LangFilter_ComboBox.DataSource = Cashbox.GetQueryFilterList(LangFilterList);
-                                    Cashbox_LangFilter_ComboBox.DisplayMember = "Display";
-                                    Cashbox_LangFilter_ComboBox.ValueMember = "Value";
-                                    LangFilterList.Clear();
-                                }
-
-                                if (SongSingerFilterList.Count > 0)
-                                {
-                                    SongSingerFilterList.Sort();
-                                    Cashbox_SongSingerFilter_ComboBox.Enabled = true;
-                                    Cashbox_SongSingerFilter_ComboBox.DataSource = Cashbox.GetQueryFilterList(SongSingerFilterList);
-                                    Cashbox_SongSingerFilter_ComboBox.DisplayMember = "Display";
-                                    Cashbox_SongSingerFilter_ComboBox.ValueMember = "Value";
-                                    SongSingerFilterList.Clear();
-                                }
-
-                                for (int i = 0; i < Cashbox_DataGridView.ColumnCount; i++)
-                                {
-                                    List<string> DataGridViewColumnName = Cashbox.GetDataGridViewColumnSet(Cashbox_DataGridView.Columns[i].Name);
-                                    Cashbox_DataGridView.Columns[i].HeaderText = DataGridViewColumnName[0];
-
-                                    if (DataGridViewColumnName[1].ToString() == "0")
-                                    {
-                                        Cashbox_DataGridView.Columns[i].Visible = false;
-                                    }
-
-                                    if (DataGridViewColumnName[2].ToString() != "none")
-                                    {
-                                        ((DataGridViewTextBoxColumn)Cashbox_DataGridView.Columns[i]).MaxInputLength = int.Parse(DataGridViewColumnName[2]);
-                                    }
-                                    Cashbox_DataGridView.Columns[i].Width = int.Parse(DataGridViewColumnName[1]);
-                                }
-
-                                int ColumnWidth_140 = Convert.ToInt32(140 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
-                                Cashbox_DataGridView.Columns["Song_CreatDate"].MinimumWidth = ColumnWidth_140;
-                                Cashbox_DataGridView.Columns["Song_CreatDate"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                                dt.Dispose();
-                                dt = null;
-                            });
-                        }
-                    }
-                    catch
-                    {
-                        this.BeginInvoke((Action)delegate()
-                        {
-                            Cashbox_EditMode_CheckBox.Enabled = false;
-                            Cashbox_LangFilter_ComboBox.Enabled = false;
-                            Cashbox_SongSingerFilter_ComboBox.Enabled = false;
-                            Cashbox_QueryStatus_Label.Text = "查詢條件輸入錯誤,請重新輸入...";
-                        });
-                    }
-                }
+                Cashbox_RunSearch(new CashboxSearchCriteria(CashboxSearchKind.UpdatedOn, date: Date),
+                    "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...",
+                    Count => "總共查詢到 " + Count + " 筆更新日期為『" + SongQueryStatusText + "』的歌曲。");
             }
         }
 
@@ -1565,165 +1119,6 @@ namespace CrazyKTV_SongMgr
                 ItemList.Clear();
                 return list;
             }
-        }
-
-        #endregion
-
-        #region --- Cashbox 取得 SQL 查詢字串 ---
-
-        public static string GetSongQuerySqlStr(string QueryType, string QueryValue, List<string> MultiQueryList)
-        {
-            string sqlCommonStr = " Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate, Song_HaveSong ";
-            string SongQuerySqlStr = string.Empty;
-            string MultiQuerySqlStr = string.Empty;
-            string SongQueryOrderStr = " order by Cashbox_Id";
-            string SongQueryFilterStr = (Global.CashboxQueryFilter == "全部") ? "" : " and Song_Lang = '" + Global.CashboxQueryFilter + "'";
-            string SongQueryColumnName = string.Empty;
-
-            List<string> QueryValueList = new List<string>();
-
-            Regex HasWideChar = new Regex("[\x21-\x7E\xFF01-\xFF5E]");
-            Regex HasSymbols = new Regex("[']");
-
-            if (QueryType == "SongName" | QueryType == "SingerName")
-            {
-                switch (QueryType)
-                {
-                    case "SongName":
-                        SongQueryColumnName = "Song_SongName";
-                        break;
-                    case "SingerName":
-                        SongQueryColumnName = "Song_Singer";
-                        break;
-                }
-
-                QueryValueList.Add(QueryValue);
-                if (MultiQueryList != null) QueryValueList.AddRange(MultiQueryList);
-
-                foreach (string value in QueryValueList)
-                {
-                    if (Global.CashboxFuzzyQuery)
-                    {
-                        string QueryValueDefault = value;
-                        if (HasWideChar.IsMatch(value))
-                        {
-                            string QueryValueNarrow = CommonFunc.ConvToNarrow(value);
-                            string QueryValueWide = CommonFunc.ConvToWide(value);
-
-                            if (HasSymbols.IsMatch(value))
-                            {
-                                QueryValueDefault = Regex.Replace(QueryValueDefault, "[']", delegate (Match match)
-                                {
-                                    string str = "'" + match.ToString();
-                                    return str;
-                                });
-                            }
-
-                            if (HasSymbols.IsMatch(QueryValueNarrow))
-                            {
-                                QueryValueNarrow = Regex.Replace(QueryValueNarrow, "[']", delegate (Match match)
-                                {
-                                    string str = "'" + match.ToString();
-                                    return str;
-                                });
-                            }
-                            if (value != QueryValue) MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueDefault + "'),0) <>0" + SongQueryFilterStr;
-                            if (QueryValueDefault != QueryValueNarrow) MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueNarrow + "'),0) <>0" + SongQueryFilterStr;
-                            MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueWide + "'),0) <>0" + SongQueryFilterStr;
-                        }
-                        else
-                        {
-                            if (HasSymbols.IsMatch(value))
-                            {
-                                QueryValueDefault = Regex.Replace(QueryValueDefault, "[']", delegate (Match match)
-                                {
-                                    string str = "'" + match.ToString();
-                                    return str;
-                                });
-                            }
-                            if (value != QueryValue) MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueDefault + "'),0) <>0" + SongQueryFilterStr;
-                        }
-                    }
-                }
-                QueryValueList.Clear();
-                QueryValueList = null;
-
-                if (HasSymbols.IsMatch(QueryValue))
-                {
-                    QueryValue = Regex.Replace(QueryValue, "[']", delegate (Match match)
-                    {
-                        string str = "'" + match.ToString();
-                        return str;
-                    });
-                }
-            }
-
-            switch (QueryType)
-            {
-                case "SongName":
-                    if (Global.CashboxFuzzyQuery)
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where InStr(1,LCase(Song_SongName),LCase('" + QueryValue + "'),0) <>0" + SongQueryFilterStr + MultiQuerySqlStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Song_SongName = '" + QueryValue + "'" + SongQueryFilterStr;
-                    }
-                    break;
-                case "SingerName":
-                    if (Global.CashboxFuzzyQuery)
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where InStr(1,LCase(Song_Singer),LCase('" + QueryValue + "'),0) <>0" + SongQueryFilterStr + MultiQuerySqlStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Song_Singer = '" + QueryValue + "'" + SongQueryFilterStr + " or InStr(1,LCase(Song_Singer),LCase('&" + QueryValue + "'),0) <>0" + SongQueryFilterStr + " or InStr(1,LCase(Song_Singer),LCase('" + QueryValue + "&'),0) <>0" + SongQueryFilterStr;
-                    }
-                    break;
-                case "SongID":
-                    if (Global.CashboxFuzzyQuery)
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Cashbox_Id like '%" + QueryValue + "%'" + SongQueryFilterStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Cashbox_Id = '" + QueryValue + "'";
-                    }
-                    break;
-                case "AllSong":
-                    if (Global.CashboxQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Song_Lang = '" + Global.CashboxQueryFilter + "'" + SongQueryOrderStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox" + SongQueryOrderStr;
-                    }
-                    break;
-                case "NewSong":
-                    if (Global.CashboxQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select top " + QueryValue + sqlCommonStr + "from ktv_Cashbox where Song_Lang = '" + Global.CashboxQueryFilter + "' order by Song_CreatDate desc, Cashbox_Id desc";
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select top " + QueryValue + sqlCommonStr + "from ktv_Cashbox order by Song_CreatDate desc, Cashbox_Id desc";
-                    }
-                    break;
-                case "NonSong":
-                    SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox" + SongQueryOrderStr;
-                    break;
-                case "DuplicateSong":
-                    SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where (((Song_SongName) In (select Song_SongName from ktv_Cashbox As Tmp group by Song_SongName, Song_Lang, Song_Singer HAVING Count(*)>1 and Song_SongName = ktv_Cashbox.Song_SongName and Song_Lang = ktv_Cashbox.Song_Lang and Song_Singer = ktv_Cashbox.Song_Singer))) order by Song_SongName";
-                    break;
-                case "SongDate":
-                    // Access 以地區日期文字比對; SQLite 的日期存成 ISO 8601 文字 (yyyy-MM-dd HH:mm:ss)
-                    string DateLikeStr = Db.IsSQLite(Global.CrazyktvSongMgrDatabaseFile) ? DateTime.Parse(QueryValue).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : QueryValue;
-                    SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Cashbox where Song_CreatDate like '%" + DateLikeStr + "%' order by Cashbox_Id";
-                    break;
-            }
-
-            return SongQuerySqlStr;
         }
 
         #endregion

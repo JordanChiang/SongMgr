@@ -59,6 +59,9 @@ namespace SongMgr.Tests.Store
         [InlineData("SELECT First(Song_Singer) AS Song_Singer, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING First(Song_SingerType)<=10 ORDER BY First(Song_Singer)",
                     "SELECT Song_Singer AS Song_Singer, Count(Song_Singer) AS Song_SingerCount FROM ktv_Song GROUP BY Song_Singer HAVING Song_SingerType<=10 ORDER BY Song_Singer")]
         [InlineData("update ktv_Song set [Song_Volume] = @SongVolume where Song_Id = @SongId", "update ktv_Song set [Song_Volume] = @SongVolume where Song_Id = @SongId")]
+        [InlineData("select * from ktv_Song where (InStr(1,LCase(Song_Singer),LCase(@p0),0) <>0 or InStr(1,LCase(Song_Singer),LCase(@p1),0) <>0) and Song_Lang = @Lang",
+                    "select * from ktv_Song where (instr(lower(Song_Singer), lower(@p0)) <>0 or instr(lower(Song_Singer), lower(@p1)) <>0) and Song_Lang = @Lang")]
+        [InlineData("select * from ktv_Song where LCase(Song_SongName) = LCase(@p0)", "select * from ktv_Song where lower(Song_SongName) = lower(@p0)")]
         public void ToSQLite_RewritesAccessOnlySql(string access, string sqlite)
         {
             Assert.Equal(sqlite, Db.ToSQLite(access));
