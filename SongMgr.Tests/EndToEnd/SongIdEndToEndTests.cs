@@ -62,6 +62,8 @@ namespace SongMgr.Tests.EndToEnd
 
                 // 歌庫查詢: 日不落 to 台語 shows the next 台語 number, and keeps it.
                 app.Click("編輯模式");
+                // The click is posted: wait until 編輯模式 has shrunk and moved the list, or the row is clicked where it was.
+                AppSession.WaitUntil(() => app.Value("SongQuery_QueryStatus_Label") == "已進入編輯模式...", 20, "編輯模式");
                 app.ClickRow("SongQuery_DataGridView", Id(mandarin + 2, digits));
                 AppSession.WaitUntil(() => app.Value("SongQuery_EditSongId_TextBox") == Id(mandarin + 2, digits), 20, "日不落 in the edit panel");
                 app.Choose("SongQuery_EditSongLang_ComboBox", "台語");
