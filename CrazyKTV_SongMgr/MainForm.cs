@@ -393,6 +393,9 @@ namespace CrazyKTV_SongMgr
                 MainCfg_PlayerOutput_RadioButton2.Checked = true;
             }
 
+            // Probed only now that the 影片輸出 setting is known.
+            PlayerOutput.WarnIfUnavailable();
+
             if (cfg["MainCfgPlayerEnableAudioCompressor"] != "") Global.MainCfgPlayerEnableAudioCompressor = cfg["MainCfgPlayerEnableAudioCompressor"];
             MainCfg_PlayerEnableAudioCompressor_CheckBox.Checked = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
 
