@@ -51,7 +51,10 @@ namespace SongMgr.Tests.Store
                         cmd.ExecuteNonQuery();
                     }
                 }
+                using (OleDbCommand cmd = new OleDbCommand("insert into ktv_User (User_Id, User_Name) values ('0001', '小明')", conn)) cmd.ExecuteNonQuery();
+                using (OleDbCommand cmd = new OleDbCommand("insert into ktv_User (User_Id, User_Name) values ('^CB1', '錢櫃新歌排行榜 (國語)')", conn)) cmd.ExecuteNonQuery();
                 using (OleDbCommand cmd = new OleDbCommand("insert into ktv_Favorite (User_Id, Song_Id) values ('0001', '000001')", conn)) cmd.ExecuteNonQuery();
+                using (OleDbCommand cmd = new OleDbCommand("insert into ktv_Favorite (User_Id, Song_Id) values ('^CB1', '000002')", conn)) cmd.ExecuteNonQuery();
             }
         }
 
@@ -79,6 +82,7 @@ namespace SongMgr.Tests.Store
         void AssertSame((string legacySong, string legacyMgr, string moduleSong, string moduleMgr) t)
         {
             Assert.Equal(Dump(t.legacySong, "ktv_Song", "Song_Id"), Dump(t.moduleSong, "ktv_Song", "Song_Id"));
+            Assert.Equal(Dump(t.legacySong, "ktv_User", "User_Id"), Dump(t.moduleSong, "ktv_User", "User_Id"));
             Assert.Equal(Dump(t.legacySong, "ktv_Favorite", "User_Id, Song_Id"), Dump(t.moduleSong, "ktv_Favorite", "User_Id, Song_Id"));
             Assert.Equal(Dump(t.legacySong, "ktv_Singer", "Singer_Id"), Dump(t.moduleSong, "ktv_Singer", "Singer_Id"));
             Assert.Equal(Dump(t.legacyMgr, "ktv_AllSinger", "Singer_Id"), Dump(t.moduleMgr, "ktv_AllSinger", "Singer_Id"));
@@ -234,10 +238,217 @@ namespace SongMgr.Tests.Store
                     "99001", "新歌手甲", "1", spelllist[0], spelllist[2], spelllist[1], spelllist[3]);
 
                 Global.CrazyktvDatabaseFile = t.moduleSong; Global.CrazyktvSongMgrDatabaseFile = t.moduleMgr;
-                using (SongLibraryStore st = SongLibraryStore.Open(table)) st.InsertSinger(table, "99001", "新歌手甲", "1");
+                using (SongLibraryStore st = SongLibraryStore.Open(table)) st.InsertSinger(table, "99001", "新歌手甲", "1", NameSpell.Of("新歌手甲"));
 
                 AssertSame(t);
             }
+        }
+
+        // ---------- 我的最愛 ----------
+
+        static void SeedSinger(string songDb, string mgrDb)
+        {
+            foreach (var (db, table) in new[] { (songDb, "ktv_Singer"), (mgrDb, "ktv_AllSinger") })
+            {
+                Legacy(db, "insert into " + table + " ( Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle ) values ( @a, @b, @c, @d, @e, @f, @g )",
+                    "99001", "舊歌手", "1", "ㄐㄍ", "9", "51", "丨丨");
+                Legacy(db, "insert into " + table + " ( Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle ) values ( @a, @b, @c, @d, @e, @f, @g )",
+                    "99002", "另一位", "0", "ㄌㄧ", "4", "53", "一一");
+            }
+        }
+
+        static DataTable SongTable(string db) => Db.GetDataTable(db, "select Song_Id, Song_Lang, Song_Singer, Song_SongName from ktv_Song order by Song_Id", "");
+
+        static List<string> Favorites(string db) =>
+            Db.GetDataTable(db, "select User_Id, Song_Id from ktv_Favorite order by User_Id, Song_Id", "").AsEnumerable().Select(r => r[0] + ":" + r[1]).ToList();
+
+        [Fact]
+        public void Favorite_add_and_remove_match_SongQuery()
+        {
+            var t = Twins("songquery-favorite");
+
+            // SongQuery_FavoriteAdd: drop the songs the user already has, insert the rest
+            List<string> add = new List<string> { "000001", "000002", "100001" };
+            List<string> legacyAdd = new List<string>(add);
+            foreach (DataRow row in Db.GetDataTable(t.legacySong, "select User_Id, Song_Id from ktv_Favorite", "").AsEnumerable().Where(r => r.Field<string>("User_Id").Equals("0001")))
+                legacyAdd.Remove(row["Song_Id"].ToString());
+            foreach (string id in legacyAdd) Legacy(t.legacySong, "insert into ktv_Favorite ( User_Id, Song_Id ) values ( @UserId, @SongId )", "0001", id);
+            Module(t.moduleSong, st => Assert.Equal(2, st.AddFavorites("0001", add)));
+            AssertSame(t);
+
+            // SongQuery_FavoriteRemove
+            foreach (string id in new[] { "000001", "100001" }) Legacy(t.legacySong, "delete from ktv_Favorite where User_Id = @UserId and Song_Id = @SongId", "0001", id);
+            Module(t.moduleSong, st => Assert.Equal(2, st.RemoveFavorites("0001", new[] { "000001", "100001" })));
+            AssertSame(t);
+        }
+
+        [Fact]
+        public void Favorite_user_add_and_remove_match_SongMaintenance()
+        {
+            var t = Twins("favorite-user");
+
+            Legacy(t.legacySong, "insert into ktv_User ( User_Id, User_Name ) values ( @UserId, @UserName )", "0002", "阿華");
+            Module(t.moduleSong, st => st.AddFavoriteUser("0002", "阿華"));
+            AssertSame(t);
+
+            // 移除: the user row, then each of their 我的最愛
+            Legacy(t.legacySong, "delete from ktv_User where User_Id = @UserId and User_Name = @UserName", "0001", "小明");
+            foreach (DataRow row in Db.GetDataTable(t.legacySong, "select User_Id, Song_Id from ktv_Favorite", "").AsEnumerable().Where(r => r.Field<string>("User_Id").Equals("0001")).ToList())
+                Legacy(t.legacySong, "delete from ktv_Favorite where User_Id = @UserId and Song_Id = @SongId", "0001", row["Song_Id"].ToString());
+            Module(t.moduleSong, st => Assert.Equal(1, st.RemoveFavoriteUser("0001")));
+            AssertSame(t);
+        }
+
+        [Fact]
+        public void Replace_favorite_user_matches_UpdateFavoriteData()
+        {
+            var t = Twins("replace-user");
+            foreach (var (id, name, songs) in new[] { ("^CB1", "錢櫃新歌排行榜 (國語)", new[] { "000001", "100001" }), ("^CB2", "錢櫃新歌排行榜 (台語)", new[] { "100001" }) })
+            {
+                Legacy(t.legacySong, "delete from ktv_User where User_Id = @UserId", id);
+                Legacy(t.legacySong, "delete from ktv_Favorite where User_Id = @UserId", id);
+                Legacy(t.legacySong, "insert into ktv_User ( User_Id, User_Name ) values ( @UserId, @UserName )", id, name);
+                foreach (string song in songs) Legacy(t.legacySong, "insert into ktv_Favorite ( User_Id, Song_Id ) values ( @UserId, @SongId )", id, song);
+                Module(t.moduleSong, st => Assert.Equal(songs.Length, st.ReplaceFavoriteUser(id, name, songs)));
+            }
+            AssertSame(t);
+        }
+
+        static readonly string[] Backup =
+        {
+            "ktv_User|0003|阿明",
+            "ktv_User|^CB1|錢櫃新歌排行榜 (國語)",
+            "ktv_Favorite|0003|國語|周杰倫|晴天",
+            "ktv_Favorite|0003|國語|沒有這位|沒有這首",
+            "ktv_Favorite|^CB1|台語|江蕙&陳雷|愛人醉落去",
+            "ktv_Favorite|^CB1|國語|蔡依林|日不落",
+        };
+
+        [Fact]
+        public void Import_matches_SongMaintenance_FavoriteImportTask()
+        {
+            var t = Twins("import");
+
+            // SongMaintenance_FavoriteImportTask: empty both tables, then each line in turn
+            DataTable legacySongs = SongTable(t.legacySong);
+            Legacy(t.legacySong, "delete * from ktv_User");
+            Legacy(t.legacySong, "delete * from ktv_Favorite");
+            foreach (string line in Backup)
+            {
+                string[] f = line.Split('|');
+                if (f[0] == "ktv_User") Legacy(t.legacySong, "insert into ktv_User ( User_Id, User_Name ) values ( @UserId, @UserName )", f[1], f[2]);
+                else
+                {
+                    DataRow song = legacySongs.AsEnumerable().FirstOrDefault(r => r.Field<string>("Song_Lang").Equals(f[2]) && r.Field<string>("Song_Singer").Equals(f[3]) && r.Field<string>("Song_SongName").Equals(f[4]));
+                    if (song != null) Legacy(t.legacySong, "insert into ktv_Favorite ( User_Id, Song_Id ) values ( @UserId, @SongId )", f[1], song["Song_Id"].ToString());
+                }
+            }
+
+            Module(t.moduleSong, st => Assert.Equal((2, 3), CrazyKTV_SongMgr.SongMaintenance.ImportFavorites(st, Backup, SongTable(t.moduleSong))));
+            AssertSame(t);
+        }
+
+        [Fact]
+        public void Singer_updates_and_clearing_match_SingerMgr_SpellCorrect_and_rebuild()
+        {
+            foreach (SingerTable table in new[] { SingerTable.Library, SingerTable.AllSingers })
+            {
+                var t = Twins("singer-update" + table.Name);
+                Global.CrazyktvDatabaseFile = t.legacySong; Global.CrazyktvSongMgrDatabaseFile = t.legacyMgr;
+                SeedSinger(t.legacySong, t.legacyMgr);
+                string legacyDb = table.DatabaseFile;
+                Global.CrazyktvDatabaseFile = t.moduleSong; Global.CrazyktvSongMgrDatabaseFile = t.moduleMgr;
+                SeedSinger(t.moduleSong, t.moduleMgr);
+
+                // SingerMgr_SingerUpdateTask
+                Legacy(legacyDb, "update " + table.Name + " set Singer_Id = @SingerId, Singer_Name = @SingerName, Singer_Type = @SingerType, Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle where Singer_Id = @OldSingerId",
+                    "99003", "改名了", "2", "ㄍㄇ", "12", "46", "丿丿", "99001");
+                // SongMaintenance_SpellCorrectTask
+                Legacy(legacyDb, "update " + table.Name + " set Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle where Singer_Id = @SingerId",
+                    "ㄌㄨ", "0", "58", "丶丶", "99002");
+                using (SongLibraryStore st = SongLibraryStore.Open(table))
+                {
+                    st.UpdateSinger(table, "99001", "99003", "改名了", "2", new NameSpell(spell: "ㄍㄇ", spellNum: "46", strokes: "12", penStyle: "丿丿"));
+                    st.UpdateSingerSpell(table, "99002", new NameSpell(spell: "ㄌㄨ", spellNum: "58", strokes: "0", penStyle: "丶丶"));
+                }
+                AssertSame(t);
+
+                // Common_RebuildSingerDataTask empties ktv_Singer first
+                Legacy(legacyDb, "delete * from " + table.Name);
+                using (SongLibraryStore st = SongLibraryStore.Open(table)) st.DeleteAllSingers(table);
+                AssertSame(t);
+            }
+        }
+
+        // ---------- what the old SQL could not do ----------
+
+        static string LongUserId => new string('9', 80);
+
+        [Fact]
+        public void Adding_favorites_skips_songs_already_there_or_repeated()
+        {
+            var t = Twins("favorite-repeat");
+            Module(t.moduleSong, st =>
+            {
+                Assert.Equal(1, st.AddFavorites("0001", new[] { "000001", "000002", "000002" }));
+                Assert.Equal(2, st.ReplaceFavoriteUser("^CB1", "錢櫃新歌排行榜 (國語)", new[] { "100001", "000001", "100001" }));
+            });
+            Assert.Equal(new[] { "0001:000001", "0001:000002", "^CB1:000001", "^CB1:100001" }, Favorites(t.moduleSong).OrderBy(f => f, StringComparer.Ordinal));
+        }
+
+        [Fact]
+        public void Import_keeps_the_first_of_a_repeated_user_and_writes_a_repeated_song_once()
+        {
+            var t = Twins("import-repeat");
+            string[] lines = { "ktv_User|0003|阿明", "ktv_User|0003|另一個阿明", "ktv_Favorite|0003|國語|周杰倫|晴天", "ktv_Favorite|0003|國語|周杰倫|晴天" };
+            Module(t.moduleSong, st => Assert.Equal((1, 1), CrazyKTV_SongMgr.SongMaintenance.ImportFavorites(st, lines, SongTable(t.moduleSong))));
+            Assert.Equal("User_Id=0003|User_Name=阿明", Dump(t.moduleSong, "ktv_User", "User_Id"));
+            Assert.Equal(new[] { "0003:000001" }, Favorites(t.moduleSong));
+        }
+
+        [Fact]
+        public void A_failed_import_leaves_the_favorites_as_they_were()
+        {
+            var t = Twins("import-fail");
+            string users = Dump(t.moduleSong, "ktv_User", "User_Id"), favorites = Dump(t.moduleSong, "ktv_Favorite", "User_Id, Song_Id");
+            string[] lines = { "ktv_User|0003|阿明", "ktv_Favorite|0003|國語|周杰倫|晴天", "ktv_Favorite|" + LongUserId + "|國語|蔡依林|日不落" };
+
+            Module(t.moduleSong, st => Assert.ThrowsAny<OleDbException>(() => CrazyKTV_SongMgr.SongMaintenance.ImportFavorites(st, lines, SongTable(t.moduleSong))));
+            Assert.Equal(users, Dump(t.moduleSong, "ktv_User", "User_Id"));
+            Assert.Equal(favorites, Dump(t.moduleSong, "ktv_Favorite", "User_Id, Song_Id"));
+
+            // a line that cannot be read stops the import before anything is cleared
+            Module(t.moduleSong, st => Assert.ThrowsAny<IndexOutOfRangeException>(() => CrazyKTV_SongMgr.SongMaintenance.ImportFavorites(st, new[] { "ktv_User" }, SongTable(t.moduleSong))));
+            Assert.Equal(users, Dump(t.moduleSong, "ktv_User", "User_Id"));
+        }
+
+        [Fact]
+        public void A_failed_Cashbox_list_update_leaves_the_favorites_as_they_were()
+        {
+            var t = Twins("cashbox-fail");
+            Global.CrazyktvDatabaseFile = t.moduleSong;
+            Global.TotalList = new List<int> { 0, 0, 0, 0 };
+            TestEnv.ResetLogs();
+            string users = Dump(t.moduleSong, "ktv_User", "User_Id"), favorites = Dump(t.moduleSong, "ktv_Favorite", "User_Id, Song_Id");
+
+            CrazyKTV_SongMgr.SongMaintenance.ReplaceFavoriteUsers(new List<(string UserId, string Name, List<string> SongIds)>
+            {
+                ("^CB1", "錢櫃新歌排行榜 (國語)", new List<string> { "000001" }),
+                (LongUserId, "錢櫃新歌排行榜 (台語)", new List<string> { "100001" }),
+            });
+
+            Assert.Equal(users, Dump(t.moduleSong, "ktv_User", "User_Id"));
+            Assert.Equal(favorites, Dump(t.moduleSong, "ktv_Favorite", "User_Id, Song_Id"));
+            Assert.Equal(0, Global.TotalList[0]);
+            Assert.Contains(TestEnv.SongLog(), l => l.Contains("【錢櫃排行】"));
+
+            CrazyKTV_SongMgr.SongMaintenance.ReplaceFavoriteUsers(new List<(string UserId, string Name, List<string> SongIds)>
+            {
+                ("^CB1", "錢櫃新歌排行榜 (國語)", new List<string> { "000001" }),
+                ("^CB2", "錢櫃新歌排行榜 (台語)", new List<string>()),
+            });
+            Assert.Equal(1, Global.TotalList[0]);
+            Assert.Contains("^CB1:000001", Favorites(t.moduleSong));
         }
 
         [Fact]

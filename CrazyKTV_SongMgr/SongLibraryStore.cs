@@ -55,7 +55,34 @@ namespace CrazyKTV_SongMgr
     }
 
     /// <summary>
-    /// 歌庫存取: every write to ktv_Song, ktv_Favorite and the 歌手資料表 goes through here, so the SQL
+    /// A name's 拼音 (first 注音 or letter of each word), 手機輸入 digits, 筆劃 and 筆形, as the 歌手資料表 store them
+    /// in Singer_Spell, Singer_SpellNum, Singer_Strokes and Singer_PenStyle.
+    /// </summary>
+    sealed class NameSpell
+    {
+        public string Spell { get; }
+        public string SpellNum { get; }
+        public string Strokes { get; }
+        public string PenStyle { get; }
+
+        public NameSpell(string spell, string spellNum, string strokes, string penStyle)
+        {
+            Spell = spell;
+            SpellNum = spellNum;
+            Strokes = strokes;
+            PenStyle = penStyle;
+        }
+
+        /// <summary>Looks the name up in the 參考資料庫's 注音 table (<see cref="CommonFunc.GetSongNameSpell"/>).</summary>
+        public static NameSpell Of(string name)
+        {
+            List<string> spell = CommonFunc.GetSongNameSpell(name);
+            return new NameSpell(spell[0], spell[1], spell[2], spell[3]);
+        }
+    }
+
+    /// <summary>
+    /// 歌庫存取: every write to ktv_Song, ktv_User, ktv_Favorite and the 歌手資料表 goes through here, so the SQL
     /// and the column lists live in one place; the connection comes from <see cref="Db"/>. One instance holds one connection;
     /// dispose it when the batch is done. Writes throw like DbCommand.ExecuteNonQuery does.
     /// </summary>
@@ -184,8 +211,9 @@ namespace CrazyKTV_SongMgr
 
         #endregion
 
-        #region --- ktv_Favorite ---
+        #region --- 我的最愛 (ktv_User, ktv_Favorite) ---
 
+        /// <summary>Every 我的最愛 that points at <paramref name="oldId"/> points at <paramref name="newId"/> instead.</summary>
         public int RenumberFavorite(string oldId, string newId)
         {
             return Execute("update ktv_Favorite set Song_Id = @SongId where Song_Id = @OldSongId", cmd =>
@@ -195,27 +223,117 @@ namespace CrazyKTV_SongMgr
             });
         }
 
+        /// <summary>Takes a deleted song out of every 最愛用戶's 我的最愛.</summary>
         public int DeleteFavorite(string songId)
         {
             return Execute("delete from ktv_Favorite where Song_Id = @SongId", cmd => cmd.Parameters.AddWithValue("@SongId", songId));
+        }
+
+        public int AddFavoriteUser(string userId, string name)
+        {
+            return Execute("insert into ktv_User ( User_Id, User_Name ) values ( @UserId, @UserName )", cmd =>
+            {
+                cmd.Parameters.AddWithValue("@UserId", userId);
+                cmd.Parameters.AddWithValue("@UserName", name);
+            });
+        }
+
+        /// <summary>Removes the 最愛用戶 and all of their 我的最愛. Returns the number of ktv_User rows removed.</summary>
+        public int RemoveFavoriteUser(string userId)
+        {
+            Execute("delete from ktv_Favorite where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", userId));
+            return Execute("delete from ktv_User where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", userId));
+        }
+
+        /// <summary>
+        /// The 最愛用戶 ends up named <paramref name="name"/> with exactly <paramref name="songIds"/> as 我的最愛
+        /// (錢櫃排行 lists). Returns the number of songs written.
+        /// </summary>
+        public int ReplaceFavoriteUser(string userId, string name, IEnumerable<string> songIds)
+        {
+            RemoveFavoriteUser(userId);
+            AddFavoriteUser(userId, name);
+            return AddFavorites(userId, songIds);
+        }
+
+        /// <summary>
+        /// Adds songs to the user's 我的最愛, skipping any already there or repeated in <paramref name="songIds"/>
+        /// (ktv_Favorite's key is User_Id + Song_Id). Returns the number added.
+        /// </summary>
+        public int AddFavorites(string userId, IEnumerable<string> songIds)
+        {
+            HashSet<string> present = FavoriteSongIds(userId);
+            int added = 0;
+            foreach (string songId in songIds)
+            {
+                if (!present.Add(songId)) continue;
+                added += Execute("insert into ktv_Favorite ( User_Id, Song_Id ) values ( @UserId, @SongId )", cmd =>
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.Parameters.AddWithValue("@SongId", songId);
+                });
+            }
+            return added;
+        }
+
+        /// <summary>Takes songs out of one user's 我的最愛. Returns the number removed.</summary>
+        public int RemoveFavorites(string userId, IEnumerable<string> songIds)
+        {
+            int removed = 0;
+            foreach (string songId in songIds)
+            {
+                removed += Execute("delete from ktv_Favorite where User_Id = @UserId and Song_Id = @SongId", cmd =>
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.Parameters.AddWithValue("@SongId", songId);
+                });
+            }
+            return removed;
+        }
+
+        /// <summary>Empties ktv_User and ktv_Favorite before a 我的最愛 import.</summary>
+        public void ClearFavoriteUsers()
+        {
+            Execute("delete * from ktv_User", cmd => { });
+            Execute("delete * from ktv_Favorite", cmd => { });
+        }
+
+        private HashSet<string> FavoriteSongIds(string userId)
+        {
+            var ids = new HashSet<string>();
+            lock (commands)
+            {
+                using (DbCommand cmd = Db.Command("select Song_Id from ktv_Favorite where User_Id = @UserId", conn))
+                {
+                    cmd.Transaction = transaction;
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    using (DbDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read()) ids.Add(Convert.ToString(reader.GetValue(0)));
+                    }
+                }
+            }
+            return ids;
         }
 
         #endregion
 
         #region --- 歌手資料表 ---
 
-        /// <summary>
-        /// Adds a singer with 拼音 / 筆劃 / 筆形 taken from <see cref="CommonFunc.GetSongNameSpell"/>
-        /// (whose list order is Spell, SpellNum, Strokes, PenStyle).
-        /// </summary>
-        public int InsertSinger(SingerTable table, string singerId, string name, string singerType)
+        public int InsertSinger(SingerTable table, string singerId, string name, string singerType, NameSpell spell)
         {
-            List<string> spell = CommonFunc.GetSongNameSpell(name);
-            return InsertSinger(table, singerId, name, singerType, spell[0], spell[2], spell[1], spell[3]);
+            string sql = "insert into " + table.Name + " ( Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle ) values ( @SingerId, @SingerName, @SingerType, @SingerSpell, @SingerStrokes, @SingerSpellNum, @SingerPenStyle )";
+            return Execute(sql, cmd =>
+            {
+                cmd.Parameters.AddWithValue("@SingerId", singerId);
+                cmd.Parameters.AddWithValue("@SingerName", name);
+                cmd.Parameters.AddWithValue("@SingerType", singerType);
+                AddSpell(cmd, spell);
+            });
         }
 
         /// <summary>Rewrites the singer whose Singer_Id is <paramref name="oldId"/>.</summary>
-        public int UpdateSinger(SingerTable table, string oldId, string singerId, string name, string singerType, string spell, string strokes, string spellNum, string penStyle)
+        public int UpdateSinger(SingerTable table, string oldId, string singerId, string name, string singerType, NameSpell spell)
         {
             string sql = "update " + table.Name + " set Singer_Id = @SingerId, Singer_Name = @SingerName, Singer_Type = @SingerType, Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle where Singer_Id = @OldSingerId";
             return Execute(sql, cmd =>
@@ -223,15 +341,23 @@ namespace CrazyKTV_SongMgr
                 cmd.Parameters.AddWithValue("@SingerId", singerId);
                 cmd.Parameters.AddWithValue("@SingerName", name);
                 cmd.Parameters.AddWithValue("@SingerType", singerType);
-                cmd.Parameters.AddWithValue("@SingerSpell", spell);
-                cmd.Parameters.AddWithValue("@SingerStrokes", strokes);
-                cmd.Parameters.AddWithValue("@SingerSpellNum", spellNum);
-                cmd.Parameters.AddWithValue("@SingerPenStyle", penStyle);
+                AddSpell(cmd, spell);
                 cmd.Parameters.AddWithValue("@OldSingerId", oldId);
             });
         }
 
-        /// <summary>Empties the table before a 歌手資料 import.</summary>
+        /// <summary>Rewrites only the 拼音 / 筆劃 / 筆形 columns (拼音校正).</summary>
+        public int UpdateSingerSpell(SingerTable table, string singerId, NameSpell spell)
+        {
+            string sql = "update " + table.Name + " set Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle where Singer_Id = @SingerId";
+            return Execute(sql, cmd =>
+            {
+                AddSpell(cmd, spell);
+                cmd.Parameters.AddWithValue("@SingerId", singerId);
+            });
+        }
+
+        /// <summary>Empties the table before a 歌手資料 import or a 重建歌庫歌手.</summary>
         public int DeleteAllSingers(SingerTable table)
         {
             return Execute("delete * from " + table.Name, cmd => { });
@@ -242,19 +368,13 @@ namespace CrazyKTV_SongMgr
             return Execute("delete from " + table.Name + " where Singer_Id = @SingerId", cmd => cmd.Parameters.AddWithValue("@SingerId", singerId));
         }
 
-        public int InsertSinger(SingerTable table, string singerId, string name, string singerType, string spell, string strokes, string spellNum, string penStyle)
+        /// <summary>Binds in the statements' column order: Spell, Strokes, SpellNum, PenStyle.</summary>
+        private static void AddSpell(DbCommand cmd, NameSpell spell)
         {
-            string sql = "insert into " + table.Name + " ( Singer_Id, Singer_Name, Singer_Type, Singer_Spell, Singer_Strokes, Singer_SpellNum, Singer_PenStyle ) values ( @SingerId, @SingerName, @SingerType, @SingerSpell, @SingerStrokes, @SingerSpellNum, @SingerPenStyle )";
-            return Execute(sql, cmd =>
-            {
-                cmd.Parameters.AddWithValue("@SingerId", singerId);
-                cmd.Parameters.AddWithValue("@SingerName", name);
-                cmd.Parameters.AddWithValue("@SingerType", singerType);
-                cmd.Parameters.AddWithValue("@SingerSpell", spell);
-                cmd.Parameters.AddWithValue("@SingerStrokes", strokes);
-                cmd.Parameters.AddWithValue("@SingerSpellNum", spellNum);
-                cmd.Parameters.AddWithValue("@SingerPenStyle", penStyle);
-            });
+            cmd.Parameters.AddWithValue("@SingerSpell", spell.Spell);
+            cmd.Parameters.AddWithValue("@SingerStrokes", spell.Strokes);
+            cmd.Parameters.AddWithValue("@SingerSpellNum", spell.SpellNum);
+            cmd.Parameters.AddWithValue("@SingerPenStyle", spell.PenStyle);
         }
 
         #endregion

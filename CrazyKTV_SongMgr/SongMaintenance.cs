@@ -153,6 +153,52 @@ namespace CrazyKTV_SongMgr
             }
         }
 
+        /// <summary>
+        /// 拼音校正 for one 歌手資料表: rewrites each singer's 拼音 / 筆劃 / 筆形 from the name. Counts the singers
+        /// tried in Global.TotalList[<paramref name="countIndex"/>] and the failures in Global.TotalList[2].
+        /// </summary>
+        private void SongMaintenance_SpellCorrectSingers(SingerTable table, DataTable singers, int countIndex)
+        {
+            if (singers.Rows.Count <= 0) return;
+
+            var updates = new List<(string Id, string Name, NameSpell Spell)>();
+            foreach (DataRow row in singers.AsEnumerable())
+            {
+                string name = row["Singer_Name"].ToString();
+                NameSpell spell = NameSpell.Of(name);
+                if (spell.Strokes == "") spell = new NameSpell(spell.Spell, spell.SpellNum, "0", spell.PenStyle);
+                updates.Add((row["Singer_Id"].ToString(), name, spell));
+            }
+
+            using (SongLibraryStore store = SongLibraryStore.Open(table))
+            {
+                foreach (var u in updates)
+                {
+                    try
+                    {
+                        lock (LockThis)
+                        {
+                            Global.TotalList[countIndex]++;
+                        }
+                        store.UpdateSingerSpell(table, u.Id, u.Spell);
+                    }
+                    catch
+                    {
+                        lock (LockThis)
+                        {
+                            Global.TotalList[2]++;
+                        }
+                        Global.SongLog.Add("【拼音校正】更新資料庫時發生錯誤: " + u.Id + "|" + u.Name + "|" + u.Spell.Spell + "|" + u.Spell.Strokes + "|" + u.Spell.SpellNum + "|" + u.Spell.PenStyle);
+                    }
+
+                    this.BeginInvoke((Action)delegate()
+                    {
+                        SongMaintenance_Tooltip_Label.Text = "正在更新第 " + Global.TotalList[0] + " 位歌庫歌手及 " + Global.TotalList[1] + " 位預設歌手的拼音資料,請稍待...";
+                    });
+                }
+            }
+        }
+
         private void SongMaintenance_SpellCorrectTask(object TableName)
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
@@ -162,124 +208,10 @@ namespace CrazyKTV_SongMgr
             switch ((string)TableName)
             {
                 case "ktv_Singer":
-                    if (Global.SingerDT.Rows.Count > 0)
-                    {
-                        foreach (DataRow row in Global.SingerDT.AsEnumerable())
-                        {
-                            string str = "";
-                            SpellList = new List<string>();
-
-                            str = row["Singer_Id"].ToString() + "|";
-                            str += row["Singer_Name"].ToString() + "|";
-                            SpellList = CommonFunc.GetSongNameSpell(row["Singer_Name"].ToString());
-                            if (SpellList[2] == "") SpellList[2] = "0";
-                            str += SpellList[0] + "|" + SpellList[2] + "|" + SpellList[1] + "|" + SpellList[3];
-                            list.Add(str);
-                        }
-
-                        DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
-                        DbCommand cmd = null;
-                        string sqlColumnStr = "Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle";
-                        string SongUpdateSqlStr = "update ktv_Singer set " + sqlColumnStr + " where Singer_Id = @SingerId";
-                        cmd = Db.Command(SongUpdateSqlStr, conn);
-                        List<string> valuelist = new List<string>();
-
-                        foreach (string str in list)
-                        {
-                            valuelist = new List<string>(str.Split('|'));
-
-                            cmd.Parameters.AddWithValue("@SingerSpell", valuelist[2]);
-                            cmd.Parameters.AddWithValue("@SingerStrokes", valuelist[3]);
-                            cmd.Parameters.AddWithValue("@SingerSpellNum", valuelist[4]);
-                            cmd.Parameters.AddWithValue("@SingerPenStyle", valuelist[5]);
-                            cmd.Parameters.AddWithValue("@SingerId", valuelist[0]);
-
-                            try
-                            {
-                                lock (LockThis)
-                                {
-                                    Global.TotalList[0]++;
-                                }
-                                cmd.ExecuteNonQuery();
-                            }
-                            catch
-                            {
-                                lock (LockThis)
-                                {
-                                    Global.TotalList[2]++;
-                                }
-                                Global.SongLog.Add("【拼音校正】更新資料庫時發生錯誤: " + str);
-                            }
-                            cmd.Parameters.Clear();
-                            
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                SongMaintenance_Tooltip_Label.Text = "正在更新第 " + Global.TotalList[0] + " 位歌庫歌手及 " + Global.TotalList[1] + " 位預設歌手的拼音資料,請稍待...";
-                            });
-                        }
-                        conn.Close();
-                        list.Clear();
-                    }
+                    SongMaintenance_SpellCorrectSingers(SingerTable.Library, Global.SingerDT, 0);
                     break;
                 case "ktv_AllSinger":
-                    if (Global.AllSingerDT.Rows.Count > 0)
-                    {
-                        foreach (DataRow row in Global.AllSingerDT.AsEnumerable())
-                        {
-                            string str = "";
-                            SpellList = new List<string>();
-
-                            str = row["Singer_Id"].ToString() + "|";
-                            str += row["Singer_Name"].ToString() + "|";
-                            SpellList = CommonFunc.GetSongNameSpell(row["Singer_Name"].ToString());
-                            if (SpellList[2] == "") SpellList[2] = "0";
-                            str += SpellList[0] + "|" + SpellList[2] + "|" + SpellList[1] + "|" + SpellList[3];
-                            list.Add(str);
-                        }
-
-                        DbConnection conn = Db.OpenConn(Global.CrazyktvSongMgrDatabaseFile, "");
-                        DbCommand cmd = null;
-                        string sqlColumnStr = "Singer_Spell = @SingerSpell, Singer_Strokes = @SingerStrokes, Singer_SpellNum = @SingerSpellNum, Singer_PenStyle = @SingerPenStyle";
-                        string SongUpdateSqlStr = "update ktv_AllSinger set " + sqlColumnStr + " where Singer_Id = @SingerId";
-                        cmd = Db.Command(SongUpdateSqlStr, conn);
-                        List<string> valuelist = new List<string>();
-
-                        foreach (string str in list)
-                        {
-                            valuelist = new List<string>(str.Split('|'));
-
-                            cmd.Parameters.AddWithValue("@SingerSpell", valuelist[2]);
-                            cmd.Parameters.AddWithValue("@SingerStrokes", valuelist[3]);
-                            cmd.Parameters.AddWithValue("@SingerSpellNum", valuelist[4]);
-                            cmd.Parameters.AddWithValue("@SingerPenStyle", valuelist[5]);
-                            cmd.Parameters.AddWithValue("@SingerId", valuelist[0]);
-
-                            try
-                            {
-                                lock (LockThis)
-                                {
-                                    Global.TotalList[1]++;
-                                }
-                                cmd.ExecuteNonQuery();
-                            }
-                            catch
-                            {
-                                lock (LockThis)
-                                {
-                                    Global.TotalList[2]++;
-                                }
-                                Global.SongLog.Add("【拼音校正】更新資料庫時發生錯誤: " + str);
-                            }
-                            cmd.Parameters.Clear();
-
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                SongMaintenance_Tooltip_Label.Text = "正在更新第 " + Global.TotalList[0] + " 位歌庫歌手及 " + Global.TotalList[1] + " 位預設歌手的拼音資料,請稍待...";
-                            });
-                        }
-                        conn.Close();
-                        list.Clear();
-                    }
+                    SongMaintenance_SpellCorrectSingers(SingerTable.AllSingers, Global.AllSingerDT, 1);
                     break;
                 case "ktv_Song":
                     if (Global.SongDT.Rows.Count > 0)
@@ -2072,9 +2004,6 @@ namespace CrazyKTV_SongMgr
             string UserId = "";
             string UserName = "";
 
-            DbConnection conn = null;
-            DbCommand cmd = null;
-
             switch (SongMaintenance_Favorite_Button.Text)
             {
                 case "加入":
@@ -2125,17 +2054,10 @@ namespace CrazyKTV_SongMgr
 
                             if (UserId != "")
                             {
-                                conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
-                                string sqlColumnStr = "User_Id, User_Name";
-                                string sqlValuesStr = "@UserId, @UserName";
-                                string UserAddSqlStr = "insert into ktv_User ( " + sqlColumnStr + " ) values ( " + sqlValuesStr + " )";
-                                cmd = Db.Command(UserAddSqlStr, conn);
-
-                                cmd.Parameters.AddWithValue("@UserId", UserId);
-                                cmd.Parameters.AddWithValue("@UserName", UserName);
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                                conn.Close();
+                                using (SongLibraryStore store = SongLibraryStore.Open())
+                                {
+                                    store.AddFavoriteUser(UserId, UserName);
+                                }
                                 SongMaintenance_Favorite_TextBox.Text = "";
 
                                 SongQuery_GetFavoriteUserList();
@@ -2188,44 +2110,10 @@ namespace CrazyKTV_SongMgr
 
                             if (UserId != "")
                             {
-                                conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
-                                string UserRemoveSqlStr = "delete from ktv_User where User_Id = @UserId and User_Name = @UserName";
-                                cmd = Db.Command(UserRemoveSqlStr, conn);
-
-                                cmd.Parameters.AddWithValue("@UserId", UserId);
-                                cmd.Parameters.AddWithValue("@UserName", UserName);
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-
-                                SongQuerySqlStr = "select User_Id, Song_Id from ktv_Favorite";
-                                dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
-
-                                List<string> list = new List<string>();
-
-                                var dtquery = from row in dt.AsEnumerable()
-                                              where row.Field<string>("User_Id").Equals(UserId)
-                                              select row;
-
-                                if (dtquery.Count<DataRow>() > 0)
+                                using (SongLibraryStore store = SongLibraryStore.Open())
                                 {
-                                    foreach (DataRow row in dtquery)
-                                    {
-                                        list.Add(row["Song_Id"].ToString());
-                                    }
-
-
-                                    string FavoriteRemoveSqlStr = "delete from ktv_Favorite where User_Id = @UserId and Song_Id = @SongId";
-                                    cmd = Db.Command(FavoriteRemoveSqlStr, conn);
-
-                                    foreach (string SongId in list)
-                                    {
-                                        cmd.Parameters.AddWithValue("@UserId", UserId);
-                                        cmd.Parameters.AddWithValue("@SongId", SongId);
-                                        cmd.ExecuteNonQuery();
-                                        cmd.Parameters.Clear();
-                                    }
+                                    store.RemoveFavoriteUser(UserId);
                                 }
-                                conn.Close();
                                 SongQuery_GetFavoriteUserList();
                                 SongMaintenance_GetFavoriteUserList();
                                 if (Global.SongQueryQueryType == "FavoriteQuery")
@@ -2351,7 +2239,7 @@ namespace CrazyKTV_SongMgr
 
                     SongMaintenance_Tooltip_Label.Text = "正在匯入我的最愛,請稍待...";
 
-                    var tasks = new List<Task>()
+                    var tasks = new List<Task<bool>>()
                     {
                         Task.Factory.StartNew(() => SongMaintenance_FavoriteImportTask())
                     };
@@ -2359,9 +2247,12 @@ namespace CrazyKTV_SongMgr
                     Task.Factory.ContinueWhenAll(tasks.ToArray(), FavoriteImportEndTask =>
                     {
                         Global.TimerEndTime = DateTime.Now;
+                        bool imported = FavoriteImportEndTask[0].Result;
                         this.BeginInvoke((Action)delegate()
                         {
-                            SongMaintenance_Tooltip_Label.Text = "總共匯入 " + Global.TotalList[0] + " 位最愛用戶及 " + Global.TotalList[1] + " 首最愛歌曲,共花費 " + (long)(Global.TimerEndTime - Global.TimerStartTime).TotalSeconds + " 秒完成。";
+                            SongMaintenance_Tooltip_Label.Text = imported
+                                ? "總共匯入 " + Global.TotalList[0] + " 位最愛用戶及 " + Global.TotalList[1] + " 首最愛歌曲,共花費 " + (long)(Global.TimerEndTime - Global.TimerStartTime).TotalSeconds + " 秒完成。"
+                                : "匯入我的最愛失敗,我的最愛維持原樣。";
                             Common_SwitchSetUI(true);
 
                             SongQuery_GetFavoriteUserList();
@@ -2385,87 +2276,26 @@ namespace CrazyKTV_SongMgr
         }
 
 
-        private void SongMaintenance_FavoriteImportTask()
+        /// <summary>Returns false, with 我的最愛 left as they were, when the backup could not be read or written.</summary>
+        private bool SongMaintenance_FavoriteImportTask()
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-
-            List<string> list = new List<string>();
-            List<string> Addlist = new List<string>();
-
-            DbConnection conn = null;
-            DbCommand Ucmd = null;
-            DbCommand Fcmd = null;
-
-            string TruncateSqlStr = "";
-
-            conn = Db.OpenConn(Global.CrazyktvDatabaseFile, "");
-            TruncateSqlStr = "delete * from ktv_User";
-            Ucmd = Db.Command(TruncateSqlStr, conn);
-            Ucmd.ExecuteNonQuery();
-
-            TruncateSqlStr = "delete * from ktv_Favorite";
-            Fcmd = Db.Command(TruncateSqlStr, conn);
-            Fcmd.ExecuteNonQuery();
-
-            StreamReader sr = new StreamReader(Application.StartupPath + @"\SongMgr\Backup\Favorite.txt", Encoding.UTF8);
-            while (!sr.EndOfStream)
+            try
             {
-                Addlist.Add(sr.ReadLine());
-            }
-            sr.Close();
-
-            string UserColumnStr = "User_Id, User_Name";
-            string UserValuesStr = "@UserId, @UserName";
-            string UserAddSqlStr = "insert into ktv_User ( " + UserColumnStr + " ) values ( " + UserValuesStr + " )";
-            Ucmd = Db.Command(UserAddSqlStr, conn);
-
-            string FavoriteColumnStr = "User_Id, Song_Id";
-            string FavoriteValuesStr = "@UserId, @SongId";
-            string FavoriteAddSqlStr = "insert into ktv_Favorite ( " + FavoriteColumnStr + " ) values ( " + FavoriteValuesStr + " )";
-            Fcmd = Db.Command(FavoriteAddSqlStr, conn);
-
-            foreach (string AddStr in Addlist)
-            {
-                list = new List<string>(Regex.Split(AddStr, @"\|", RegexOptions.None));
-                switch (list[0])
+                string[] lines = File.ReadAllLines(Application.StartupPath + @"\SongMgr\Backup\Favorite.txt", Encoding.UTF8);
+                using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
                 {
-                    case "ktv_User":
-                        Ucmd.Parameters.AddWithValue("@UserId", list[1]);
-                        Ucmd.Parameters.AddWithValue("@UserName", list[2]);
-                        Ucmd.ExecuteNonQuery();
-                        Ucmd.Parameters.Clear();
-                        lock (LockThis)
-                        {
-                            Global.TotalList[0]++;
-                        }
-                        break;
-                    case "ktv_Favorite":
-                        var query = from row in Global.SongDT.AsEnumerable()
-                                    where row.Field<string>("Song_Lang").Equals(list[2]) &&
-                                          row.Field<string>("Song_Singer").Equals(list[3]) &&
-                                          row.Field<string>("Song_SongName").Equals(list[4])
-                                    select row;
-
-                        if (query.Count<DataRow>() > 0)
-                        {
-                            foreach (DataRow row in query)
-                            {
-                                string SongId = row["Song_Id"].ToString();
-                                Fcmd.Parameters.AddWithValue("@UserId", list[1]);
-                                Fcmd.Parameters.AddWithValue("@SongId", SongId);
-                                Fcmd.ExecuteNonQuery();
-                                Fcmd.Parameters.Clear();
-                                lock (LockThis)
-                                {
-                                    Global.TotalList[1]++;
-                                }
-                                break;
-                            }
-                        }
-                        break;
+                    var written = SongMaintenance.ImportFavorites(store, lines, Global.SongDT);
+                    Global.TotalList[0] = written.Users;
+                    Global.TotalList[1] = written.Songs;
                 }
+                return true;
             }
-            conn.Close();
+            catch (Exception ex)
+            {
+                Global.SongLog.Add("【我的最愛匯入】匯入失敗,我的最愛維持原樣: " + ex.Message);
+                return false;
+            }
         }
 
 
@@ -2643,20 +2473,11 @@ namespace CrazyKTV_SongMgr
 
                 if (CUpdateList.Count > 0 || TUpdateList.Count > 0)
                 {
-                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
+                    SongMaintenance.ReplaceFavoriteUsers(new List<(string UserId, string Name, List<string> SongIds)>
                     {
-                        if (CUpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CB1", "錢櫃新歌排行榜 (國語)", CUpdateList);
-                        }
-
-                        if (TUpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CB2", "錢櫃新歌排行榜 (台語)", TUpdateList);
-                        }
-                    }
+                        ("^CB1", "錢櫃新歌排行榜 (國語)", CUpdateList),
+                        ("^CB2", "錢櫃新歌排行榜 (台語)", TUpdateList),
+                    });
                 }
                 CUpdateList.Clear();
                 TUpdateList.Clear();
@@ -2833,21 +2654,11 @@ namespace CrazyKTV_SongMgr
 
                 if (CUpdateList.Count > 0 || TUpdateList.Count > 0)
                 {
-                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
+                    SongMaintenance.ReplaceFavoriteUsers(new List<(string UserId, string Name, List<string> SongIds)>
                     {
-                        if (CUpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CB3", "錢櫃國語排行榜", CUpdateList);
-                        }
-
-                        if (TUpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CB4", "錢櫃台語排行榜", TUpdateList);
-                        }
-
-                    }
+                        ("^CB3", "錢櫃國語排行榜", CUpdateList),
+                        ("^CB4", "錢櫃台語排行榜", TUpdateList),
+                    });
                 }
                 CUpdateList.Clear();
                 TUpdateList.Clear();
@@ -3078,26 +2889,12 @@ namespace CrazyKTV_SongMgr
 
                 if (HUpdateList.Count > 0 || EUpdateList.Count > 0 || JUpdateList.Count > 0)
                 {
-                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
+                    SongMaintenance.ReplaceFavoriteUsers(new List<(string UserId, string Name, List<string> SongIds)>
                     {
-                        if (HUpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CB5", "錢櫃粵語排行榜", HUpdateList);
-                        }
-
-                        if (EUpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CB6", "錢櫃英語排行榜", EUpdateList);
-                        }
-
-                        if (JUpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CB7", "錢櫃日語排行榜", JUpdateList);
-                        }
-                    }
+                        ("^CB5", "錢櫃粵語排行榜", HUpdateList),
+                        ("^CB6", "錢櫃英語排行榜", EUpdateList),
+                        ("^CB7", "錢櫃日語排行榜", JUpdateList),
+                    });
                 }
                 HUpdateList.Clear();
                 EUpdateList.Clear();
@@ -3280,32 +3077,13 @@ namespace CrazyKTV_SongMgr
 
                 if (C34UpdateList.Count > 0 || T34UpdateList.Count > 0 || C56UpdateList.Count > 0 || T56UpdateList.Count > 0)
                 {
-                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
+                    SongMaintenance.ReplaceFavoriteUsers(new List<(string UserId, string Name, List<string> SongIds)>
                     {
-                        if (C34UpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CG1", "三四年級國語金曲", C34UpdateList);
-                        }
-
-                        if (T34UpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CG2", "三四年級台語金曲", T34UpdateList);
-                        }
-
-                        if (C56UpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CG3", "五六年級國語金曲", C56UpdateList);
-                        }
-
-                        if (T56UpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, "^CG4", "五六年級台語金曲", T56UpdateList);
-                        }
-                    }
+                        ("^CG1", "三四年級國語金曲", C34UpdateList),
+                        ("^CG2", "三四年級台語金曲", T34UpdateList),
+                        ("^CG3", "五六年級國語金曲", C56UpdateList),
+                        ("^CG4", "五六年級台語金曲", T56UpdateList),
+                    });
                 }
                 C34UpdateList.Clear();
                 C34UpdateList = null;
@@ -3419,14 +3197,10 @@ namespace CrazyKTV_SongMgr
                     }
                     UpdateCashboxIdList.Clear();
 
-                    using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
+                    SongMaintenance.ReplaceFavoriteUsers(new List<(string UserId, string Name, List<string> SongIds)>
                     {
-                        if (UpdateList.Count > 0)
-                        {
-                            Global.TotalList[0]++;
-                            SongMaintenance.UpdateFavoriteData(conn, UpdateDate, Regex.Replace(DateItem, "份", ""), UpdateList);
-                        }
-                    }
+                        (UpdateDate, Regex.Replace(DateItem, "份", ""), UpdateList),
+                    });
                     UpdateList.Clear();
                 }
             }
@@ -4035,44 +3809,91 @@ namespace CrazyKTV_SongMgr
         }
 
 
-        public static void UpdateFavoriteData(DbConnection conn, string userid, string username, List<string> songidlist)
+        /// <summary>
+        /// 錢櫃排行 / 金曲 / 新歌 lists: each non-empty list replaces its 最愛用戶, all in one transaction.
+        /// Adds the users written to Global.TotalList[0]; a failure writes nothing and is logged.
+        /// </summary>
+        public static void ReplaceFavoriteUsers(IEnumerable<(string UserId, string Name, List<string> SongIds)> users)
         {
-            string TruncateSqlStr = "delete from ktv_User where User_Id = @UserId";
-            using (DbCommand Ucmd = Db.Command(TruncateSqlStr, conn))
+            var lists = users.Where(u => u.SongIds.Count > 0).ToList();
+            if (lists.Count == 0) return;
+            try
             {
-                Ucmd.Parameters.AddWithValue("@UserId", userid);
-                Ucmd.ExecuteNonQuery();
-                Ucmd.Parameters.Clear();
-            }
-
-            TruncateSqlStr = "delete from ktv_Favorite where User_Id = @UserId";
-            using (DbCommand Fcmd = Db.Command(TruncateSqlStr, conn))
-            {
-                Fcmd.Parameters.AddWithValue("@UserId", userid);
-                Fcmd.ExecuteNonQuery();
-                Fcmd.Parameters.Clear();
-            }
-
-            string AddSqlStr = "insert into ktv_User ( User_Id, User_Name ) values ( @UserId, @UserName )";
-            using (DbCommand Ucmd = Db.Command(AddSqlStr, conn))
-            {
-                Ucmd.Parameters.AddWithValue("@UserId", userid);
-                Ucmd.Parameters.AddWithValue("@UserName", username);
-                Ucmd.ExecuteNonQuery();
-                Ucmd.Parameters.Clear();
-            }
-
-            AddSqlStr = "insert into ktv_Favorite ( User_Id, Song_Id ) values ( @UserId, @SongId )";
-            using (DbCommand Fcmd = Db.Command(AddSqlStr, conn))
-            {
-                foreach (string songid in songidlist)
+                using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
                 {
-                    Fcmd.Parameters.AddWithValue("@UserId", userid);
-                    Fcmd.Parameters.AddWithValue("@SongId", songid);
-                    Fcmd.ExecuteNonQuery();
-                    Fcmd.Parameters.Clear();
+                    store.BeginTransaction();
+                    try
+                    {
+                        foreach (var u in lists) store.ReplaceFavoriteUser(u.UserId, u.Name, u.SongIds);
+                        store.Commit();
+                    }
+                    catch
+                    {
+                        store.Rollback();
+                        throw;
+                    }
+                }
+                Global.TotalList[0] += lists.Count;
+            }
+            catch (Exception ex)
+            {
+                Global.SongLog.Add("【錢櫃排行】更新我的最愛失敗,我的最愛維持原樣: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 我的最愛匯入: empties ktv_User and ktv_Favorite and writes back the lines 我的最愛匯出 saved, all or nothing.
+        /// A ktv_Favorite line finds its song by 語系, 歌手 and 歌名 in <paramref name="songs"/> (lines whose song is
+        /// gone are skipped); a repeated User_Id keeps its first line. Returns the 最愛用戶 and songs written;
+        /// throws with nothing changed when a line cannot be read or a write fails.
+        /// </summary>
+        public static (int Users, int Songs) ImportFavorites(SongLibraryStore store, IEnumerable<string> lines, DataTable songs)
+        {
+            var users = new List<(string Id, string Name)>();
+            var userIds = new HashSet<string>();
+            var favorites = new Dictionary<string, List<string>>();
+            var favoriteOrder = new List<string>();
+
+            foreach (string line in lines)
+            {
+                string[] f = line.Split('|');
+                switch (f[0])
+                {
+                    case "ktv_User":
+                        if (userIds.Add(f[1])) users.Add((f[1], f[2]));
+                        break;
+                    case "ktv_Favorite":
+                        DataRow song = songs.AsEnumerable().FirstOrDefault(r =>
+                            r.Field<string>("Song_Lang") == f[2] &&
+                            r.Field<string>("Song_Singer") == f[3] &&
+                            r.Field<string>("Song_SongName") == f[4]);
+                        if (song == null) break;
+                        if (!favorites.TryGetValue(f[1], out List<string> ids))
+                        {
+                            ids = new List<string>();
+                            favorites[f[1]] = ids;
+                            favoriteOrder.Add(f[1]);
+                        }
+                        ids.Add(song["Song_Id"].ToString());
+                        break;
                 }
             }
+
+            int songCount = 0;
+            store.BeginTransaction();
+            try
+            {
+                store.ClearFavoriteUsers();
+                foreach (var u in users) store.AddFavoriteUser(u.Id, u.Name);
+                foreach (string userId in favoriteOrder) songCount += store.AddFavorites(userId, favorites[userId]);
+                store.Commit();
+            }
+            catch
+            {
+                store.Rollback();
+                throw;
+            }
+            return (users.Count, songCount);
         }
 
 

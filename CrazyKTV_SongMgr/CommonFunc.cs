@@ -1289,13 +1289,9 @@ namespace CrazyKTV_SongMgr
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
 
-            using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
+            using (SongLibraryStore store = SongLibraryStore.Open())
             {
-                string TruncateSqlStr = "delete * from ktv_Singer";
-                using (DbCommand cmd = Db.Command(TruncateSqlStr, conn))
-                {
-                    cmd.ExecuteNonQuery();
-                }
+                store.DeleteAllSingers(SingerTable.Library);
             }
 
             int MaxSingerId = CommonFunc.GetMaxSingerId("ktv_Singer", Global.CrazyktvDatabaseFile) + 1;
@@ -1393,7 +1389,7 @@ namespace CrazyKTV_SongMgr
                             switch (list[0])
                             {
                                 case "ktv_Singer":
-                                    store.InsertSinger(SingerTable.Library, list[1], list[2], list[3], list[4], list[5], list[6], list[7]);
+                                    store.InsertSinger(SingerTable.Library, list[1], list[2], list[3], new NameSpell(spell: list[4], strokes: list[5], spellNum: list[6], penStyle: list[7]));
                                     lock (LockThis)
                                     {
                                         Global.TotalList[0]++;
@@ -1539,7 +1535,7 @@ namespace CrazyKTV_SongMgr
                             switch (list[0])
                             {
                                 case "ktv_Singer":
-                                    store.InsertSinger(SingerTable.Library, list[1], list[2], list[3], list[4], list[5], list[6], list[7]);
+                                    store.InsertSinger(SingerTable.Library, list[1], list[2], list[3], new NameSpell(spell: list[4], strokes: list[5], spellNum: list[6], penStyle: list[7]));
                                     lock (LockThis) { Global.TotalList[0]++; }
                                     break;
                             }
