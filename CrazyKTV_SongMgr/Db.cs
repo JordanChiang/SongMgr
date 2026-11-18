@@ -168,8 +168,11 @@ namespace CrazyKTV_SongMgr
             return p;
         }
 
-        // "InStr(1,LCase(Col),LCase('text'),0)": case-insensitive contains, as 歌庫查詢 and 歌手管理 build it.
-        private static readonly Regex InStrLCase = new Regex(@"InStr\(1,\s*LCase\(([^()]+)\),\s*LCase\(('(?:[^']|'')*')\),\s*0\)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        // "InStr(1,LCase(Col),LCase('text'),0)" or "...LCase(@Name),0)": case-insensitive contains, as 歌庫查詢 and
+        // 歌手管理 build it.
+        private static readonly Regex InStrLCase = new Regex(@"InStr\(1,\s*LCase\(([^()]+)\),\s*LCase\(('(?:[^']|'')*'|@\w+)\),\s*0\)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        // Any other "LCase(x)", such as "LCase(Col) = LCase(@Name)": SQLite calls it lower.
+        private static readonly Regex LCase = new Regex(@"\bLCase\(", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex DeleteStar = new Regex(@"^(\s*delete)\s+\*\s+(from\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex SelectTop = new Regex(@"^(\s*select)\s+top\s+(\d+)\s+(.*)$", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
         // "First(Col)" in a GROUP BY query: SQLite has no First aggregate, but a bare column there takes its value
@@ -178,13 +181,14 @@ namespace CrazyKTV_SongMgr
 
         /// <summary>
         /// Rewrites the Access-only SQL SongMgr uses into SQLite: "delete * from", "select top N",
-        /// InStr / LCase contains tests and the First() aggregate. Everything else (brackets, "@Name"
+        /// InStr / LCase contains tests, LCase and the First() aggregate. Everything else (brackets, "@Name"
         /// parameters, like '%x%', Count, In (select ...)) already means the same in both.
         /// </summary>
         public static string ToSQLite(string sql)
         {
             sql = DeleteStar.Replace(sql, "$1 $2");
             sql = InStrLCase.Replace(sql, "instr(lower($1), lower($2))");
+            sql = LCase.Replace(sql, "lower(");
             sql = FirstAggregate.Replace(sql, "$1");
             Match top = SelectTop.Match(sql);
             if (top.Success) sql = top.Groups[1].Value + " " + top.Groups[3].Value.TrimEnd().TrimEnd(';') + " limit " + top.Groups[2].Value;

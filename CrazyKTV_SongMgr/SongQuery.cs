@@ -285,414 +285,211 @@ namespace CrazyKTV_SongMgr
                     return;
                 }
 
-                SongQuery_QueryType_ComboBox.SelectedIndexChanged -= new EventHandler(SongQuery_QueryType_ComboBox_SelectedIndexChanged);
-
                 SongQuery.QuerySameFileSong = false;
                 Global.SongQueryQueryType = "SongQuery";
 
-                SongQuery_Query_Button.Enabled = false;
-                Common_SwitchSetUI(false);
-
-                SongQuery_DataGridView.DataSource = null;
-                if (SongQuery_DataGridView.Columns.Count > 0) SongQuery_DataGridView.Columns.Remove("Song_FullPath");
-                SongQuery_QueryStatus_Label.Text = "";
-                GC.Collect();
-
-                string SongQueryType = "None";
-                string SongQueryValue = "";
-                string SongQueryStatusText = "";
-
-                var tasks = new List<Task>();
+                string QueryText = SongQuery_QueryValue_TextBox.Text;
+                SongSearchKind Kind;
+                string SongQueryValue = QueryText;
+                string SongQueryStatusText;
 
                 switch (SongQuery_QueryType_ComboBox.SelectedValue.ToString())
                 {
                     case "1":
-                        SongQueryType = "SongName";
-                        SongQueryValue = SongQuery_QueryValue_TextBox.Text;
-                        SongQueryStatusText = SongQuery_QueryValue_TextBox.Text;
+                        Kind = SongSearchKind.SongName;
+                        SongQueryStatusText = QueryText;
                         SongQuery_QueryStatus_Label.Text = "正在查詢歌曲名稱為『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "2":
-                        SongQueryType = "SingerName";
-                        SongQueryValue = SongQuery_QueryValue_TextBox.Text;
-                        SongQueryStatusText = SongQuery_QueryValue_TextBox.Text;
+                        Kind = SongSearchKind.SingerName;
+                        SongQueryStatusText = QueryText;
                         SongQuery_QueryStatus_Label.Text = "正在查詢歌手名稱為『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "3":
-                        SongQueryType = "SongID";
-                        SongQueryValue = SongQuery_QueryValue_TextBox.Text;
-                        SongQueryStatusText = "歌曲編號中包含 " + SongQuery_QueryValue_TextBox.Text;
+                        Kind = SongSearchKind.SongId;
+                        SongQueryStatusText = "歌曲編號中包含 " + QueryText;
                         SongQuery_QueryStatus_Label.Text = "正在查詢『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "4":
-                        SongQueryType = "AllSong";
-                        SongQueryValue = SongQuery_QueryValue_TextBox.Text;
+                        Kind = SongSearchKind.AllSongs;
                         SongQueryStatusText = "全部歌曲";
                         SongQuery_QueryStatus_Label.Text = "正在查詢" + SongQueryStatusText + ",請稍待...";
                         break;
                     case "5":
-                        SongQueryType = "NewSong";
-                        SongQueryValue = SongQuery_QueryValue_TextBox.Text;
+                        Kind = SongSearchKind.NewSongs;
                         SongQueryStatusText = "新進歌曲";
                         SongQuery_QueryStatus_Label.Text = "正在查詢" + SongQueryStatusText + ",請稍待...";
                         break;
                     case "6":
-                        SongQueryType = "ChorusSong";
-                        SongQueryValue = SongQuery_QueryValue_TextBox.Text;
+                        Kind = SongSearchKind.ChorusSongs;
                         SongQueryStatusText = "合唱歌曲";
                         SongQuery_QueryStatus_Label.Text = "正在查詢" + SongQueryStatusText + ",請稍待...";
                         break;
                     case "7":
-                        SongQueryType = "SongType";
-                        SongQueryValue = SongQuery_QueryValue_ComboBox.Text;
+                        Kind = SongSearchKind.SongType;
+                        SongQueryValue = (SongQuery_QueryValue_ComboBox.Text == "無類別") ? "" : SongQuery_QueryValue_ComboBox.Text;
                         SongQueryStatusText = "歌曲類別為" + SongQuery_QueryValue_ComboBox.Text;
                         SongQuery_QueryStatus_Label.Text = "正在查詢『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "8":
-                        SongQueryType = "SingerType";
+                        Kind = SongSearchKind.SingerType;
                         SongQueryValue = Global.CrazyktvSingerTypeList.IndexOf(SongQuery_QueryValue_ComboBox.Text).ToString();
                         SongQueryStatusText = "歌手類別為" + SongQuery_QueryValue_ComboBox.Text;
                         SongQuery_QueryStatus_Label.Text = "正在查詢『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "9":
-                        SongQueryType = "SongTrack";
+                        Kind = SongSearchKind.SongTrack;
                         SongQueryValue = SongQuery_QueryValue_ComboBox.SelectedValue.ToString();
                         SongQueryStatusText = "歌曲聲道為" + SongQuery_QueryValue_ComboBox.Text;
                         SongQuery_QueryStatus_Label.Text = "正在查詢『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
                     case "10":
-                        SongQueryType = "CashboxId";
-                        SongQueryValue = SongQuery_QueryValue_TextBox.Text;
+                        Kind = SongSearchKind.CashboxId;
                         SongQueryStatusText = "使用錢櫃編號";
                         SongQuery_QueryStatus_Label.Text = "正在查詢『" + SongQueryStatusText + "』的相關歌曲,請稍待...";
                         break;
+                    default:
+                        return;
                 }
-                tasks.Add(Task.Factory.StartNew(() => SongQuery_QueryTask(SongQueryType, SongQueryValue, SongQueryStatusText)));
 
-                Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
+                // 必須輸入查詢條件: the kinds that read the text box need some text.
+                bool ReadsText = Kind == SongSearchKind.SongName || Kind == SongSearchKind.SingerName || Kind == SongSearchKind.SongId || Kind == SongSearchKind.NewSongs;
+                if (ReadsText && QueryText == "")
                 {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        SongQuery_QueryType_ComboBox.SelectedIndexChanged += new EventHandler(SongQuery_QueryType_ComboBox_SelectedIndexChanged);
-                        Common_SwitchSetUI(true);
-                        SongQuery_Query_Button.Enabled = true;
-                        if (SongQuery_DataGridView.Rows.Count > 0) SongQuery_DataGridView.Focus();
-                    });
-                });
+                    SongQuery_DataGridView.DataSource = null;
+                    if (SongQuery_DataGridView.Columns.Contains("Song_FullPath")) SongQuery_DataGridView.Columns.Remove("Song_FullPath");
+                    SongQuery_ShowNoResult("必須輸入查詢條件才能查詢...");
+                    return;
+                }
+
+                var Criteria = new SongSearchCriteria(Kind, SongQueryValue, Global.SongQueryFilter, Global.SongQueryFuzzyQuery == "True", Global.SongQuerySynonymousQuery);
+
+                SongQuery_RunSearch(Criteria,
+                    "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...",
+                    Count => "總共查詢到 " + Count + " 筆有關『" + SongQueryStatusText + "』的歌曲。",
+                    true, true, SongQuery_QueryType_ComboBox, SongQuery_QueryType_ComboBox_SelectedIndexChanged);
             }
         }
 
-
-        private void SongQuery_QueryTask(string SongQueryType, string SongQueryValue, string SongQueryStatusText)
+        /// <summary>
+        /// Runs a 歌庫查詢 in the background with the UI locked, then shows the songs found.
+        /// <paramref name="trigger"/>, when given, stops raising <paramref name="triggerHandler"/> while the search runs.
+        /// </summary>
+        private void SongQuery_RunSearch(SongSearchCriteria criteria, string noResultText, Func<int, string> resultText, bool allowEdit, bool keepStatusOnce, ComboBox trigger, EventHandler triggerHandler)
         {
-            Thread.CurrentThread.Priority = ThreadPriority.Lowest;
+            if (trigger != null) trigger.SelectedIndexChanged -= triggerHandler;
 
-            if (Global.CrazyktvDatabaseStatus)
+            SongQuery_Query_Button.Enabled = false;
+            Common_SwitchSetUI(false);
+
+            SongQuery_Search(criteria, noResultText, resultText, allowEdit, keepStatusOnce, () =>
             {
-                if (SongQueryValue == "")
-                {
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        SongQuery_EditMode_CheckBox.Enabled = false;
-                        SongQuery_LangFilter_ComboBox.Enabled = false;
-                        SongQuery_WordCountFilter_ComboBox.Enabled = false;
-                        SongQuery_QueryStatus_Label.Text = "必須輸入查詢條件才能查詢...";
-                    });
-                }
-                else
-                {
-                    DataTable dt = new DataTable();
-                    try
-                    {
-                        switch (SongQueryType)
-                        {
-                            case "SongName":
-                                if (Global.SongQuerySynonymousQuery)
-                                {
-                                    List<string> SynonymousSongNameList = new List<string>();
-                                    SynonymousSongNameList = CommonFunc.GetSynonymousSongNameList(SongQueryValue);
-
-                                    if (SynonymousSongNameList.Count > 0)
-                                    {
-                                        dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, SynonymousSongNameList), "");
-                                    }
-                                    else
-                                    {
-                                        dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                    }
-                                    SynonymousSongNameList.Clear();
-                                    SynonymousSongNameList = null;
-                                }
-                                else
-                                {
-                                    dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                }
-                                break;
-                            case "SingerName":
-                                if (Global.GroupSingerLowCaseList.IndexOf(SongQueryValue.ToLower()) >= 0)
-                                {
-                                    List<string> GroupSingerList = new List<string>();
-
-                                    int i = Global.GroupSingerIdList[Global.GroupSingerLowCaseList.IndexOf(SongQueryValue.ToLower())];
-                                    List<string> list = new List<string>(Global.SingerGroupList[i].Split(','));
-                                    foreach (string GroupSingerName in list)
-                                    {
-                                        if (GroupSingerName.ToLower() != SongQueryValue.ToLower())
-                                        {
-                                            GroupSingerList.Add(GroupSingerName);
-                                        }
-                                    }
-                                    list.Clear();
-                                    list = null;
-
-                                    dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, GroupSingerList), "");
-                                    GroupSingerList.Clear();
-                                    GroupSingerList = null;
-                                }
-                                else
-                                {
-                                    dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                }
-                                break;
-                            case "CashboxId":
-                                dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-
-                                List<string> CashboxIdList = new List<string>();
-
-                                string CashboxSqlStr = "select Cashbox_Id, Song_Lang, Song_Singer, Song_SongName, Song_CreatDate from ktv_Cashbox order by Cashbox_Id";
-                                using (DataTable CashboxDT = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, CashboxSqlStr, ""))
-                                {
-                                    string MaxDigitCode = (Global.SongMgrMaxDigitCode == "1") ? "D5" : "D6";
-
-                                    Parallel.ForEach(Global.CashboxSongLangList, (langstr, loopState) =>
-                                    {
-                                        var query = from row in CashboxDT.AsEnumerable()
-                                                    where row.Field<string>("Song_Lang").Equals(langstr)
-                                                    select row;
-
-                                        if (query.Count<DataRow>() > 0)
-                                        {
-                                            foreach (DataRow row in query)
-                                            {
-                                                string CashboxId = Convert.ToInt32(row["Cashbox_Id"].ToString()).ToString(MaxDigitCode);
-                                                lock (LockThis) { CashboxIdList.Add(CashboxId); }
-                                            }
-                                        }
-                                    });
-                                }
-
-                                CashboxIdList.Sort();
-
-                                if (dt.Rows.Count > 0)
-                                {
-                                    List<int> RemoveRowsIdxlist = new List<int>();
-
-                                    Parallel.ForEach(Global.CrazyktvSongLangList, (langstr, loopState) =>
-                                    {
-                                        var query = from row in dt.AsEnumerable()
-                                                    where row.Field<string>("Song_Lang").Equals(langstr)
-                                                    select row;
-
-                                        if (query.Count<DataRow>() > 0)
-                                        {
-                                            foreach (DataRow row in query)
-                                            {
-                                                if (CashboxIdList.IndexOf(row["Song_Id"].ToString()) < 0)
-                                                {
-                                                    lock (LockThis) { RemoveRowsIdxlist.Add(dt.Rows.IndexOf(row)); }
-                                                }
-                                            }
-                                        }
-                                    });
-
-                                    RemoveRowsIdxlist.Sort();
-                                    if (RemoveRowsIdxlist.Count > 0)
-                                    {
-                                        for (int i = RemoveRowsIdxlist.Count - 1; i >= 0; i--)
-                                        {
-                                            dt.Rows.RemoveAt(RemoveRowsIdxlist[i]);
-                                        }
-                                    }
-                                    RemoveRowsIdxlist.Clear();
-                                }
-                                break;
-                            default:
-                                dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                                break;
-                        }
-
-                        if (dt.Rows.Count == 0)
-                        {
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                SongQuery_EditMode_CheckBox.Enabled = false;
-                                SongQuery_LangFilter_ComboBox.Enabled = false;
-                                SongQuery_WordCountFilter_ComboBox.Enabled = false;
-                                SongQuery_QueryStatus_Label.Text = "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...";
-                            });
-                        }
-                        else
-                        {
-                            if (SongQueryType == "SingerName" && Global.SongQueryFuzzyQuery == "False")
-                            {
-                                var query = from row in dt.AsEnumerable()
-                                            where row.Field<string>("Song_Singer") != SongQueryValue
-                                            select row;
-
-                                if (query.Count<DataRow>() > 0)
-                                {
-                                    List<int> RemoveRowsIdxlist = new List<int>();
-
-                                    foreach (DataRow row in query)
-                                    {
-                                        bool RemoveRow = true;
-                                        List<string> list = CommonFunc.GetChorusSingerList(row["Song_Singer"].ToString());
-                                        foreach (string str in list)
-                                        {
-                                            if (str.ToLower() == SongQueryValue.ToLower()) RemoveRow = false;
-                                        }
-                                        if (RemoveRow) RemoveRowsIdxlist.Add(dt.Rows.IndexOf(row));
-                                        list.Clear();
-                                        list = null;
-                                    }
-
-                                    RemoveRowsIdxlist.Sort();
-                                    if (RemoveRowsIdxlist.Count > 0)
-                                    {
-                                        for (int i = RemoveRowsIdxlist.Count - 1; i >= 0; i--)
-                                        {
-                                            dt.Rows.RemoveAt(RemoveRowsIdxlist[i]);
-                                        }
-                                    }
-                                    RemoveRowsIdxlist.Clear();
-                                }
-                            }
-
-                            if (dt.Rows.Count == 0)
-                            {
-                                this.BeginInvoke((Action)delegate()
-                                {
-                                    SongQuery_EditMode_CheckBox.Enabled = false;
-                                    SongQuery_LangFilter_ComboBox.Enabled = false;
-                                    SongQuery_WordCountFilter_ComboBox.Enabled = false;
-                                    SongQuery_QueryStatus_Label.Text = "查無『" + SongQueryStatusText + "』的相關歌曲,請重新查詢...";
-                                });
-                            }
-                            else
-                            {
-                                this.BeginInvoke((Action)delegate()
-                                {
-                                    SongQuery_EditMode_CheckBox.Enabled = (dt.Rows.Count > 0) ? true : false;
-
-                                    if(!SongQuery.QueryStatusLabel)
-                                    {
-                                        SongQuery.QueryStatusLabel = true;
-                                    }
-                                    else
-                                    {
-                                        SongQuery_QueryStatus_Label.Text = "總共查詢到 " + dt.Rows.Count + " 筆有關『" + SongQueryStatusText + "』的歌曲。";
-                                    }
-
-                                    SongQuery_DataGridView.DataSource = dt;
-
-                                    List<string> LangFilterList = new List<string>();
-                                    List<int> WordCountFilterList = new List<int>();
-
-                                    using (DataTable LangDistinctDT = dt.DefaultView.ToTable(true, "Song_Lang"))
-                                    {
-                                        if (LangDistinctDT.Rows.Count > 0)
-                                        {
-                                            foreach (DataRow row in LangDistinctDT.AsEnumerable())
-                                            {
-                                                LangFilterList.Add(row["Song_Lang"].ToString());
-                                            }
-                                        }
-                                    }
-
-                                    using (DataTable WordCountDistinctDT = dt.DefaultView.ToTable(true, "Song_WordCount"))
-                                    {
-                                        if (WordCountDistinctDT.Rows.Count > 0)
-                                        {
-                                            foreach (DataRow row in WordCountDistinctDT.AsEnumerable())
-                                            {
-                                                WordCountFilterList.Add(Convert.ToInt32(row["Song_WordCount"].ToString()));
-                                            }
-                                        }
-                                    }
-
-                                    if (LangFilterList.Count > 0)
-                                    {
-                                        SongQuery_LangFilter_ComboBox.Enabled = true;
-                                        SongQuery_LangFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(LangFilterList);
-                                        SongQuery_LangFilter_ComboBox.DisplayMember = "Display";
-                                        SongQuery_LangFilter_ComboBox.ValueMember = "Value";
-                                        LangFilterList.Clear();
-                                    }
-
-                                    if (WordCountFilterList.Count > 0)
-                                    {
-                                        WordCountFilterList.Sort();
-                                        SongQuery_WordCountFilter_ComboBox.Enabled = true;
-                                        SongQuery_WordCountFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(WordCountFilterList.ConvertAll(i => i.ToString()));
-                                        SongQuery_WordCountFilter_ComboBox.DisplayMember = "Display";
-                                        SongQuery_WordCountFilter_ComboBox.ValueMember = "Value";
-                                        WordCountFilterList.Clear();
-                                    }
-
-                                    for (int i = 0; i < SongQuery_DataGridView.ColumnCount; i++)
-                                    {
-                                        List<string> DataGridViewColumnName = SongQuery.GetDataGridViewColumnSet(SongQuery_DataGridView.Columns[i].Name);
-                                        SongQuery_DataGridView.Columns[i].HeaderText = DataGridViewColumnName[0];
-
-                                        if (DataGridViewColumnName[1].ToString() == "0")
-                                        {
-                                            SongQuery_DataGridView.Columns[i].Visible = false;
-                                        }
-
-                                        if (DataGridViewColumnName[2].ToString() != "none")
-                                        {
-                                            ((DataGridViewTextBoxColumn)SongQuery_DataGridView.Columns[i]).MaxInputLength = int.Parse(DataGridViewColumnName[2]);
-                                        }
-
-                                        SongQuery_DataGridView.Columns[i].Width = int.Parse(DataGridViewColumnName[1]);
-                                    }
-
-                                    string SongFullPath = "";
-                                    int SongFullPathIndex = SongQuery_DataGridView.ColumnCount - 1;
-                                    SongQuery_DataGridView.Columns.Add("Song_FullPath", "檔案路徑");
-
-                                    int ColumnWidth_640 = Convert.ToInt32(640 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
-                                    SongQuery_DataGridView.Columns["Song_FullPath"].Width = ColumnWidth_640;
-                                    SongQuery_DataGridView.Columns["Song_FullPath"].MinimumWidth = ColumnWidth_640;
-                                    SongQuery_DataGridView.Columns["Song_FullPath"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                                    for (int i = 0; i < SongQuery_DataGridView.Rows.Count; i++)
-                                    {
-                                        SongFullPath = SongQuery_DataGridView.Rows[i].Cells["Song_Path"].Value.ToString() + SongQuery_DataGridView.Rows[i].Cells["Song_FileName"].Value.ToString();
-                                        SongQuery_DataGridView.Rows[i].Cells["Song_FullPath"].Value = SongFullPath;
-                                    }
-                                    dt.Dispose();
-                                    dt = null;
-                                });
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        this.BeginInvoke((Action)delegate()
-                        {
-                            SongQuery_EditMode_CheckBox.Enabled = false;
-                            SongQuery_LangFilter_ComboBox.Enabled = false;
-                            SongQuery_WordCountFilter_ComboBox.Enabled = false;
-                            SongQuery_QueryStatus_Label.Text = "查詢條件輸入錯誤,請重新輸入...";
-                        });
-                    }
-                }
-            }
+                if (trigger != null) trigger.SelectedIndexChanged += triggerHandler;
+                Common_SwitchSetUI(true);
+                SongQuery_Query_Button.Enabled = true;
+                if (SongQuery_DataGridView.Rows.Count > 0) SongQuery_DataGridView.Focus();
+            });
         }
 
+        /// <summary>Empties the 歌庫查詢 list, runs the 歌庫查詢 in the background, shows what it found, then calls <paramref name="whenShown"/> on the UI thread.</summary>
+        private void SongQuery_Search(SongSearchCriteria criteria, string noResultText, Func<int, string> resultText, bool allowEdit, bool keepStatusOnce, Action whenShown = null)
+        {
+            SongQuery_DataGridView.DataSource = null;
+            if (SongQuery_DataGridView.Columns.Contains("Song_FullPath")) SongQuery_DataGridView.Columns.Remove("Song_FullPath");
+            GC.Collect();
 
+            Task.Factory.StartNew(() =>
+            {
+                Thread.CurrentThread.Priority = ThreadPriority.Lowest;
+                DataTable dt = null;
+                try
+                {
+                    SongSearchReference reference = SongSearchReference.Capture(criteria.Kind);
+                    dt = SongSearch.Run(criteria, reference, Global.CrazyktvDatabaseFile).Songs;
+                }
+                catch
+                {
+                    dt = null;
+                }
 
+                this.BeginInvoke((Action)delegate()
+                {
+                    if (dt == null) SongQuery_ShowNoResult("查詢條件輸入錯誤,請重新輸入...");
+                    else if (dt.Rows.Count == 0) SongQuery_ShowNoResult(noResultText);
+                    else SongQuery_ShowResult(dt, resultText(dt.Rows.Count), allowEdit, keepStatusOnce);
+                    whenShown?.Invoke();
+                });
+            });
+        }
+
+        private void SongQuery_ShowNoResult(string statusText)
+        {
+            SongQuery_EditMode_CheckBox.Enabled = false;
+            SongQuery_LangFilter_ComboBox.Enabled = false;
+            SongQuery_WordCountFilter_ComboBox.Enabled = false;
+            SongQuery_QueryStatus_Label.Text = statusText;
+        }
+
+        /// <summary>Binds the songs found to the 歌庫查詢 list, with the 語系 and 字數 filters and the 檔案路徑 column.</summary>
+        /// <param name="keepStatusOnce">Honour SongQuery.QueryStatusLabel: another tab that starts a 歌庫查詢 clears it to keep its own status text once.</param>
+        private void SongQuery_ShowResult(DataTable dt, string statusText, bool allowEdit, bool keepStatusOnce)
+        {
+            SongQuery_EditMode_CheckBox.Enabled = allowEdit;
+
+            if (keepStatusOnce && !SongQuery.QueryStatusLabel) SongQuery.QueryStatusLabel = true;
+            else SongQuery_QueryStatus_Label.Text = statusText;
+
+            SongQuery_DataGridView.DataSource = dt;
+
+            List<string> LangFilterList = dt.AsEnumerable().Select(row => row["Song_Lang"].ToString()).Distinct().ToList();
+            List<int> WordCountFilterList = dt.AsEnumerable().Select(row => Convert.ToInt32(row["Song_WordCount"].ToString())).Distinct().OrderBy(i => i).ToList();
+
+            if (LangFilterList.Count > 0)
+            {
+                SongQuery_LangFilter_ComboBox.Enabled = true;
+                SongQuery_LangFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(LangFilterList);
+                SongQuery_LangFilter_ComboBox.DisplayMember = "Display";
+                SongQuery_LangFilter_ComboBox.ValueMember = "Value";
+            }
+
+            if (WordCountFilterList.Count > 0)
+            {
+                SongQuery_WordCountFilter_ComboBox.Enabled = true;
+                SongQuery_WordCountFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(WordCountFilterList.ConvertAll(i => i.ToString()));
+                SongQuery_WordCountFilter_ComboBox.DisplayMember = "Display";
+                SongQuery_WordCountFilter_ComboBox.ValueMember = "Value";
+            }
+
+            for (int i = 0; i < SongQuery_DataGridView.ColumnCount; i++)
+            {
+                List<string> DataGridViewColumnName = SongQuery.GetDataGridViewColumnSet(SongQuery_DataGridView.Columns[i].Name);
+                SongQuery_DataGridView.Columns[i].HeaderText = DataGridViewColumnName[0];
+
+                if (DataGridViewColumnName[1].ToString() == "0")
+                {
+                    SongQuery_DataGridView.Columns[i].Visible = false;
+                }
+
+                if (DataGridViewColumnName[2].ToString() != "none")
+                {
+                    ((DataGridViewTextBoxColumn)SongQuery_DataGridView.Columns[i]).MaxInputLength = int.Parse(DataGridViewColumnName[2]);
+                }
+
+                SongQuery_DataGridView.Columns[i].Width = int.Parse(DataGridViewColumnName[1]);
+            }
+
+            SongQuery_DataGridView.Columns.Add("Song_FullPath", "檔案路徑");
+
+            int ColumnWidth_640 = Convert.ToInt32(640 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
+            SongQuery_DataGridView.Columns["Song_FullPath"].Width = ColumnWidth_640;
+            SongQuery_DataGridView.Columns["Song_FullPath"].MinimumWidth = ColumnWidth_640;
+            SongQuery_DataGridView.Columns["Song_FullPath"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+
+            for (int i = 0; i < SongQuery_DataGridView.Rows.Count; i++)
+            {
+                SongQuery_DataGridView.Rows[i].Cells["Song_FullPath"].Value = SongQuery_DataGridView.Rows[i].Cells["Song_Path"].Value.ToString() + SongQuery_DataGridView.Rows[i].Cells["Song_FileName"].Value.ToString();
+            }
+        }
 
         #endregion
 
@@ -1751,104 +1548,11 @@ namespace CrazyKTV_SongMgr
                                 break;
                         }
                         
-                        if (dt.Rows.Count == 0)
+                        this.BeginInvoke((Action)delegate()
                         {
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                SongQuery_EditMode_CheckBox.Enabled = false;
-                                SongQuery_LangFilter_ComboBox.Enabled = false;
-                                SongQuery_WordCountFilter_ComboBox.Enabled = false;
-                                SongQuery_QueryStatus_Label.Text = "查無異常歌曲,請重新查詢...";
-                            });
-                        }
-                        else
-                        {
-                            this.BeginInvoke((Action)delegate()
-                            {
-                                SongQuery_EditMode_CheckBox.Enabled = (dt.Rows.Count > 0) ? true : false;
-                                SongQuery_QueryStatus_Label.Text = "總共查詢到 " + dt.Rows.Count + " 筆有關『" + SongQueryStatusText + "』的異常歌曲。";
-
-                                SongQuery_DataGridView.DataSource = dt;
-
-                                List<string> LangFilterList = new List<string>();
-                                List<int> WordCountFilterList = new List<int>();
-
-                                using (DataTable LangDistinctDT = dt.DefaultView.ToTable(true, "Song_Lang"))
-                                {
-                                    if (LangDistinctDT.Rows.Count > 0)
-                                    {
-                                        foreach (DataRow row in LangDistinctDT.AsEnumerable())
-                                        {
-                                            LangFilterList.Add(row["Song_Lang"].ToString());
-                                        }
-                                    }
-                                }
-
-                                using (DataTable WordCountDistinctDT = dt.DefaultView.ToTable(true, "Song_WordCount"))
-                                {
-                                    if (WordCountDistinctDT.Rows.Count > 0)
-                                    {
-                                        foreach (DataRow row in WordCountDistinctDT.AsEnumerable())
-                                        {
-                                            WordCountFilterList.Add(Convert.ToInt32(row["Song_WordCount"].ToString()));
-                                        }
-                                    }
-                                }
-
-                                if (LangFilterList.Count > 0)
-                                {
-                                    SongQuery_LangFilter_ComboBox.Enabled = true;
-                                    SongQuery_LangFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(LangFilterList);
-                                    SongQuery_LangFilter_ComboBox.DisplayMember = "Display";
-                                    SongQuery_LangFilter_ComboBox.ValueMember = "Value";
-                                    LangFilterList.Clear();
-                                }
-
-                                if (WordCountFilterList.Count > 0)
-                                {
-                                    WordCountFilterList.Sort();
-                                    SongQuery_WordCountFilter_ComboBox.Enabled = true;
-                                    SongQuery_WordCountFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(WordCountFilterList.ConvertAll(i => i.ToString()));
-                                    SongQuery_WordCountFilter_ComboBox.DisplayMember = "Display";
-                                    SongQuery_WordCountFilter_ComboBox.ValueMember = "Value";
-                                    WordCountFilterList.Clear();
-                                }
-
-                                for (int i = 0; i < SongQuery_DataGridView.ColumnCount; i++)
-                                {
-                                    List<string> DataGridViewColumnName = SongQuery.GetDataGridViewColumnSet(SongQuery_DataGridView.Columns[i].Name);
-                                    SongQuery_DataGridView.Columns[i].HeaderText = DataGridViewColumnName[0];
-
-                                    if (DataGridViewColumnName[1].ToString() == "0")
-                                    {
-                                        SongQuery_DataGridView.Columns[i].Visible = false;
-                                    }
-
-                                    if (DataGridViewColumnName[2].ToString() != "none")
-                                    {
-                                        ((DataGridViewTextBoxColumn)SongQuery_DataGridView.Columns[i]).MaxInputLength = int.Parse(DataGridViewColumnName[2]);
-                                    }
-
-                                    SongQuery_DataGridView.Columns[i].Width = int.Parse(DataGridViewColumnName[1]);
-                                }
-
-                                string SongFullPath = "";
-                                int SongFullPathIndex = SongQuery_DataGridView.ColumnCount - 1;
-                                SongQuery_DataGridView.Columns.Add("Song_FullPath", "檔案路徑");
-
-                                int ColumnWidth_640 = Convert.ToInt32(640 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
-                                SongQuery_DataGridView.Columns["Song_FullPath"].Width = ColumnWidth_640;
-                                SongQuery_DataGridView.Columns["Song_FullPath"].MinimumWidth = ColumnWidth_640;
-                                SongQuery_DataGridView.Columns["Song_FullPath"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                                for (int i = 0; i < SongQuery_DataGridView.Rows.Count; i++)
-                                {
-                                    SongFullPath = SongQuery_DataGridView.Rows[i].Cells["Song_Path"].Value.ToString() + SongQuery_DataGridView.Rows[i].Cells["Song_FileName"].Value.ToString();
-                                    SongQuery_DataGridView.Rows[i].Cells["Song_FullPath"].Value = SongFullPath;
-                                }
-                                dt.Dispose();
-                                dt = null;
-                            });
-                        }
+                            if (dt.Rows.Count == 0) SongQuery_ShowNoResult("查無異常歌曲,請重新查詢...");
+                            else SongQuery_ShowResult(dt, "總共查詢到 " + dt.Rows.Count + " 筆有關『" + SongQueryStatusText + "』的異常歌曲。", true, false);
+                        });
                     }
                     catch
                     {
@@ -1902,189 +1606,14 @@ namespace CrazyKTV_SongMgr
                         }
                     }
 
-                    DataTable dt = new DataTable();
-                    string SongQuerySqlStr = "select User_Id, Song_Id from ktv_Favorite";
-                    dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, "");
-
-                    List<string> list = new List<string>();
-
-                    var dtquery = from row in dt.AsEnumerable()
-                                  where row.Field<string>("User_Id").Equals(UserId)
-                                  select row;
-
-                    foreach (DataRow row in dtquery)
-                    {
-                        list.Add(row["Song_Id"].ToString());
-                    }
-
-                    dt.Dispose();
-
-                    Common_SwitchSetUI(false);
-                    var tasks = new List<Task>()
-                    {
-                        Task.Factory.StartNew(() => SongQuery_FavoriteQueryTask(list))
-                    };
-
-                    Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
-                    {
-                        this.BeginInvoke((Action)delegate()
-                        {
-                            Common_SwitchSetUI(true);
-                            SongQuery_Query_Button.Enabled = true;
-                            if (SongQuery_DataGridView.Rows.Count > 0) SongQuery_DataGridView.Focus();
-                        });
-                    });
+                    string UserName = SongQuery_FavoriteQuery_ComboBox.Text;
+                    SongQuery_QueryStatus_Label.Text = "查詢中,請稍待...";
+                    SongQuery_RunSearch(new SongSearchCriteria(SongSearchKind.Favorite, UserId),
+                        "查無最愛歌曲,請重新查詢...",
+                        Count => "總共查詢到 " + Count + " 筆屬於『" + UserName + "』的最愛歌曲。",
+                        false, false, null, null);
                 }
             }
-        }
-
-        private void SongQuery_FavoriteQueryTask(List<string> SongIdList)
-        {
-            this.BeginInvoke((Action)delegate()
-            {
-                SongQuery_DataGridView.DataSource = null;
-                if (SongQuery_DataGridView.Columns.Count > 0) SongQuery_DataGridView.Columns.Remove("Song_FullPath");
-                SongQuery_QueryStatus_Label.Text = "";
-
-                string SongQueryStatusText = "";
-                string SongQueryValue = "";
-                string SongQueryType = "None";
-
-                if (File.Exists(Global.CrazyktvDatabaseFile))
-                {
-                    SongQueryType = "FavoriteSong";
-                    SongQueryValue = "NA";
-                    SongQueryStatusText = SongQuery_FavoriteQuery_ComboBox.Text;
-
-                    if (SongQueryValue == "")
-                    {
-                        SongQuery_QueryStatus_Label.Text = "必須輸入查詢條件才能查詢...";
-                    }
-                    else
-                    {
-                        SongQuery_QueryStatus_Label.Text = "查詢中,請稍待...";
-                        try
-                        {
-                            DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuery.GetSongQuerySqlStr(SongQueryType, SongQueryValue, null), "");
-                            if (dt.Rows.Count == 0)
-                            {
-                                SongQuery_LangFilter_ComboBox.Enabled = false;
-                                SongQuery_WordCountFilter_ComboBox.Enabled = false;
-                                SongQuery_QueryStatus_Label.Text = "查無最愛歌曲,請重新查詢...";
-                            }
-                            else
-                            {
-                                List<int> RemoveRowsIdxlist = new List<int>();
-
-                                var query = from row in dt.AsEnumerable()
-                                            where !SongIdList.Contains(row.Field<string>("Song_Id"))
-                                            select row;
-
-                                foreach (DataRow row in query)
-                                {
-                                    RemoveRowsIdxlist.Add(dt.Rows.IndexOf(row));
-                                }
-
-                                for (int i = RemoveRowsIdxlist.Count - 1; i >= 0; i--)
-                                {
-                                    dt.Rows.RemoveAt(RemoveRowsIdxlist[i]);
-                                }
-
-
-                                SongQuery_QueryStatus_Label.Text = "總共查詢到 " + dt.Rows.Count + " 筆屬於『" + SongQueryStatusText + "』的最愛歌曲。";
-
-                                if (dt.Rows.Count > 0)
-                                {
-                                    SongQuery_DataGridView.DataSource = dt;
-
-                                    List<string> LangFilterList = new List<string>();
-                                    List<int> WordCountFilterList = new List<int>();
-
-                                    using (DataTable LangDistinctDT = dt.DefaultView.ToTable(true, "Song_Lang"))
-                                    {
-                                        if (LangDistinctDT.Rows.Count > 0)
-                                        {
-                                            foreach (DataRow row in LangDistinctDT.AsEnumerable())
-                                            {
-                                                LangFilterList.Add(row["Song_Lang"].ToString());
-                                            }
-                                        }
-                                    }
-
-                                    using (DataTable WordCountDistinctDT = dt.DefaultView.ToTable(true, "Song_WordCount"))
-                                    {
-                                        if (WordCountDistinctDT.Rows.Count > 0)
-                                        {
-                                            foreach (DataRow row in WordCountDistinctDT.AsEnumerable())
-                                            {
-                                                WordCountFilterList.Add(Convert.ToInt32(row["Song_WordCount"].ToString()));
-                                            }
-                                        }
-                                    }
-
-                                    if (LangFilterList.Count > 0)
-                                    {
-                                        SongQuery_LangFilter_ComboBox.Enabled = true;
-                                        SongQuery_LangFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(LangFilterList);
-                                        SongQuery_LangFilter_ComboBox.DisplayMember = "Display";
-                                        SongQuery_LangFilter_ComboBox.ValueMember = "Value";
-                                        LangFilterList.Clear();
-                                    }
-
-                                    if (WordCountFilterList.Count > 0)
-                                    {
-                                        WordCountFilterList.Sort();
-                                        SongQuery_WordCountFilter_ComboBox.Enabled = true;
-                                        SongQuery_WordCountFilter_ComboBox.DataSource = SongQuery.GetSongQueryFilterList(WordCountFilterList.ConvertAll(i => i.ToString()));
-                                        SongQuery_WordCountFilter_ComboBox.DisplayMember = "Display";
-                                        SongQuery_WordCountFilter_ComboBox.ValueMember = "Value";
-                                        WordCountFilterList.Clear();
-                                    }
-
-                                    for (int i = 0; i < SongQuery_DataGridView.ColumnCount; i++)
-                                    {
-                                        List<string> DataGridViewColumnName = SongQuery.GetDataGridViewColumnSet(SongQuery_DataGridView.Columns[i].Name);
-                                        SongQuery_DataGridView.Columns[i].HeaderText = DataGridViewColumnName[0];
-
-                                        if (DataGridViewColumnName[1].ToString() == "0")
-                                        {
-                                            SongQuery_DataGridView.Columns[i].Visible = false;
-                                        }
-
-                                        if (DataGridViewColumnName[2].ToString() != "none")
-                                        {
-                                            ((DataGridViewTextBoxColumn)SongQuery_DataGridView.Columns[i]).MaxInputLength = int.Parse(DataGridViewColumnName[2]);
-                                        }
-
-                                        SongQuery_DataGridView.Columns[i].Width = int.Parse(DataGridViewColumnName[1]);
-                                    }
-
-                                    string SongFullPath = "";
-                                    int SongFullPathIndex = SongQuery_DataGridView.ColumnCount - 1;
-                                    SongQuery_DataGridView.Columns.Add("Song_FullPath", "檔案路徑");
-
-                                    int ColumnWidth_640 = Convert.ToInt32(640 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
-                                    SongQuery_DataGridView.Columns["Song_FullPath"].Width = ColumnWidth_640;
-                                    SongQuery_DataGridView.Columns["Song_FullPath"].MinimumWidth = ColumnWidth_640;
-                                    SongQuery_DataGridView.Columns["Song_FullPath"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                                    for (int i = 0; i < SongQuery_DataGridView.Rows.Count; i++)
-                                    {
-                                        SongFullPath = SongQuery_DataGridView.Rows[i].Cells["Song_Path"].Value.ToString() + SongQuery_DataGridView.Rows[i].Cells["Song_FileName"].Value.ToString();
-                                        SongQuery_DataGridView.Rows[i].Cells["Song_FullPath"].Value = SongFullPath;
-                                    }
-                                    dt.Dispose();
-                                }
-                            }
-                        }
-                        catch
-                        {
-                            SongQuery_LangFilter_ComboBox.Enabled = false;
-                            SongQuery_WordCountFilter_ComboBox.Enabled = false;
-                            SongQuery_QueryStatus_Label.Text = "查詢條件輸入錯誤,請重新輸入...";
-                        }
-                    }
-                }
-            });
         }
 
         private void SongQuery_FavoriteRemove(object SongIdlist, object UserId)
@@ -2889,196 +2418,14 @@ namespace CrazyKTV_SongMgr
 
         #region --- SongQuery 取得 SQL 查詢字串 ---
 
+        /// <summary>The SQL of the 異常查詢 kinds that start from a select on ktv_Song.</summary>
         public static string GetSongQuerySqlStr(string QueryType, string QueryValue, List<string> MultiQueryList)
         {
-            string sqlCommonStr = " Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_SongType, Song_Track, Song_Volume, Song_WordCount, Song_PlayCount, Song_MB, Song_CreatDate, Song_FileName, Song_Path, Song_Spell, Song_SpellNum, Song_SongStroke, Song_PenStyle, Song_PlayState, Song_ReplayGain ";
+            string sqlCommonStr = " " + SongSearch.Columns + " ";
             string SongQuerySqlStr = string.Empty;
-            string MultiQuerySqlStr = string.Empty;
-            string SongQueryOrderStr = " order by Song_Id";
-            string SongQueryFilterStr = (Global.SongQueryFilter == "全部") ? "" : " and Song_Lang = '" + Global.SongQueryFilter + "'";
-            string SongQueryColumnName = string.Empty;
-
-            List<string> QueryValueList = new List<string>();
-
-            Regex HasWideChar = new Regex("[\x21-\x7E\xFF01-\xFF5E]");
-            Regex HasSymbols = new Regex("[']");
-
-            if (QueryType == "SongName" || QueryType == "SingerName")
-            {
-                switch (QueryType)
-                {
-                    case "SongName":
-                        SongQueryColumnName = "Song_SongName";
-                        break;
-                    case "SingerName":
-                        SongQueryColumnName = "Song_Singer";
-                        break;
-                }
-
-                QueryValueList.Add(QueryValue);
-                if (MultiQueryList != null) QueryValueList.AddRange(MultiQueryList);
-
-                foreach (string value in QueryValueList)
-                {
-                    if (Global.SongQueryFuzzyQuery == "True")
-                    {
-                        string QueryValueDefault = value;
-                        if (HasWideChar.IsMatch(value))
-                        {
-                            string QueryValueNarrow = CommonFunc.ConvToNarrow(value);
-                            string QueryValueWide = CommonFunc.ConvToWide(value);
-
-                            if (HasSymbols.IsMatch(value))
-                            {
-                                QueryValueDefault = Regex.Replace(QueryValueDefault, "[']", delegate (Match match)
-                                {
-                                    string str = "'" + match.ToString();
-                                    return str;
-                                });
-                            }
-
-                            if (HasSymbols.IsMatch(QueryValueNarrow))
-                            {
-                                QueryValueNarrow = Regex.Replace(QueryValueNarrow, "[']", delegate (Match match)
-                                {
-                                    string str = "'" + match.ToString();
-                                    return str;
-                                });
-                            }
-                            if (value != QueryValue) MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueDefault + "'),0) <>0" + SongQueryFilterStr;
-                            if (QueryValueDefault != QueryValueNarrow) MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueNarrow + "'),0) <>0" + SongQueryFilterStr;
-                            MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueWide + "'),0) <>0" + SongQueryFilterStr;
-                        }
-                        else
-                        {
-                            if (HasSymbols.IsMatch(value))
-                            {
-                                QueryValueDefault = Regex.Replace(QueryValueDefault, "[']", delegate (Match match)
-                                {
-                                    string str = "'" + match.ToString();
-                                    return str;
-                                });
-                            }
-                            if (value != QueryValue) MultiQuerySqlStr += " or InStr(1,LCase(" + SongQueryColumnName + "),LCase('" + QueryValueDefault + "'),0) <>0" + SongQueryFilterStr;
-                        }
-                    }
-                }
-                QueryValueList.Clear();
-                QueryValueList = null;
-
-                if (HasSymbols.IsMatch(QueryValue))
-                {
-                    QueryValue = Regex.Replace(QueryValue, "[']", delegate (Match match)
-                    {
-                        string str = "'" + match.ToString();
-                        return str;
-                    });
-                }
-            }
 
             switch (QueryType)
             {
-                case "SongName":
-                    if (Global.SongQueryFuzzyQuery == "True")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where InStr(1,LCase(Song_SongName),LCase('" + QueryValue + "'),0) <>0" + SongQueryFilterStr + MultiQuerySqlStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SongName = '" + QueryValue + "'" + SongQueryFilterStr;
-                    }
-                    break;
-                case "SingerName":
-                    if (Global.SongQueryFuzzyQuery == "True")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where InStr(1,LCase(Song_Singer),LCase('" + QueryValue + "'),0) <>0" + SongQueryFilterStr + MultiQuerySqlStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Singer = '" + QueryValue + "'" + SongQueryFilterStr + " or InStr(1,LCase(Song_Singer),LCase('&" + QueryValue + "'),0) <>0" + SongQueryFilterStr + " or InStr(1,LCase(Song_Singer),LCase('" + QueryValue + "&'),0) <>0" + SongQueryFilterStr;
-                    }
-                    break;
-                case "SongID":
-                    if (Global.SongQueryFuzzyQuery == "True")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Id like '%" + QueryValue + "%'" + SongQueryFilterStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Id = '" + QueryValue + "'";
-                    }
-                    break;
-                case "AllSong":
-                    if (Global.SongQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Lang = '" + Global.SongQueryFilter + "'" + SongQueryOrderStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song" + SongQueryOrderStr;
-                    }
-                    break;
-                case "NewSong":
-                    if (Global.SongQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select top " + QueryValue + sqlCommonStr + "from ktv_Song where Song_Lang = '" + Global.SongQueryFilter + "' order by Song_CreatDate desc, Song_Id desc";
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select top " + QueryValue + sqlCommonStr + "from ktv_Song order by Song_CreatDate desc, Song_Id desc";
-                    }
-                    break;
-                case "ChorusSong":
-                    if (Global.SongQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SingerType = 3" + SongQueryFilterStr + SongQueryOrderStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SingerType = 3" + SongQueryOrderStr;
-                    }
-                    break;
-                case "SongType":
-                    if (QueryValue == "無類別") QueryValue = "";
-                    if (Global.SongQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SongType = '" + QueryValue + "'" + SongQueryFilterStr + SongQueryOrderStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SongType = '" + QueryValue + "'" + SongQueryOrderStr;
-                    }
-                    break;
-                case "SingerType":
-                    if (Global.SongQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SingerType = " + QueryValue + SongQueryFilterStr + SongQueryOrderStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SingerType = " + QueryValue + SongQueryOrderStr;
-                    }
-                    break;
-                case "SongTrack":
-                    if (Global.SongQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Track = " + QueryValue + SongQueryFilterStr + SongQueryOrderStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Track = " + QueryValue + SongQueryOrderStr;
-                    }
-                    break;
-                case "CashboxId":
-                    if (Global.SongQueryFilter != "全部")
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_Lang = '" + Global.SongQueryFilter + "'" + SongQueryOrderStr;
-                    }
-                    else
-                    {
-                        SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song" + SongQueryOrderStr;
-                    }
-                    break;
                 case "FileNotExists":
                     SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song order by Song_Id";
                     break;
@@ -3110,9 +2457,6 @@ namespace CrazyKTV_SongMgr
                     SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song where Song_SingerType <> 3 order by Song_Singer";
                     break;
                 case "MatchSongLang":
-                    SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song order by Song_Id";
-                    break;
-                case "FavoriteSong":
                     SongQuerySqlStr = "select" + sqlCommonStr + "from ktv_Song order by Song_Id";
                     break;
                 case "SameNameSongIgnorebrackets":

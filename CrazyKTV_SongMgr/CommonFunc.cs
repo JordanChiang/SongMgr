@@ -1858,18 +1858,13 @@ namespace CrazyKTV_SongMgr
             if (Global.CrazyktvDatabaseStatus)
             {
                 Global.SongQueryQueryType = "SongQuery";
-                SongQuery_DataGridView.DataSource = null;
-                if (SongQuery_DataGridView.Columns.Count > 0) SongQuery_DataGridView.Columns.Remove("Song_FullPath");
-                GC.Collect();
 
                 SongQuery.QueryStatusLabel = false;
                 SongQuery_EditMode_CheckBox.Checked = false;
                 SongQuery_QueryFilter_ComboBox.SelectedValue = 1;
 
-                string SongQueryType = "NewSong";
-                string SongQueryValue = SongCount.ToString();
-                string SongQueryStatusText = "新進歌曲";
-                Task.Factory.StartNew(() => SongQuery_QueryTask(SongQueryType, SongQueryValue, SongQueryStatusText));
+                var Criteria = new SongSearchCriteria(SongSearchKind.NewSongs, SongCount.ToString(), Global.SongQueryFilter);
+                SongQuery_Search(Criteria, "查無『新進歌曲』的相關歌曲,請重新查詢...", Count => "總共查詢到 " + Count + " 筆有關『新進歌曲』的歌曲。", true, true);
             }
         }
 

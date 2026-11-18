@@ -13,6 +13,8 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
 - **歌庫監視** — 加歌模式 4: watched folders feed new files into 歌曲分析 and drop songs whose file is gone (`SongMonitor`).
 - **歌庫檔案統計** — how many songs in `ktv_Song` have their file on disk, shown as 歌庫檔案 on the 歌庫查詢 statistics. `CommonFunc.GetSongFileCount` lists each folder once instead of checking every file. Runs when the 歌庫 loads only if 自動統計歌庫檔案 (`MainCfgAutoSongFileCount`) is on; otherwise the label reads 點此統計 and a click starts it.
 
+- **歌庫查詢條件** — what one 歌庫查詢 looks for: the kind (歌曲名稱, 歌手名稱, 歌曲編號, 全部, 新進, 合唱, 歌曲類別, 歌手類別, 歌曲聲道, 錢櫃編號, 我的最愛), the value, the 語系 filter, 模糊查詢 and 同義字查詢. `SongSearchCriteria`; `SongSearch.Run` finds the songs in either kind of 歌庫 with parameters, comparing text without regard to case, matching against a `SongSearchReference` (同義字, 歌手群組, special singer names, 錢櫃 numbers) captured once.
+
 ## Songs and singers
 
 - **歌曲記錄** (song record) — one song's fields by name, as text, travelling between the song grids, the edit panel, the 加歌 pipeline and `ktv_Song`. `SongRecord`. Replaces the old "|"-joined strings read by position.
