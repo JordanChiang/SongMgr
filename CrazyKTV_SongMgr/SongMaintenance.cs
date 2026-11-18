@@ -22,7 +22,6 @@ namespace CrazyKTV_SongMgr
             switch (SongMaintenance_Save_Button.Text)
             {
                 case "儲存設定":
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "DBVerEnableDBVerUpdate", Global.DBVerEnableDBVerUpdate);
                     CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMaintenanceReplayGainVolume", Global.SongMaintenanceReplayGainVolume);
                     break;
                 case "更新語系":
@@ -3849,14 +3848,6 @@ namespace CrazyKTV_SongMgr
         #endregion
 
 
-        #region --- 歌庫版本 ---
-
-        private void SongMaintenance_EnableDBVerUpdate_CheckBox_CheckedChanged(object sender, EventArgs e)
-        {
-            Global.DBVerEnableDBVerUpdate = SongMaintenance_EnableDBVerUpdate_CheckBox.Checked.ToString();
-        }
-
-        #endregion
 
 
     }

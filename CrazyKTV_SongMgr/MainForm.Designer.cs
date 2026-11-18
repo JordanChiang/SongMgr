@@ -429,8 +429,6 @@
             this.SongMaintenance_ReplayGain_Label = new System.Windows.Forms.Label();
             this.SongMaintenance_ReplayGain_Button = new System.Windows.Forms.Button();
             this.SongMaintenance_DBVer_TabPage = new System.Windows.Forms.TabPage();
-            this.SongMaintenance_DBVerUpdate_GroupBox = new System.Windows.Forms.GroupBox();
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox = new System.Windows.Forms.CheckBox();
             this.SongMaintenance_DBVerTooltip_GroupBox = new System.Windows.Forms.GroupBox();
             this.SongMaintenance_DBVerTooltip_Label = new System.Windows.Forms.Label();
             this.SongMaintenance_DBVer1Value_Label = new System.Windows.Forms.Label();
@@ -671,7 +669,6 @@
             this.SongMaintenance_FFmpeg_TabPage.SuspendLayout();
             this.SongMaintenance_ReplayGain_GroupBox.SuspendLayout();
             this.SongMaintenance_DBVer_TabPage.SuspendLayout();
-            this.SongMaintenance_DBVerUpdate_GroupBox.SuspendLayout();
             this.SongMaintenance_DBVerTooltip_GroupBox.SuspendLayout();
             this.SongMaintenance_VolumeChange_GroupBox.SuspendLayout();
             this.SongMaintenance_TrackExchange_GroupBox.SuspendLayout();
@@ -5767,7 +5764,6 @@
             // 
             // SongMaintenance_DBVer_TabPage
             // 
-            this.SongMaintenance_DBVer_TabPage.Controls.Add(this.SongMaintenance_DBVerUpdate_GroupBox);
             this.SongMaintenance_DBVer_TabPage.Controls.Add(this.SongMaintenance_DBVerTooltip_GroupBox);
             this.SongMaintenance_DBVer_TabPage.Controls.Add(this.SongMaintenance_DBVer1Value_Label);
             this.SongMaintenance_DBVer_TabPage.Controls.Add(this.SongMaintenance_DBVer1_Label);
@@ -5777,34 +5773,8 @@
             this.SongMaintenance_DBVer_TabPage.Padding = new System.Windows.Forms.Padding(10, 14, 10, 14);
             this.SongMaintenance_DBVer_TabPage.Size = new System.Drawing.Size(584, 436);
             this.SongMaintenance_DBVer_TabPage.TabIndex = 3;
-            this.SongMaintenance_DBVer_TabPage.Text = "歌庫版本";
+            this.SongMaintenance_DBVer_TabPage.Text = "資料庫結構";
             this.SongMaintenance_DBVer_TabPage.UseVisualStyleBackColor = true;
-            // 
-            // SongMaintenance_DBVerUpdate_GroupBox
-            // 
-            this.SongMaintenance_DBVerUpdate_GroupBox.Controls.Add(this.SongMaintenance_EnableDBVerUpdate_CheckBox);
-            this.SongMaintenance_DBVerUpdate_GroupBox.Font = new System.Drawing.Font("微軟正黑體", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this.SongMaintenance_DBVerUpdate_GroupBox.Location = new System.Drawing.Point(12, 235);
-            this.SongMaintenance_DBVerUpdate_GroupBox.Margin = new System.Windows.Forms.Padding(2);
-            this.SongMaintenance_DBVerUpdate_GroupBox.Name = "SongMaintenance_DBVerUpdate_GroupBox";
-            this.SongMaintenance_DBVerUpdate_GroupBox.Padding = new System.Windows.Forms.Padding(10, 2, 10, 2);
-            this.SongMaintenance_DBVerUpdate_GroupBox.Size = new System.Drawing.Size(556, 130);
-            this.SongMaintenance_DBVerUpdate_GroupBox.TabIndex = 8;
-            this.SongMaintenance_DBVerUpdate_GroupBox.TabStop = false;
-            this.SongMaintenance_DBVerUpdate_GroupBox.Text = "版本更新";
-            // 
-            // SongMaintenance_EnableDBVerUpdate_CheckBox
-            // 
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.AutoSize = true;
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.Font = new System.Drawing.Font("微軟正黑體", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.Location = new System.Drawing.Point(20, 42);
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.Margin = new System.Windows.Forms.Padding(10, 12, 6, 8);
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.Name = "SongMaintenance_EnableDBVerUpdate_CheckBox";
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.Size = new System.Drawing.Size(188, 24);
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.TabIndex = 0;
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.Text = "啟用歌庫版本自動更新";
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.UseVisualStyleBackColor = true;
-            this.SongMaintenance_EnableDBVerUpdate_CheckBox.CheckedChanged += new System.EventHandler(this.SongMaintenance_EnableDBVerUpdate_CheckBox_CheckedChanged);
             // 
             // SongMaintenance_DBVerTooltip_GroupBox
             // 
@@ -5840,7 +5810,7 @@
             this.SongMaintenance_DBVer1Value_Label.Name = "SongMaintenance_DBVer1Value_Label";
             this.SongMaintenance_DBVer1Value_Label.Size = new System.Drawing.Size(64, 21);
             this.SongMaintenance_DBVer1Value_Label.TabIndex = 1;
-            this.SongMaintenance_DBVer1Value_Label.Text = "0.00 版";
+            this.SongMaintenance_DBVer1Value_Label.Text = "";
             // 
             // SongMaintenance_DBVer1_Label
             // 
@@ -5852,7 +5822,7 @@
             this.SongMaintenance_DBVer1_Label.Name = "SongMaintenance_DBVer1_Label";
             this.SongMaintenance_DBVer1_Label.Size = new System.Drawing.Size(94, 21);
             this.SongMaintenance_DBVer1_Label.TabIndex = 0;
-            this.SongMaintenance_DBVer1_Label.Text = "資料庫版本:";
+            this.SongMaintenance_DBVer1_Label.Text = "資料庫結構:";
             // 
             // SongMaintenance_VolumeChange_GroupBox
             // 
@@ -8369,8 +8339,6 @@
             this.SongMaintenance_ReplayGain_GroupBox.PerformLayout();
             this.SongMaintenance_DBVer_TabPage.ResumeLayout(false);
             this.SongMaintenance_DBVer_TabPage.PerformLayout();
-            this.SongMaintenance_DBVerUpdate_GroupBox.ResumeLayout(false);
-            this.SongMaintenance_DBVerUpdate_GroupBox.PerformLayout();
             this.SongMaintenance_DBVerTooltip_GroupBox.ResumeLayout(false);
             this.SongMaintenance_VolumeChange_GroupBox.ResumeLayout(false);
             this.SongMaintenance_VolumeChange_GroupBox.PerformLayout();
@@ -8764,8 +8732,6 @@
         private System.Windows.Forms.Button SongMaintenance_RemoveEmptyDirs_Button;
         private System.Windows.Forms.Label SingerMgr_DefaultSingerDataTable_Label;
         private System.Windows.Forms.ComboBox SingerMgr_DefaultSingerDataTable_ComboBox;
-        private System.Windows.Forms.GroupBox SongMaintenance_DBVerUpdate_GroupBox;
-        private System.Windows.Forms.CheckBox SongMaintenance_EnableDBVerUpdate_CheckBox;
         private System.Windows.Forms.CheckBox SongAdd_UseCustomSongID_CheckBox;
         private System.Windows.Forms.CheckBox SongQuery_SynonymousQuery_CheckBox;
         private System.Windows.Forms.TabControl SongMgrCfg_TabControl;

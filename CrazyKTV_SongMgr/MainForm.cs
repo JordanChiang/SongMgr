@@ -89,14 +89,6 @@ namespace CrazyKTV_SongMgr
             Global.DPIScalingFactor = Common_GetDPIScalingFactor();
             SongAddResult_SplitContainer.SplitterDistance = Convert.ToInt32(SongAddResult_SplitContainer.SplitterDistance * Global.DPIScalingFactor);
 
-            // 歌庫版本資訊
-            if (!File.Exists(Global.CrazyktvSongDBUpdateFile))
-            {
-                if (!Directory.Exists(Application.StartupPath + @"\SongMgr\Update")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\Update");
-                CommonFunc.CreateConfigXmlFile(Global.CrazyktvSongDBUpdateFile);
-                CommonFunc.SaveConfigXmlFile(Global.CrazyktvSongDBUpdateFile, "SongDBVer", Global.CrazyktvSongDBVer);
-            }
-
             // CrazyKTV 設定
             if (!File.Exists(Global.CrazyktvCfgFile))
             {
@@ -297,7 +289,6 @@ namespace CrazyKTV_SongMgr
             if (cfg["MainCfgAlwaysOnTop"] != "") Global.MainCfgAlwaysOnTop = cfg["MainCfgAlwaysOnTop"];
             MainCfg_AlwaysOnTop_CheckBox.Checked = bool.Parse(Global.MainCfgAlwaysOnTop);
 
-            if (!string.IsNullOrEmpty(cfg["CrazyktvSongDBVer"])) Global.CrazyktvSongDBVer = cfg["CrazyktvSongDBVer"];
 
             if (cfg["MainCfgHideSongDBConverterTabPage"] != "") Global.MainCfgHideSongDBConverterTabPage = cfg["MainCfgHideSongDBConverterTabPage"];
             MainCfg_HideSongDBConvTab_CheckBox.Checked = bool.Parse(Global.MainCfgHideSongDBConverterTabPage);
@@ -327,8 +318,6 @@ namespace CrazyKTV_SongMgr
                 SingerMgr_DefaultSingerDataTable_ComboBox.Enabled = false;
             #endif
 
-            if (cfg["DBVerEnableDBVerUpdate"] != "") Global.DBVerEnableDBVerUpdate = cfg["DBVerEnableDBVerUpdate"];
-            SongMaintenance_EnableDBVerUpdate_CheckBox.Checked = bool.Parse(Global.DBVerEnableDBVerUpdate);
 
             if (cfg["MainCfgUIScale"] != "") Global.MainCfgUIScale = cfg["MainCfgUIScale"];
             MainCfg_UIScale_ComboBox.DataSource = MainCfg.GetUIScaleList();
@@ -654,7 +643,7 @@ namespace CrazyKTV_SongMgr
                     else if (!File.Exists(Global.CrazyktvSongMgrDatabaseFile)) Tooltip_Label[i].Text = "加歌程式參考資料庫檔案不存在!";
                     else if (Global.CrazyktvDatabaseError) Tooltip_Label[i].Text = "資料庫檔案不是 CrazyKTV 資料庫!";
                     else if (Global.SongMgrDatabaseError) Tooltip_Label[i].Text = "加歌程式參考資料庫不是最新版本!";
-                    else if (Global.CrazyktvDatabaseIsOld) Tooltip_Label[i].Text = "資料庫檔案為舊版本!";
+                    else if (Global.CrazyktvDatabaseIsOld) Tooltip_Label[i].Text = "資料庫結構需要更新!";
                     else if (!Global.CrazyktvDatabaseMaxDigitCode) Tooltip_Label[i].Text = "歌庫編碼混雜 5 及 6 位數編碼!";
                     else if (!Directory.Exists(Global.SongMgrDestFolder)) Tooltip_Label[i].Text = "請先設定歌庫資料夾!";
                 }

@@ -71,7 +71,7 @@ namespace SongMgr.Tests.EndToEnd
 
         // ---------- setting up the 歌庫 ----------
 
-        /// <summary>Writes the 設定檔. Automatic program and 歌庫版本 updates are always off: no network, no prompts.</summary>
+        /// <summary>Writes the 設定檔. 自動更新 is off: no network, no prompts.</summary>
         public void WriteSettings(int digits, params (string Name, string Value)[] more)
         {
             var settings = new List<(string, string)>
@@ -80,7 +80,6 @@ namespace SongMgr.Tests.EndToEnd
                 ("SongMgrMaxDigitCode", digits == 5 ? "1" : "2"),
                 ("SongMgrLangCode", digits == 5 ? Code5 : Code6),
                 ("MainCfgEnableAutoUpdate", "False"),
-                ("DBVerEnableDBVerUpdate", "False"),
             };
             foreach (var s in more)
             {
@@ -174,7 +173,18 @@ namespace SongMgr.Tests.EndToEnd
         bool AnswerIfShown(string title, string button)
         {
             int command = button.StartsWith("是") ? IDYES : button.StartsWith("否") ? IDNO : IDOK;
-            IntPtr found = IntPtr.Zero;
+            IntPtr found = DialogWindows().Where(d => d.Title.Contains(title)).Select(d => d.Handle).FirstOrDefault();
+            if (found == IntPtr.Zero) return false;
+            PostMessage(found, WM_COMMAND, new IntPtr(command), IntPtr.Zero);
+            return true;
+        }
+
+        /// <summary>The titles of SongMgr's MessageBoxes on screen.</summary>
+        public List<string> Dialogs() => DialogWindows().Select(d => d.Title).ToList();
+
+        List<(IntPtr Handle, string Title)> DialogWindows()
+        {
+            var found = new List<(IntPtr, string)>();
             EnumWindows((hwnd, _) =>
             {
                 GetWindowThreadProcessId(hwnd, out int pid);
@@ -183,12 +193,10 @@ namespace SongMgr.Tests.EndToEnd
                 var text = new System.Text.StringBuilder(256);
                 GetClassName(hwnd, cls, cls.Capacity);
                 GetWindowText(hwnd, text, text.Capacity);
-                if (cls.ToString() == "#32770" && text.ToString().Contains(title)) { found = hwnd; return false; }
+                if (cls.ToString() == "#32770") found.Add((hwnd, text.ToString()));
                 return true;
             }, IntPtr.Zero);
-            if (found == IntPtr.Zero) return false;
-            PostMessage(found, WM_COMMAND, new IntPtr(command), IntPtr.Zero);
-            return true;
+            return found;
         }
 
         /// <summary>Waits for the MessageBox titled <paramref name="title"/> and presses <paramref name="button"/>.</summary>

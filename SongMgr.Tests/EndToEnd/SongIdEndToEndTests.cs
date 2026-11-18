@@ -23,7 +23,8 @@ namespace SongMgr.Tests.EndToEnd
 
     /// <summary>
     /// 歌曲編號 in the running program, for a 5-digit and a 6-digit 歌庫: 歌庫監視 adding songs, 歌庫查詢 moving a song
-    /// to another 語系, and 轉換為 6 位數, each checked in the sandbox's database and 設定檔. (A 歌庫 with both digit
+    /// to another 語系, 轉換為 6 位數, and the 資料庫結構更新 of an old 歌庫 at start-up, each checked in the sandbox's
+    /// database and 設定檔. (A 歌庫 with both digit
     /// counts is not usable until 校正編碼位數, so it is not driven here.)
     /// </summary>
     [Trait("Category", "EndToEnd")]
@@ -50,6 +51,8 @@ namespace SongMgr.Tests.EndToEnd
 
                 app.Start();
                 AppSession.WaitUntil(() => app.Songs().Count == 6, 120, "歌庫監視 to add 4 songs");
+                // A new 設定檔 on an up-to-date 歌庫 asks nothing (it used to bring up 偵測到歌庫版本更新).
+                Assert.Empty(app.Dialogs());
 
                 var songs = app.Songs();
                 // 台語 had no songs: it gets its start number once, then the next ones.
@@ -68,6 +71,29 @@ namespace SongMgr.Tests.EndToEnd
 
                 Assert.Equal(Id(taiwanese + 3, digits), app.Songs().Single(s => s.Name == "日不落").Id);
                 Assert.Equal(6, app.Songs().Select(s => s.Id).Distinct().Count());
+            }
+        }
+
+        [DesktopFact]
+        public void An_old_歌庫_gets_its_資料庫結構更新_when_SongMgr_starts()
+        {
+            using (var app = new AppSession("schema"))
+            {
+                app.WriteSettings(6);
+                app.Execute("alter table ktv_Song drop column Song_ReplayGain");
+                app.Execute("alter table ktv_Song add column Song_MeanVolume DOUBLE");
+                app.InsertSong("100001", "國語", "周杰倫", "晴天");
+                app.InsertFavorite("0001", "100001");
+                Assert.NotEmpty(CrazyKTV_SongMgr.SchemaUpgrade.Check(app.Database));
+
+                app.Start();
+                AppSession.WaitUntil(() => CrazyKTV_SongMgr.SchemaUpgrade.Check(app.Database).Count == 0, 60, "the 資料庫結構更新");
+                AppSession.WaitUntil(() => app.Value("SongMaintenance_DBVer1Value_Label") == "最新", 20, "資料庫結構: 最新");
+
+                Assert.Empty(app.Dialogs());
+                Assert.Equal(new[] { ("100001", "國語", "周杰倫", "晴天") }, app.Songs());
+                Assert.Equal(new[] { "0001:100001" }, app.Favorites());
+                Assert.Single(Directory.GetFiles(Path.Combine(app.AppDir, "SongMgr", "Backup"), "*_CrazySong.mdb"));
             }
         }
 

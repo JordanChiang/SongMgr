@@ -80,8 +80,6 @@ namespace CrazyKTV_SongMgr
 
         public static string CrazyktvDatabaseFile = Application.StartupPath + @"\CrazySong.mdb";
         public static string CrazyktvSongMgrDatabaseFile = Application.StartupPath + @"\SongMgr\CrazySongMgr.mdb";
-        public static string CrazyktvSongDBVer = "1.00";
-        public static string CrazyktvSongDBUpdateFile = Application.StartupPath + @"\SongMgr\Update\UpdateDB.xml";
         public static string CrazyktvCfgFile = Application.StartupPath + @"\CrazyKTV.cfg";
         public static bool CrazyktvDatabaseStatus = false;
         public static bool CrazyktvDatabaseIsOld = false;
@@ -167,7 +165,6 @@ namespace CrazyKTV_SongMgr
         public static string MainCfgPlayerEnableAudioProcessor = "False";
         public static string MainCfgPlayerDefaultVolume = "100";
 
-        public static string DBVerEnableDBVerUpdate = "True";
         public static string SongMaintenanceEnableMultiSongPath = "False";
         public static string SongMaintenanceReplayGainVolume = "50";
 

@@ -33,7 +33,12 @@ namespace CrazyKTV_SongMgr
             }
         }
 
-        private List<bool> GetCrazyktvDatabaseStatus()
+        /// <summary>
+        /// Checks both database files and the 歌庫資料夾. Sets Global.CrazyktvDatabaseError / SongMgrDatabaseError (tables
+        /// missing), CrazyktvDatabaseIsOld (資料庫結構更新 needed, see <see cref="SchemaUpgrade.Check"/>) and
+        /// CrazyktvDatabaseStatus (ready to use).
+        /// </summary>
+        private (bool DatabaseFiles, bool DestFolder) GetCrazyktvDatabaseStatus()
         {
             Global.CrazyktvDatabaseStatus = false;
             Global.CrazyktvDatabaseIsOld = false;
@@ -41,118 +46,42 @@ namespace CrazyKTV_SongMgr
             Global.SongMgrDatabaseError = false;
             Global.CrazyktvDatabaseMaxDigitCode = true;
 
-            bool CrazyKTVDatabaseFile = false;
-            bool SongMgrDatabaseFile = false;
-            bool SongMgrDestFolder = false;
-            bool TB_ktv_AllSinger = false;
-            bool TB_ktv_Version = false;
-            bool Col_Song_ReplayGain = false;
-            bool Col_Song_MeanVolume = false;
-            bool Col_Langauage_KeyWord = false;
-            bool Col_GodLiu = false;
-
-            // 檢查資料庫表格及欄位
-            if (File.Exists(Global.CrazyktvDatabaseFile) && File.Exists(Global.CrazyktvSongMgrDatabaseFile))
+            bool databaseFiles = File.Exists(Global.CrazyktvDatabaseFile) && File.Exists(Global.CrazyktvSongMgrDatabaseFile);
+            if (databaseFiles)
             {
-                CrazyKTVDatabaseFile = true;
-                SongMgrDatabaseFile = true;
+                List<string> songTables = Db.GetTableList(Global.CrazyktvDatabaseFile, "");
+                string[] requiredSongTables = { "ktv_Favorite", "ktv_Langauage", "ktv_Phonetics", "ktv_Remote", "ktv_Singer", "ktv_SingerName", "ktv_Song", "ktv_Swan", "ktv_User", "ktv_Words" };
+                Global.CrazyktvDatabaseError = requiredSongTables.Any(t => !songTables.Contains(t));
 
-                List<string> TableList = new List<string>() { "ktv_Favorite", "ktv_Langauage", "ktv_Phonetics", "ktv_Remote", "ktv_Singer", "ktv_SingerName", "ktv_Song", "ktv_Swan", "ktv_User", "ktv_Words" };
-                List<string> CrazyktvDBTableList = new List<string>(Db.GetTableList(Global.CrazyktvDatabaseFile, ""));
-                foreach (string TableName in TableList)
-                {
-                    if (CrazyktvDBTableList.IndexOf(TableName) < 0)
-                    {
-                        Global.CrazyktvDatabaseError = true;
-                        break;
-                    }
-                }
-                TableList.Clear();
+                List<string> songMgrTables = Db.GetTableList(Global.CrazyktvSongMgrDatabaseFile, "");
+                string[] requiredSongMgrTables = { "ktv_AllSinger", "ktv_Cashbox", "ktv_Phonetics", "ktv_SongMgr", "ktv_Version" };
+                Global.SongMgrDatabaseError = requiredSongMgrTables.Any(t => !songMgrTables.Contains(t));
 
-                TableList = new List<string>() { "ktv_AllSinger", "ktv_Cashbox", "ktv_Phonetics", "ktv_SongMgr", "ktv_Version" };
-                List<string> SongMgrDBTableList = new List<string>(Db.GetTableList(Global.CrazyktvSongMgrDatabaseFile, ""));
-                foreach (string TableName in TableList)
-                {
-                    if (SongMgrDBTableList.IndexOf(TableName) < 0)
-                    {
-                        Global.SongMgrDatabaseError = true;
-                        break;
-                    }
-                }
-                TableList.Clear();
-
-                if (!Global.CrazyktvDatabaseError)
-                {
-                    List<string> ktvLangauageColumnList = new List<string>(Db.GetColumnList(Global.CrazyktvDatabaseFile, "", "ktv_Langauage"));
-                    if (ktvLangauageColumnList.IndexOf("Langauage_KeyWord") >= 0) Col_Langauage_KeyWord = true;
-                    ktvLangauageColumnList.Clear();
-
-                    if (CrazyktvDBTableList.IndexOf("ktv_AllSinger") >= 0) TB_ktv_AllSinger = true;
-                    if (CrazyktvDBTableList.IndexOf("ktv_Version") >= 0) TB_ktv_Version = true;
-
-                    List<string> GodLiuColumnList = new List<string>() { "Song_SongNameFuzzy", "Song_SingerFuzzy", "Song_FuzzyVer", "DLspace", "Epasswd", "imgpath", "cashboxsongid", "cashboxdat", "holidaysongid" };
-                    List<string> ktvSongColumnList = new List<string>(Db.GetColumnList(Global.CrazyktvDatabaseFile, "", "ktv_Song"));
-                    if (ktvSongColumnList.IndexOf("Song_ReplayGain") >= 0) Col_Song_ReplayGain = true;
-                    if (ktvSongColumnList.IndexOf("Song_MeanVolume") >= 0) Col_Song_MeanVolume = true;
-
-                    foreach (string ColumnName in GodLiuColumnList)
-                    {
-                        if (ktvSongColumnList.IndexOf(ColumnName) >= 0) Col_GodLiu = true;
-                    }
-                    GodLiuColumnList.Clear();
-                    ktvSongColumnList.Clear();
-                    if (TB_ktv_AllSinger || TB_ktv_Version || !Col_Song_ReplayGain || Col_Song_MeanVolume || !Col_Langauage_KeyWord || Col_GodLiu) Global.CrazyktvDatabaseIsOld = true;
-                }
-                CrazyktvDBTableList.Clear();
+                if (!Global.CrazyktvDatabaseError) Global.CrazyktvDatabaseIsOld = SchemaUpgrade.Check(Global.CrazyktvDatabaseFile).Count > 0;
             }
 
-            // 檢查歌庫資料夾
-            if (Directory.Exists(Global.SongMgrDestFolder)) SongMgrDestFolder = true;
+            // 歌庫資料夾
+            bool destFolder = Directory.Exists(Global.SongMgrDestFolder);
+            bool needsDestFolder = Global.AddMode != SongAddMode.InPlace && Global.AddMode != SongAddMode.Monitor;
 
-            if (Global.AddMode == SongAddMode.InPlace || Global.AddMode == SongAddMode.Monitor)
-            {
-                if (!CrazyKTVDatabaseFile || !SongMgrDatabaseFile || Global.SongMgrDatabaseError || TB_ktv_AllSinger || TB_ktv_Version || !Col_Song_ReplayGain || Col_Song_MeanVolume || !Col_Langauage_KeyWord || Col_GodLiu)
-                { Global.SongMgrDBVerErrorUIStatus = false; } else { Global.CrazyktvDatabaseStatus = true; }
-            }
-            else
-            {
-                if (!CrazyKTVDatabaseFile || !SongMgrDatabaseFile || Global.SongMgrDatabaseError || !SongMgrDestFolder || TB_ktv_AllSinger || TB_ktv_Version || !Col_Song_ReplayGain || Col_Song_MeanVolume || !Col_Langauage_KeyWord || Col_GodLiu)
-                { Global.SongMgrDBVerErrorUIStatus = false; } else { Global.CrazyktvDatabaseStatus = true; }
-            }
-            return new List<bool>() { CrazyKTVDatabaseFile, TB_ktv_Version, TB_ktv_AllSinger, SongMgrDestFolder };
+            if (!databaseFiles || Global.CrazyktvDatabaseError || Global.SongMgrDatabaseError || Global.CrazyktvDatabaseIsOld || (needsDestFolder && !destFolder))
+            { Global.SongMgrDBVerErrorUIStatus = false; } else { Global.CrazyktvDatabaseStatus = true; }
+            return (databaseFiles, destFolder);
         }
 
         private void SongDBUpdate_CheckDatabaseFile()
         {
-            List<bool> list = GetCrazyktvDatabaseStatus();
-            bool CrazyKTVDatabaseFile = list[0];
-            bool TB_ktv_Version = list[1];
-            bool TB_ktv_AllSinger = list[2];
-            list.Clear();
-            list = null;
+            bool databaseFiles = GetCrazyktvDatabaseStatus().DatabaseFiles;
 
             if (Global.CrazyktvDatabaseStatus)
             {
-                var CheckDBUpdateTask = Task.Factory.StartNew(() => SongDBUpdate_CheckDatabaseVersion());
+                var DatabaseReadyTask = Task.Factory.StartNew(() => SongDBUpdate_DatabaseReady());
             }
-            else if (CrazyKTVDatabaseFile && !Global.CrazyktvDatabaseError && !Global.SongMgrDatabaseError && TB_ktv_Version)
+            else if (databaseFiles && !Global.CrazyktvDatabaseError && !Global.SongMgrDatabaseError && Global.CrazyktvDatabaseIsOld)
             {
                 MainTabControl.SelectedIndex = MainTabControl.TabPages.IndexOf(SongMaintenance_TabPage);
                 SongMaintenance_TabControl.SelectedIndex = SongMaintenance_TabControl.TabPages.IndexOf(SongMaintenance_DBVer_TabPage);
-                SongMaintenance_DBVerTooltip_Label.Text = "偵測到資料庫結構更動,開始進行更新...";
-                var UpdateDBTask = Task.Factory.StartNew(() => SongDBUpdate_UpdateDatabaseFile());
-            }
-            else if (CrazyKTVDatabaseFile && !Global.CrazyktvDatabaseError && !Global.SongMgrDatabaseError && TB_ktv_AllSinger)
-            {
-                MainTabControl.SelectedIndex = MainTabControl.TabPages.IndexOf(SongMaintenance_TabPage);
-                SongMaintenance_TabControl.SelectedIndex = SongMaintenance_TabControl.TabPages.IndexOf(SongMaintenance_DBVer_TabPage);
-                SongMaintenance_DBVerTooltip_Label.Text = "偵測到資料庫結構更動,開始進行更新...";
-                var UpdateDBTask = Task.Factory.StartNew(() => SongDBUpdate_UpdateDatabaseFile());
-            }
-            else if (CrazyKTVDatabaseFile && !Global.CrazyktvDatabaseError && !Global.SongMgrDatabaseError && Global.CrazyktvDatabaseIsOld)
-            {
-                MainTabControl.SelectedIndex = MainTabControl.TabPages.IndexOf(SongMaintenance_TabPage);
-                SongMaintenance_TabControl.SelectedIndex = SongMaintenance_TabControl.TabPages.IndexOf(SongMaintenance_DBVer_TabPage);
+                SongMaintenance_DBVer1Value_Label.Text = "正在更新...";
                 SongMaintenance_DBVerTooltip_Label.Text = "偵測到資料庫結構更動,開始進行更新...";
                 var UpdateDBTask = Task.Factory.StartNew(() => SongDBUpdate_UpdateDatabaseFile());
             }
@@ -162,600 +91,79 @@ namespace CrazyKTV_SongMgr
             }
         }
 
-        private void SongDBUpdate_CheckDatabaseVersion()
+        /// <summary>The 歌庫 needs no 資料庫結構更新: show that and the 錢櫃 date, then finish loading.</summary>
+        private void SongDBUpdate_DatabaseReady()
         {
-            bool UpdateDBStatus = false;
-            double SongDBVer = Convert.ToDouble(Global.CrazyktvSongDBVer);
-            string CashboxUpdDate = "";
-
-            string VersionQuerySqlStr = "select * from ktv_Version";
-            using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, VersionQuerySqlStr, ""))
+            SongDBUpdate_ShowCashboxUpdDate();
+            this.BeginInvoke((Action)delegate ()
             {
-                if (dt.Rows.Count > 0)
-                {
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        CashboxUpdDate = row["CashboxUpdDate"].ToString();
-                    }
-                    Global.CashboxUpdDate = DateTime.Parse(CashboxUpdDate);
-
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        SongMaintenance_DBVer1Value_Label.Text = SongDBVer.ToString("F2") + " 版";
-                        Cashbox_UpdDateValue_Label.Text = (CultureInfo.CurrentCulture.Name == "zh-TW") ? DateTime.Parse(CashboxUpdDate).ToLongDateString() : DateTime.Parse(CashboxUpdDate).ToShortDateString();
-                    });
-
-                    if (Global.DBVerEnableDBVerUpdate == "True")
-                    {
-                        if (!Directory.Exists(Application.StartupPath + @"\SongMgr\Update")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\Update");
-                        
-                        string url = "https://raw.githubusercontent.com/CrazyKTV/SongMgr/master/CrazyKTV_SongMgr/SongMgr/Update/UpdateDB.xml";
-                        using (MemoryStream ms = CommonFunc.Download(url))
-                        {
-                            if (ms.Length > 0)
-                            {
-                                ms.Position = 0;
-                                Global.CrazyktvSongDBVer = CommonFunc.LoadConfigXmlFile("", "SongDBVer", ms, true);
-
-                                if (File.Exists(Global.CrazyktvDatabaseFile) && !Db.IsSQLite(Global.CrazyktvDatabaseFile))
-                                {
-                                    if (Convert.ToDouble(Global.CrazyktvSongDBVer) > SongDBVer)
-                                    {
-                                        this.BeginInvoke((Action)delegate ()
-                                        {
-                                            if (MessageBox.Show("你確定要更新歌庫版本嗎?", "偵測到歌庫版本更新", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                                            {
-                                                Global.SongMgrDBVerErrorUIStatus = false;
-                                                MainTabControl.SelectedIndex = MainTabControl.TabPages.IndexOf(SongMaintenance_TabPage);
-                                                SongMaintenance_TabControl.SelectedIndex = SongMaintenance_TabControl.TabPages.IndexOf(SongMaintenance_DBVer_TabPage);
-                                                SongMaintenance_DBVerTooltip_Label.Text = "開始進行歌庫版本更新...";
-                                                UpdateDBStatus = true;
-                                                var UpdateDBTask = Task.Factory.StartNew(() => SongDBUpdate_UpdateDatabaseFile());
-                                            }
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (!UpdateDBStatus) SongDBUpdate_UpdateFinish();
-            }
+                SongMaintenance_DBVer1Value_Label.Text = "最新";
+            });
+            SongDBUpdate_UpdateFinish();
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2100:必須檢閱 SQL 查詢中是否有安全性弱點")]
+        private void SongDBUpdate_ShowCashboxUpdDate()
+        {
+            using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, "select * from ktv_Version", ""))
+            {
+                if (dt.Rows.Count == 0) return;
+                Global.CashboxUpdDate = DateTime.Parse(dt.Rows[dt.Rows.Count - 1]["CashboxUpdDate"].ToString());
+            }
+            this.BeginInvoke((Action)delegate ()
+            {
+                Cashbox_UpdDateValue_Label.Text = (CultureInfo.CurrentCulture.Name == "zh-TW") ? Global.CashboxUpdDate.ToLongDateString() : Global.CashboxUpdDate.ToShortDateString();
+            });
+        }
+
+        /// <summary>資料庫結構更新 of the loaded 歌庫, on a background task; a SQLite 歌庫 can only be told how to get there.</summary>
         private void SongDBUpdate_UpdateDatabaseFile()
         {
             Global.TimerStartTime = DateTime.Now;
 
-            // 結構更新用的是 Access 專用的 alter column / GetSchema 欄位長度,SQLite 歌庫無法更新
+            // 結構更新用的是 Access 專用的 alter column,SQLite 歌庫無法更新
             if (Db.IsSQLite(Global.CrazyktvDatabaseFile))
             {
                 this.BeginInvoke((Action)delegate ()
                 {
+                    SongMaintenance_DBVer1Value_Label.Text = "需要更新";
                     SongMaintenance_DBVerTooltip_Label.Text = "SQLite 歌庫無法更新資料庫結構,請載入原本的 .mdb 歌庫更新後,再重新匯出 SQLite 資料庫。";
                 });
                 Global.DatabaseUpdateFinished = true;
                 return;
             }
 
-            using (DbConnection conn = Db.OpenConn(Global.CrazyktvDatabaseFile, ""))
+            try
             {
-                bool UpdateError = false;
-
-                if (!Directory.Exists(Application.StartupPath + @"\SongMgr\Backup")) Directory.CreateDirectory(Application.StartupPath + @"\SongMgr\Backup");
-                string SongDBBackupFile = SongDBBackupFile = Application.StartupPath + @"\SongMgr\Backup\" + DateTime.Now.ToLongDateString() + "_CrazySong.mdb";
-                File.Copy(Global.CrazyktvDatabaseFile, SongDBBackupFile, true);
-
-                List<string> CrazyktvDBTableList = new List<string>(Db.GetTableList(Global.CrazyktvDatabaseFile, ""));
-
-                // 移除 ktv_AllSinger 資料表
-                if (CrazyktvDBTableList.IndexOf("ktv_AllSinger") >= 0)
-                {
-                    using (DbCommand cmd = Db.Command("drop table ktv_AllSinger", conn))
-                    {
-                        try
-                        {
-                            cmd.ExecuteNonQuery();
-                            cmd.Parameters.Clear();
-                        }
-                        catch
-                        {
-                            UpdateError = true;
-                            this.BeginInvoke((Action)delegate ()
-                            {
-                                SongMaintenance_DBVerTooltip_Label.Text = "移除 ktv_AllSinger 資料表失敗,已還原為原本的資料庫檔案。";
-                            });
-                        }
-                    }
-                }
-
-                // 移除 ktv_Version 資料表
-                if (CrazyktvDBTableList.IndexOf("ktv_Version") >= 0)
-                {
-                    using (DbCommand cmd = Db.Command("drop table ktv_Version", conn))
-                    {
-                        try
-                        {
-                            cmd.ExecuteNonQuery();
-                            cmd.Parameters.Clear();
-                        }
-                        catch
-                        {
-                            UpdateError = true;
-                            this.BeginInvoke((Action)delegate ()
-                            {
-                                SongMaintenance_DBVerTooltip_Label.Text = "移除 ktv_Version 資料表失敗,已還原為原本的資料庫檔案。";
-                            });
-                        }
-                    }
-                }
-                CrazyktvDBTableList.Clear();
-                CrazyktvDBTableList = null;
-
-                if (!UpdateError)
-                {
-                    bool UpdateKtvSong = false;
-                    bool UpdateKtvSinger = false;
-                    bool UpdatePhonetics = false;
-                    bool UpdateLangauage = true;
-                    bool UpdateFavorite = false;
-                    bool AddSongReplayGainColumn = true;
-                    bool RemoveSongMeanVolumeColumn = false;
-                    bool RemoveGodLiuColumn = false;
-                    List<string> GodLiuColumnlist = new List<string>();
-
-                    List<string> tablelist = new List<string>() { "ktv_Singer", "ktv_Phonetics", "ktv_Langauage", "ktv_User", "ktv_Favorite" };
-                    String[] Restrictions = new String[4];
-                    Restrictions[2] = "ktv_Song";
-                    using (DataTable dt = conn.GetSchema("Columns", Restrictions))
-                    {
-                        foreach (string tablename in tablelist)
-                        {
-                            Restrictions[2] = tablename;
-                            using (DataTable tb = conn.GetSchema("Columns", Restrictions))
-                            {
-                                foreach (DataRow row in tb.Rows)
-                                {
-                                    dt.ImportRow(row);
-                                }
-                            }
-                        }
-                        tablelist.Clear();
-                        tablelist = null;
-
-                        foreach (DataRow row in dt.Rows)
-                        {
-                            switch (row["COLUMN_NAME"].ToString())
-                            {
-                                case "Song_SongName":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "80") UpdateKtvSong = true;
-                                    break;
-                                case "Song_Singer":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "60") UpdateKtvSong = true;
-                                    break;
-                                case "Song_Spell":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "80") UpdateKtvSong = true;
-                                    break;
-                                case "Song_FileName":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "255") UpdateKtvSong = true;
-                                    break;
-                                case "Song_SpellNum":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "80") UpdateKtvSong = true;
-                                    break;
-                                case "Song_PenStyle":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "80") UpdateKtvSong = true;
-                                    break;
-                                case "Song_ReplayGain":
-                                    AddSongReplayGainColumn = false;
-                                    break;
-                                case "Song_MeanVolume":
-                                    RemoveSongMeanVolumeColumn = true;
-                                    break;
-                                case "Singer_Name":
-                                case "Singer_Spell":
-                                case "Singer_SpellNum":
-                                case "Singer_PenStyle":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "60") UpdateKtvSinger = true;
-                                    break;
-                                case "PenStyle":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "40") UpdatePhonetics = true;
-                                    break;
-                                case "Langauage_KeyWord":
-                                    UpdateLangauage = false;
-                                    break;
-                                case "User_Id":
-                                    if (row["CHARACTER_MAXIMUM_LENGTH"].ToString() != "12") UpdateFavorite = true;
-                                    break;
-                                case "Song_SongNameFuzzy":
-                                case "Song_SingerFuzzy":
-                                case "Song_FuzzyVer":
-                                case "DLspace":
-                                case "Epasswd":
-                                case "imgpath":
-                                case "cashboxsongid":
-                                case "cashboxdat":
-                                case "holidaysongid":
-                                    RemoveGodLiuColumn = true;
-                                    GodLiuColumnlist.Add(row["COLUMN_NAME"].ToString());
-                                    break;
-                            }
-                        }
-                    }
-
-                    string UpdateSqlStr = "";
-                    if (UpdateKtvSong)
-                    {
-                        try
-                        {
-                            UpdateSqlStr = "select * into ktv_Song_temp from ktv_Song";
-                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-
-                            UpdateSqlStr = "delete * from ktv_Song";
-                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-
-                            List<string> cmdstrlist = new List<string>()
-                            {
-                                "alter table ktv_Song alter column Song_SongName TEXT(80) WITH COMPRESSION",
-                                "alter table ktv_Song alter column Song_Singer TEXT(60) WITH COMPRESSION",
-                                "alter table ktv_Song alter column Song_Spell TEXT(80) WITH COMPRESSION",
-                                "alter table ktv_Song alter column Song_FileName TEXT(255) WITH COMPRESSION",
-                                "alter table ktv_Song alter column Song_SpellNum TEXT(80) WITH COMPRESSION",
-                                "alter table ktv_Song alter column Song_PenStyle TEXT(80) WITH COMPRESSION"
-                            };
-
-                            foreach (string cmdstr in cmdstrlist)
-                            {
-                                using (DbCommand cmd = Db.Command(cmdstr, conn))
-                                {
-                                    cmd.ExecuteNonQuery();
-                                    cmd.Parameters.Clear();
-                                }
-                            }
-                            cmdstrlist.Clear();
-                            cmdstrlist = null;
-
-                            UpdateSqlStr = "insert into ktv_Song select * from ktv_Song_temp";
-                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-
-                            UpdateSqlStr = "drop table ktv_Song_temp";
-                            using (DbCommand cmd = Db.Command(UpdateSqlStr, conn))
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-                        }
-                        catch
-                        {
-                            UpdateError = true;
-                            this.BeginInvoke((Action)delegate ()
-                            {
-                                SongMaintenance_DBVerTooltip_Label.Text = "更新歌曲資料表失敗,已還原為原本的資料庫檔案。";
-                            });
-                        }
-                    }
-
-                    if (UpdateKtvSinger)
-                    {
-                        List<string> cmdstrlist = new List<string>()
-                        {
-                            "alter table ktv_Singer alter column Singer_Name TEXT(60) WITH COMPRESSION",
-                            "alter table ktv_Singer alter column Singer_Spell TEXT(60) WITH COMPRESSION",
-                            "alter table ktv_Singer alter column Singer_SpellNum TEXT(60) WITH COMPRESSION",
-                            "alter table ktv_Singer alter column Singer_PenStyle TEXT(60) WITH COMPRESSION"
-                        };
-
-                        try
-                        {
-                            foreach (string cmdstr in cmdstrlist)
-                            {
-                                using (DbCommand cmd = Db.Command(cmdstr, conn))
-                                {
-                                    cmd.ExecuteNonQuery();
-                                    cmd.Parameters.Clear();
-                                }
-                            }
-                            cmdstrlist.Clear();
-                            cmdstrlist = null;
-                        }
-                        catch
-                        {
-                            UpdateError = true;
-                            this.BeginInvoke((Action)delegate ()
-                            {
-                                SongMaintenance_DBVerTooltip_Label.Text = "更新歌手資料表失敗,已還原為原本的資料庫檔案。";
-                            });
-
-                        }
-                    }
-
-                    if (UpdatePhonetics)
-                    {
-                        using (DbCommand cmd = Db.Command("alter table ktv_Phonetics alter column PenStyle TEXT(40) WITH COMPRESSION", conn))
-                        {
-                            try
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-                            catch
-                            {
-                                UpdateError = true;
-                                this.BeginInvoke((Action)delegate ()
-                                {
-                                    SongMaintenance_DBVerTooltip_Label.Text = "更新拼音資料表失敗,已還原為原本的資料庫檔案。";
-                                });
-                            }
-                        }
-                    }
-
-                    if (UpdateLangauage)
-                    {
-                        using (DbCommand cmd = Db.Command("alter table ktv_Langauage add column Langauage_KeyWord TEXT(255) WITH COMPRESSION", conn))
-                        {
-                            try
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-                            catch
-                            {
-                                UpdateError = true;
-                                this.BeginInvoke((Action)delegate ()
-                                {
-                                    SongMaintenance_DBVerTooltip_Label.Text = "更新語系資料表失敗,已還原為原本的資料庫檔案。";
-                                });
-                            }
-                        }
-                    }
-
-                    if (UpdateFavorite)
-                    {
-                        List<string> cmdstrlist = new List<string>()
-                        {
-                            "alter table ktv_User alter column User_Id TEXT(12) WITH COMPRESSION",
-                            "alter table ktv_Favorite alter column User_Id TEXT(12) WITH COMPRESSION",
-                        };
-
-                        try
-                        {
-                            foreach (string cmdstr in cmdstrlist)
-                            {
-                                using (DbCommand cmd = Db.Command(cmdstr, conn))
-                                {
-                                    cmd.ExecuteNonQuery();
-                                    cmd.Parameters.Clear();
-                                }
-                            }
-                            cmdstrlist.Clear();
-                            cmdstrlist = null;
-                        }
-                        catch
-                        {
-                            UpdateError = true;
-                            this.BeginInvoke((Action)delegate ()
-                            {
-                                SongMaintenance_DBVerTooltip_Label.Text = "更新我的最愛資料表失敗,已還原為原本的資料庫檔案。";
-                            });
-
-                        }
-                    }
-
-                    if (AddSongReplayGainColumn)
-                    {
-                        using (DbCommand cmd = Db.Command("alter table ktv_Song add column Song_ReplayGain DOUBLE", conn))
-                        {
-                            try
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-                            catch
-                            {
-                                UpdateError = true;
-                                this.BeginInvoke((Action)delegate ()
-                                {
-                                    SongMaintenance_DBVerTooltip_Label.Text = "加入 Song_ReplayGain 欄位失敗,已還原為原本的資料庫檔案。";
-                                });
-                            }
-                        }
-                    }
-
-                    if (RemoveSongMeanVolumeColumn)
-                    {
-                        using (DbCommand cmd = Db.Command("alter table ktv_Song drop column Song_MeanVolume", conn))
-                        {
-                            try
-                            {
-                                cmd.ExecuteNonQuery();
-                                cmd.Parameters.Clear();
-                            }
-                            catch
-                            {
-                                UpdateError = true;
-                                this.BeginInvoke((Action)delegate ()
-                                {
-                                    SongMaintenance_DBVerTooltip_Label.Text = "移除 Song_MeanVolume 欄位失敗,已還原為原本的資料庫檔案。";
-                                });
-                            }
-                        }
-                    }
-
-                    if (RemoveGodLiuColumn)
-                    {
-                        List<string> haveindexlist = new List<string>();
-                        using (DataTable dt = conn.GetSchema("Indexes"))
-                        {
-                            foreach (DataRow row in dt.Rows)
-                            {
-                                if (haveindexlist.IndexOf(row["COLUMN_NAME"].ToString()) < 0) haveindexlist.Add(row["COLUMN_NAME"].ToString());
-                            }
-                        }
-
-                        string cmdstr = string.Empty;
-                        string removeindex = string.Empty;
-                        foreach (string GodLiuColumn in GodLiuColumnlist)
-                        {
-                            switch (GodLiuColumn)
-                            {
-                                case "Song_SongNameFuzzy":
-                                    cmdstr = "alter table ktv_Song drop column Song_SongNameFuzzy";
-                                    break;
-                                case "Song_SingerFuzzy":
-                                    cmdstr = "alter table ktv_Song drop column Song_SingerFuzzy";
-                                    break;
-                                case "Song_FuzzyVer":
-                                    cmdstr = "alter table ktv_Song drop column Song_FuzzyVer";
-                                    break;
-                                case "DLspace":
-                                    cmdstr = "alter table ktv_Song drop column DLspace";
-                                    break;
-                                case "Epasswd":
-                                    cmdstr = "alter table ktv_Song drop column Epasswd";
-                                    break;
-                                case "imgpath":
-                                    cmdstr = "alter table ktv_Song drop column imgpath";
-                                    break;
-                                case "cashboxsongid":
-                                    removeindex = "drop index cashboxsongid on ktv_Song";
-                                    cmdstr = "alter table ktv_Song drop column cashboxsongid";
-                                    break;
-                                case "cashboxdat":
-                                    cmdstr = "alter table ktv_Song drop column cashboxdat";
-                                    break;
-                                case "holidaysongid":
-                                    removeindex = "drop index holidaysongid on ktv_Song";
-                                    cmdstr = "alter table ktv_Song drop column holidaysongid";
-                                    break;
-                            }
-
-                            if (GodLiuColumn == "cashboxsongid" || GodLiuColumn == "holidaysongid")
-                            {
-                                if (haveindexlist.IndexOf(GodLiuColumn) > 0)
-                                {
-                                    using (DbCommand cmd = Db.Command(removeindex, conn))
-                                    {
-                                        try
-                                        {
-                                            cmd.ExecuteNonQuery();
-                                            cmd.Parameters.Clear();
-                                        }
-                                        catch
-                                        {
-                                            UpdateError = true;
-                                            this.BeginInvoke((Action)delegate ()
-                                            {
-                                                SongMaintenance_DBVerTooltip_Label.Text = "刪除 GodLiu 相關欄位失敗,已還原為原本的資料庫檔案。";
-                                            });
-                                        }
-                                    }
-                                }
-                            }
-
-                            using (DbCommand cmd = Db.Command(cmdstr, conn))
-                            {
-                                try
-                                {
-                                    cmd.ExecuteNonQuery();
-                                    cmd.Parameters.Clear();
-                                }
-                                catch
-                                {
-                                    UpdateError = true;
-                                    this.BeginInvoke((Action)delegate ()
-                                    {
-                                        SongMaintenance_DBVerTooltip_Label.Text = "刪除 GodLiu 相關欄位失敗,已還原為原本的資料庫檔案。";
-                                    });
-                                }
-                            }
-                        }
-                    }
-
-                    string SqlStr = "select * from ktv_Swan";
-                    using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SqlStr, ""))
-                    {
-                        if (dt.Rows.Count > 0)
-                        {
-                            if (Convert.ToString(dt.Rows[3][1]) == "合唱歌曲")
-                            {
-                                using (DbCommand cmd = Db.Command("update ktv_Swan set Swan_Name = @SwanName where Swan_Id = @SwanId", conn))
-                                {
-                                    cmd.Parameters.AddWithValue("@SwanName", "合唱");
-                                    cmd.Parameters.AddWithValue("@SwanId", "3");
-                                    try
-                                    {
-                                        cmd.ExecuteNonQuery();
-                                        cmd.Parameters.Clear();
-                                    }
-                                    catch
-                                    {
-                                        UpdateError = true;
-                                        this.BeginInvoke((Action)delegate ()
-                                        {
-                                            SongMaintenance_DBVerTooltip_Label.Text = "變更歌手類別資料失敗,已還原為原本的資料庫檔案。";
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (UpdateError)
-                {
-                    File.Copy(SongDBBackupFile, Global.CrazyktvDatabaseFile, true);
-                    Global.DatabaseUpdateFinished = true;
-                }
-                else
-                {
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongDBVer", Global.CrazyktvSongDBVer);
-
-                    string VersionQuerySqlStr = "select * from ktv_Version";
-                    using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, VersionQuerySqlStr, ""))
-                    {
-                        if (dt.Rows.Count > 0)
-                        {
-                            foreach (DataRow row in dt.Rows)
-                            {
-                                Global.CashboxUpdDate = DateTime.Parse(row["CashboxUpdDate"].ToString());
-                            }
-                        }
-                    }
-
-                    this.BeginInvoke((Action)delegate ()
-                    {
-                        Global.TimerEndTime = DateTime.Now;
-
-                        SongMaintenance_DBVer1Value_Label.Text = Global.CrazyktvSongDBVer + " 版";
-                        Cashbox_UpdDateValue_Label.Text = (CultureInfo.CurrentCulture.Name == "zh-TW") ? Global.CashboxUpdDate.ToLongDateString() : Global.CashboxUpdDate.ToShortDateString();
-
-                        SongMaintenance_DBVerTooltip_Label.Text = "";
-                        SongMaintenance_Tooltip_Label.Text = "已完成歌庫版本更新,共花費 " + (long)(Global.TimerEndTime - Global.TimerStartTime).TotalSeconds + " 秒完成。";
-                    });
-                    SongDBUpdate_UpdateFinish();
-                }
+                SchemaUpgrade.Run(Global.CrazyktvDatabaseFile, Application.StartupPath + @"\SongMgr\Backup");
             }
+            catch (Exception ex)
+            {
+                // A SchemaUpgradeException has put the backup back; anything else failed before the file was touched.
+                string message = (ex is SchemaUpgradeException) ? ex.Message : "資料庫結構更新失敗: " + ex.Message;
+                this.BeginInvoke((Action)delegate ()
+                {
+                    SongMaintenance_DBVer1Value_Label.Text = "需要更新";
+                    SongMaintenance_DBVerTooltip_Label.Text = message;
+                });
+                Global.DatabaseUpdateFinished = true;
+                return;
+            }
+
+            SongDBUpdate_ShowCashboxUpdDate();
+            this.BeginInvoke((Action)delegate ()
+            {
+                Global.TimerEndTime = DateTime.Now;
+                SongMaintenance_DBVer1Value_Label.Text = "最新";
+                SongMaintenance_DBVerTooltip_Label.Text = "";
+                SongMaintenance_Tooltip_Label.Text = "已完成資料庫結構更新,共花費 " + (long)(Global.TimerEndTime - Global.TimerStartTime).TotalSeconds + " 秒完成。";
+            });
+            SongDBUpdate_UpdateFinish();
         }
 
 
         private void SongDBUpdate_UpdateFinish()
         {
-            List<bool> list = GetCrazyktvDatabaseStatus();
-            bool SongMgrDestFolder = list[3];
-            list.Clear();
-            list = null;
+            bool SongMgrDestFolder = GetCrazyktvDatabaseStatus().DestFolder;
 
             if (Global.CrazyktvDatabaseStatus)
             {
