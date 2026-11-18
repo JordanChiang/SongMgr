@@ -132,6 +132,50 @@ namespace SongMgr.Tests.Settings
             }
         }
 
+        [Theory]
+        [InlineData("True", true)]
+        [InlineData("False", false)]
+        [InlineData("true", true)]
+        [InlineData("FALSE", false)]
+        public void A_bool_reads_true_or_false_in_any_case(string text, bool expected)
+        {
+            SongMgrSettings.SongMgrChorusMerge.Value = !expected;
+
+            SongMgrSettings.SongMgrChorusMerge.Set(text);
+
+            Assert.Equal(expected, Global.SongMgrChorusMerge);
+        }
+
+        [Theory]
+        [InlineData("yes")]
+        [InlineData("1")]
+        [InlineData("True-ish")]
+        public void A_bool_that_does_not_parse_keeps_its_value(string text)
+        {
+            SettingsFile.Create(path, new[] { ("SongMgrChorusMerge", text), ("MainCfgEnableAutoUpdate", text) });
+
+            SongMgrSettings.Load(SettingsFile.Load(path));
+
+            Assert.False(Global.SongMgrChorusMerge);
+            Assert.True(Global.MainCfgEnableAutoUpdate);
+        }
+
+        [Fact]
+        public void A_bool_is_written_as_True_or_False()
+        {
+            SettingsFile.Create(path, SongMgrSettings.Defaults());
+            Global.SongMgrChorusMerge = true;
+            Global.SongMgrSongTrackMode = false;
+
+            SongMgrSettings.Save(SettingsGroup.SongMgrCfg);
+
+            SettingsFile cfg = SettingsFile.Load(path);
+            Assert.Equal("True", cfg["SongMgrChorusMerge"]);
+            Assert.Equal("False", cfg["SongMgrSongTrackMode"]);
+            Assert.Equal("True", cfg["MainCfgEnableAutoUpdate"]);
+            Assert.Equal("False", cfg["MainCfgAlwaysOnTop"]);
+        }
+
         [Fact]
         public void A_list_default_is_a_new_copy_each_time()
         {
@@ -158,7 +202,7 @@ namespace SongMgr.Tests.Settings
         {
             SettingsFile.Create(path, SongMgrSettings.Defaults());
             string loadOnlyDefault = Global.SingerMgrDefaultSingerDataTable;
-            foreach (Setting s in SongMgrSettings.Entries) s.Set(s.Name + "-值");
+            foreach (Setting s in SongMgrSettings.Entries) s.Set(Changed(s, "-值"));
 
             foreach (SettingsGroup group in SavedGroups) SongMgrSettings.Save(group);
             ResetGlobals();
@@ -166,7 +210,7 @@ namespace SongMgr.Tests.Settings
 
             foreach (Setting s in SongMgrSettings.Entries.Where(s => s.Group != SettingsGroup.LoadOnly))
             {
-                Assert.Equal(s.Name + "-值", s.Get());
+                Assert.Equal(Changed(s, "-值"), s.Get());
             }
             Assert.Equal(loadOnlyDefault, Global.SingerMgrDefaultSingerDataTable);
             Assert.Equal("", SettingsFile.Load(path)["SingerMgrDefaultSingerDataTable"]);
@@ -225,7 +269,14 @@ namespace SongMgr.Tests.Settings
 
         void ChangeEverySetting()
         {
-            foreach (Setting s in SongMgrSettings.Entries) s.Set(s.Name + "-新");
+            foreach (Setting s in SongMgrSettings.Entries) s.Set(Changed(s, "-新"));
+        }
+
+        /// <summary>File text for <paramref name="s"/> that differs from its default and parses: the other bool, or tagged text.</summary>
+        static string Changed(Setting s, string tag)
+        {
+            if (s is Setting<bool> b) return b.Default ? "False" : "True";
+            return s.Name + tag;
         }
 
         /// <summary>A file with every setting, a hand-added unknown key, the legacy key, and a repeated key.</summary>

@@ -774,7 +774,7 @@ namespace CrazyKTV_SongMgr
 
                     if (Global.AddMode != SongAddMode.InPlace && !SongQuery.QuerySameFileSong)
                     {
-                        if (!LibraryPlacement.Remove(str, Global.SongMgrBackupRemoveSong == "True"))
+                        if (!LibraryPlacement.Remove(str, Global.SongMgrBackupRemoveSong))
                         {
                             RemoveError = true;
                             Global.SongLog.Add("【歌庫查詢】異動檔案時發生錯誤: " + str + " (唯讀或使用中)");

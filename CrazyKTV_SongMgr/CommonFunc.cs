@@ -826,7 +826,7 @@ namespace CrazyKTV_SongMgr
                     });
                 }
 
-                if (Global.MainCfgAutoSongFileCount != "True")
+                if (!Global.MainCfgAutoSongFileCount)
                 {
                     this.BeginInvoke((Action)delegate()
                     {
@@ -1572,7 +1572,7 @@ namespace CrazyKTV_SongMgr
         private void Common_CheckBackupRemoveSongTask()
         {
             Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-            if (Global.SongMgrBackupRemoveSong == "True")
+            if (Global.SongMgrBackupRemoveSong)
             {
                 if (Directory.Exists(LibraryPlacement.RemoveSongFolder))
                 {
@@ -1656,7 +1656,7 @@ namespace CrazyKTV_SongMgr
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            bool alwaysOnTop = Global.MainCfgAlwaysOnTop == "True";
+            bool alwaysOnTop = Global.MainCfgAlwaysOnTop;
 
             if (AppUpdater.LaunchedAfterUpdate)
             {
@@ -1698,7 +1698,7 @@ namespace CrazyKTV_SongMgr
         // 背景向 GitHub Releases 查詢新版, 不阻塞啟動
         private void Common_CheckSongMgrVer()
         {
-            if (Global.MainCfgEnableAutoUpdate != "True") return;
+            if (!Global.MainCfgEnableAutoUpdate) return;
 
             Task.Run(() =>
             {
@@ -1882,7 +1882,7 @@ namespace CrazyKTV_SongMgr
                     break;
             }
 
-            if (Global.MainCfgEnableUIScale == "True" && ScalingFactor != 0)
+            if (Global.MainCfgEnableUIScale && ScalingFactor != 0)
             {
                 MainUIScale_UIScale(ScalingFactor, Global.MainCfgUIFont);
             }

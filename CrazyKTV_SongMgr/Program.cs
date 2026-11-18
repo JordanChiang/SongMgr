@@ -104,7 +104,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
         }
-        public static string SongMgrChorusMerge { get => SongMgrSettings.SongMgrChorusMerge.Value; set => SongMgrSettings.SongMgrChorusMerge.Value = value; }
+        public static bool SongMgrChorusMerge { get => SongMgrSettings.SongMgrChorusMerge.Value; set => SongMgrSettings.SongMgrChorusMerge.Value = value; }
         public static string SongMgrMaxDigitCode { get => SongMgrSettings.SongMgrMaxDigitCode.Value; set => SongMgrSettings.SongMgrMaxDigitCode.Value = value; }
         public static string SongMgrLangCode { get => SongMgrSettings.SongMgrLangCode.Value; set => SongMgrSettings.SongMgrLangCode.Value = value; }
         public static string SongMgrSongType { get => SongMgrSettings.SongMgrSongType.Value; set => SongMgrSettings.SongMgrSongType.Value = value; }
@@ -112,10 +112,10 @@ namespace CrazyKTV_SongMgr
         public static string SongMgrChorusSeparate { get => SongMgrSettings.SongMgrChorusSeparate.Value; set => SongMgrSettings.SongMgrChorusSeparate.Value = value; }
         public static string SongMgrFolderStructure { get => SongMgrSettings.SongMgrFolderStructure.Value; set => SongMgrSettings.SongMgrFolderStructure.Value = value; }
         public static string SongMgrFileStructure { get => SongMgrSettings.SongMgrFileStructure.Value; set => SongMgrSettings.SongMgrFileStructure.Value = value; }
-        public static string SongMgrSongTrackMode { get => SongMgrSettings.SongMgrSongTrackMode.Value; set => SongMgrSettings.SongMgrSongTrackMode.Value = value; }
-        public static string SongMgrBackupRemoveSong { get => SongMgrSettings.SongMgrBackupRemoveSong.Value; set => SongMgrSettings.SongMgrBackupRemoveSong.Value = value; }
+        public static bool SongMgrSongTrackMode { get => SongMgrSettings.SongMgrSongTrackMode.Value; set => SongMgrSettings.SongMgrSongTrackMode.Value = value; }
+        public static bool SongMgrBackupRemoveSong { get => SongMgrSettings.SongMgrBackupRemoveSong.Value; set => SongMgrSettings.SongMgrBackupRemoveSong.Value = value; }
         public static string SongMgrCustomSingerTypeStructure { get => SongMgrSettings.SongMgrCustomSingerTypeStructure.Value; set => SongMgrSettings.SongMgrCustomSingerTypeStructure.Value = value; }
-        public static string SongMgrEnableMonitorFolders { get => SongMgrSettings.SongMgrEnableMonitorFolders.Value; set => SongMgrSettings.SongMgrEnableMonitorFolders.Value = value; }
+        public static bool SongMgrEnableMonitorFolders { get => SongMgrSettings.SongMgrEnableMonitorFolders.Value; set => SongMgrSettings.SongMgrEnableMonitorFolders.Value = value; }
         public static string SongMgrSingerGroup { get => SongMgrSettings.SongMgrSingerGroup.Value; set => SongMgrSettings.SongMgrSingerGroup.Value = value; }
         public static bool SongMgrInitializeStatus = false;
         public static bool SongMgrDBVerErrorUIStatus = false;
@@ -123,7 +123,7 @@ namespace CrazyKTV_SongMgr
         public static List<string> SongMgrMonitorFoldersList { get => SongMgrSettings.SongMgrMonitorFolders.Value; set => SongMgrSettings.SongMgrMonitorFolders.Value = value; }
 
         public static string SingerMgrDefaultSingerDataTable { get => SongMgrSettings.SingerMgrDefaultSingerDataTable.Value; set => SongMgrSettings.SingerMgrDefaultSingerDataTable.Value = value; }
-        public static string SingerMgrSyncSongSinger { get => SongMgrSettings.SingerMgrSyncSongSinger.Value; set => SongMgrSettings.SingerMgrSyncSongSinger.Value = value; }
+        public static bool SingerMgrSyncSongSinger { get => SongMgrSettings.SingerMgrSyncSongSinger.Value; set => SongMgrSettings.SingerMgrSyncSongSinger.Value = value; }
         public static string SingerMgrLastNameSortMethod = "1";
 
         public static string SongAddDefaultSongLang { get => SongMgrSettings.SongAddDefaultSongLang.Value; set => SongMgrSettings.SongAddDefaultSongLang.Value = value; }
@@ -134,29 +134,29 @@ namespace CrazyKTV_SongMgr
         public static string SongAddSpecialStr { get => SongMgrSettings.SongAddSpecialStr.Value; set => SongMgrSettings.SongAddSpecialStr.Value = value; }
         public static string SongAddSongIdentificationMode { get => SongMgrSettings.SongAddSongIdentificationMode.Value; set => SongMgrSettings.SongAddSongIdentificationMode.Value = value; }
         public static string SongAddDupSongMode { get => SongMgrSettings.SongAddDupSongMode.Value; set => SongMgrSettings.SongAddDupSongMode.Value = value; }
-        public static string SongAddEngSongNameFormat { get => SongMgrSettings.SongAddEngSongNameFormat.Value; set => SongMgrSettings.SongAddEngSongNameFormat.Value = value; }
-        public static string SongAddUseCustomSongID { get => SongMgrSettings.SongAddUseCustomSongID.Value; set => SongMgrSettings.SongAddUseCustomSongID.Value = value; }
-        public static string SongAddEnableConvToTC { get => SongMgrSettings.SongAddEnableConvToTC.Value; set => SongMgrSettings.SongAddEnableConvToTC.Value = value; }
-        public static string SongAddEnableVolumeDetect { get => SongMgrSettings.SongAddEnableVolumeDetect.Value; set => SongMgrSettings.SongAddEnableVolumeDetect.Value = value; }
+        public static bool SongAddEngSongNameFormat { get => SongMgrSettings.SongAddEngSongNameFormat.Value; set => SongMgrSettings.SongAddEngSongNameFormat.Value = value; }
+        public static bool SongAddUseCustomSongID { get => SongMgrSettings.SongAddUseCustomSongID.Value; set => SongMgrSettings.SongAddUseCustomSongID.Value = value; }
+        public static bool SongAddEnableConvToTC { get => SongMgrSettings.SongAddEnableConvToTC.Value; set => SongMgrSettings.SongAddEnableConvToTC.Value = value; }
+        public static bool SongAddEnableVolumeDetect { get => SongMgrSettings.SongAddEnableVolumeDetect.Value; set => SongMgrSettings.SongAddEnableVolumeDetect.Value = value; }
 
-        public static string MainCfgAlwaysOnTop { get => SongMgrSettings.MainCfgAlwaysOnTop.Value; set => SongMgrSettings.MainCfgAlwaysOnTop.Value = value; }
-        public static string MainCfgEnableAutoUpdate { get => SongMgrSettings.MainCfgEnableAutoUpdate.Value; set => SongMgrSettings.MainCfgEnableAutoUpdate.Value = value; }
-        public static string MainCfgAutoSongFileCount { get => SongMgrSettings.MainCfgAutoSongFileCount.Value; set => SongMgrSettings.MainCfgAutoSongFileCount.Value = value; }
-        public static string MainCfgHideSongDBConverterTabPage { get => SongMgrSettings.MainCfgHideSongDBConverterTabPage.Value; set => SongMgrSettings.MainCfgHideSongDBConverterTabPage.Value = value; }
-        public static string MainCfgHideSongAddResultTabPage { get => SongMgrSettings.MainCfgHideSongAddResultTabPage.Value; set => SongMgrSettings.MainCfgHideSongAddResultTabPage.Value = value; }
-        public static string MainCfgHideSongLogTabPage { get => SongMgrSettings.MainCfgHideSongLogTabPage.Value; set => SongMgrSettings.MainCfgHideSongLogTabPage.Value = value; }
-        public static string MainCfgHideApplyCashboxIdButton { get => SongMgrSettings.MainCfgHideApplyCashboxIdButton.Value; set => SongMgrSettings.MainCfgHideApplyCashboxIdButton.Value = value; }
+        public static bool MainCfgAlwaysOnTop { get => SongMgrSettings.MainCfgAlwaysOnTop.Value; set => SongMgrSettings.MainCfgAlwaysOnTop.Value = value; }
+        public static bool MainCfgEnableAutoUpdate { get => SongMgrSettings.MainCfgEnableAutoUpdate.Value; set => SongMgrSettings.MainCfgEnableAutoUpdate.Value = value; }
+        public static bool MainCfgAutoSongFileCount { get => SongMgrSettings.MainCfgAutoSongFileCount.Value; set => SongMgrSettings.MainCfgAutoSongFileCount.Value = value; }
+        public static bool MainCfgHideSongDBConverterTabPage { get => SongMgrSettings.MainCfgHideSongDBConverterTabPage.Value; set => SongMgrSettings.MainCfgHideSongDBConverterTabPage.Value = value; }
+        public static bool MainCfgHideSongAddResultTabPage { get => SongMgrSettings.MainCfgHideSongAddResultTabPage.Value; set => SongMgrSettings.MainCfgHideSongAddResultTabPage.Value = value; }
+        public static bool MainCfgHideSongLogTabPage { get => SongMgrSettings.MainCfgHideSongLogTabPage.Value; set => SongMgrSettings.MainCfgHideSongLogTabPage.Value = value; }
+        public static bool MainCfgHideApplyCashboxIdButton { get => SongMgrSettings.MainCfgHideApplyCashboxIdButton.Value; set => SongMgrSettings.MainCfgHideApplyCashboxIdButton.Value = value; }
         public static string MainCfgBackupRemoveSongDays { get => SongMgrSettings.MainCfgBackupRemoveSongDays.Value; set => SongMgrSettings.MainCfgBackupRemoveSongDays.Value = value; }
         public static string MainCfgUIScale { get => SongMgrSettings.MainCfgUIScale.Value; set => SongMgrSettings.MainCfgUIScale.Value = value; }
         public static string MainCfgUICustomScale { get => SongMgrSettings.MainCfgUICustomScale.Value; set => SongMgrSettings.MainCfgUICustomScale.Value = value; }
         public static string MainCfgUIFont { get => SongMgrSettings.MainCfgUIFont.Value; set => SongMgrSettings.MainCfgUIFont.Value = value; }
-        public static string MainCfgEnableUIScale { get => SongMgrSettings.MainCfgEnableUIScale.Value; set => SongMgrSettings.MainCfgEnableUIScale.Value = value; }
-        public static string MainCfgBackupDB { get => SongMgrSettings.MainCfgBackupDB.Value; set => SongMgrSettings.MainCfgBackupDB.Value = value; }
+        public static bool MainCfgEnableUIScale { get => SongMgrSettings.MainCfgEnableUIScale.Value; set => SongMgrSettings.MainCfgEnableUIScale.Value = value; }
+        public static bool MainCfgBackupDB { get => SongMgrSettings.MainCfgBackupDB.Value; set => SongMgrSettings.MainCfgBackupDB.Value = value; }
         public static string MainCfgBackupDBPath { get => SongMgrSettings.MainCfgBackupDBPath.Value; set => SongMgrSettings.MainCfgBackupDBPath.Value = value; }
         public static string MainCfgPlayerCore { get => SongMgrSettings.MainCfgPlayerCore.Value; set => SongMgrSettings.MainCfgPlayerCore.Value = value; }
         public static string MainCfgPlayerOutput { get => SongMgrSettings.MainCfgPlayerOutput.Value; set => SongMgrSettings.MainCfgPlayerOutput.Value = value; }
-        public static string MainCfgPlayerEnableAudioCompressor { get => SongMgrSettings.MainCfgPlayerEnableAudioCompressor.Value; set => SongMgrSettings.MainCfgPlayerEnableAudioCompressor.Value = value; }
-        public static string MainCfgPlayerEnableAudioProcessor { get => SongMgrSettings.MainCfgPlayerEnableAudioProcessor.Value; set => SongMgrSettings.MainCfgPlayerEnableAudioProcessor.Value = value; }
+        public static bool MainCfgPlayerEnableAudioCompressor { get => SongMgrSettings.MainCfgPlayerEnableAudioCompressor.Value; set => SongMgrSettings.MainCfgPlayerEnableAudioCompressor.Value = value; }
+        public static bool MainCfgPlayerEnableAudioProcessor { get => SongMgrSettings.MainCfgPlayerEnableAudioProcessor.Value; set => SongMgrSettings.MainCfgPlayerEnableAudioProcessor.Value = value; }
         public static string MainCfgPlayerDefaultVolume { get => SongMgrSettings.MainCfgPlayerDefaultVolume.Value; set => SongMgrSettings.MainCfgPlayerDefaultVolume.Value = value; }
 
         public static string SongMaintenanceEnableMultiSongPath = "False";

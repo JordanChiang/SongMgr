@@ -90,8 +90,8 @@ namespace CrazyKTV_SongMgr
             mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec_x86";
             ApplyVideoOutput();
             mediaUriElement.Stretch = System.Windows.Media.Stretch.Fill;
-            mediaUriElement.EnableAudioCompressor = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
-            mediaUriElement.EnableAudioProcessor = bool.Parse(Global.MainCfgPlayerEnableAudioProcessor);
+            mediaUriElement.EnableAudioCompressor = Global.MainCfgPlayerEnableAudioCompressor;
+            mediaUriElement.EnableAudioProcessor = Global.MainCfgPlayerEnableAudioProcessor;
 
             mediaUriElement.MediaFailed += MediaUriElement_MediaFailed;
             mediaUriElement.MediaEnded += MediaUriElement_MediaEnded;
@@ -185,7 +185,7 @@ namespace CrazyKTV_SongMgr
                 switch (SongTrack)
                 {
                     case "1":
-                        if (Global.SongMgrSongTrackMode == "True")
+                        if (Global.SongMgrSongTrackMode)
                         {
                             if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[0])
                                 mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[0];
@@ -197,7 +197,7 @@ namespace CrazyKTV_SongMgr
                         }
                         break;
                     case "2":
-                        if (Global.SongMgrSongTrackMode == "True")
+                        if (Global.SongMgrSongTrackMode)
                         {
                             if (mediaUriElement.AudioStreams.IndexOf(mediaUriElement.AudioTrack) != mediaUriElement.AudioStreams[1])
                                 mediaUriElement.AudioTrack = mediaUriElement.AudioStreams[1];
@@ -322,8 +322,8 @@ namespace CrazyKTV_SongMgr
             mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec_x86";
             ApplyVideoOutput();
             mediaUriElement.Stretch = System.Windows.Media.Stretch.Fill;
-            mediaUriElement.EnableAudioCompressor = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
-            mediaUriElement.EnableAudioProcessor = bool.Parse(Global.MainCfgPlayerEnableAudioProcessor);
+            mediaUriElement.EnableAudioCompressor = Global.MainCfgPlayerEnableAudioCompressor;
+            mediaUriElement.EnableAudioProcessor = Global.MainCfgPlayerEnableAudioProcessor;
 
             mediaUriElement.MediaFailed += MediaUriElement_MediaFailed;
             mediaUriElement.MediaEnded += MediaUriElement_MediaEnded;
@@ -529,7 +529,7 @@ namespace CrazyKTV_SongMgr
                     ChannelValue = "1";
                 }
 
-                if (Global.SongMgrSongTrackMode == "True")
+                if (Global.SongMgrSongTrackMode)
                 {
                     ChannelValue = (ChannelValue == "2") ? "2" : "1";
                 }
@@ -730,7 +730,7 @@ namespace CrazyKTV_SongMgr
             if (this.Owner != null)
             {
                 this.Owner.Show();
-                this.Owner.TopMost = (Global.MainCfgAlwaysOnTop == "True") ? true : false;
+                this.Owner.TopMost = Global.MainCfgAlwaysOnTop;
             }
         }
 

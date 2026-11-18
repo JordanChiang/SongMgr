@@ -312,7 +312,7 @@ namespace CrazyKTV_SongMgr
                 }
 
                 // 自訂編號; 不合用時自動分配編號
-                if (!(Global.SongAddUseCustomSongID == "True" && SongId != "" && SongIds.TryClaim(SongId, SongLang)))
+                if (!(Global.SongAddUseCustomSongID && SongId != "" && SongIds.TryClaim(SongId, SongLang)))
                 {
                     SongId = SongIds.Take(SongLang);
                 }
@@ -355,7 +355,7 @@ namespace CrazyKTV_SongMgr
                     if (LibraryPlacement.MovesFiles)
                     {
                         string SongDestPath = Path.Combine(SongPath, SongFileName);
-                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong == "True"))
+                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong))
                         {
                             FileIOError = true;
                             lock (LockThis) { Global.TotalList[2]++; }
@@ -439,7 +439,7 @@ namespace CrazyKTV_SongMgr
 
                 if (File.Exists(oldfile) && !LibraryPlacement.IsSameFile(oldfile, SongSrcPath))
                 {
-                    if (!LibraryPlacement.Remove(oldfile, Global.SongMgrBackupRemoveSong == "True"))
+                    if (!LibraryPlacement.Remove(oldfile, Global.SongMgrBackupRemoveSong))
                     {
                         DeleteError = true;
                         lock (LockThis) { Global.TotalList[2]++; }
@@ -489,7 +489,7 @@ namespace CrazyKTV_SongMgr
                     if (LibraryPlacement.MovesFiles)
                     {
                         string SongDestPath = Path.Combine(SongPath, SongFileName);
-                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong == "True"))
+                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong))
                         {
                             FileIOError = true;
                             lock (LockThis) { Global.TotalList[2]++; }

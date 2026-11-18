@@ -107,22 +107,22 @@ namespace CrazyKTV_SongMgr
 
         private void SongAdd_EngSongNameFormat_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongAddEngSongNameFormat = SongAdd_EngSongNameFormat_CheckBox.Checked.ToString();
+            Global.SongAddEngSongNameFormat = SongAdd_EngSongNameFormat_CheckBox.Checked;
         }
 
         private void SongAdd_UseCustomSongID_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongAddUseCustomSongID = SongAdd_UseCustomSongID_CheckBox.Checked.ToString();
+            Global.SongAddUseCustomSongID = SongAdd_UseCustomSongID_CheckBox.Checked;
         }
 
         private void SongAdd_EnableConvToTC_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongAddEnableConvToTC = SongAdd_EnableConvToTC_CheckBox.Checked.ToString();
+            Global.SongAddEnableConvToTC = SongAdd_EnableConvToTC_CheckBox.Checked;
         }
 
         private void SongAdd_EnableVolumeDetect_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongAddEnableVolumeDetect = SongAdd_EnableVolumeDetect_CheckBox.Checked.ToString();
+            Global.SongAddEnableVolumeDetect = SongAdd_EnableVolumeDetect_CheckBox.Checked;
         }
 
         private void SongAdd_SpecialStr_ListBox_Enter(object sender, EventArgs e)
@@ -348,7 +348,7 @@ namespace CrazyKTV_SongMgr
             SongAnalysis.CreateSongDataTable();
             int total = 0;
 
-            if (Global.SongAddDefaultSongTrack == "6" || Global.SongAddEnableVolumeDetect == "True")
+            if (Global.SongAddDefaultSongTrack == "6" || Global.SongAddEnableVolumeDetect)
             {
                 NativeMethods.SystemSleepManagement.PreventSleep(false);
                 foreach (string str in filelist)
@@ -599,7 +599,7 @@ namespace CrazyKTV_SongMgr
             using (SongLibraryStore store = SongLibraryStore.Open())
             {
                 List<string> singeraddedlist = new List<string>();
-                SongColumns SongAddColumns = (Global.SongAddEnableVolumeDetect == "True") ? SongColumns.All : SongColumns.AllButReplayGain;
+                SongColumns SongAddColumns = Global.SongAddEnableVolumeDetect ? SongColumns.All : SongColumns.AllButReplayGain;
 
                 foreach (SongRecord song in SongAddSong.SongAddValueList)
                 {
@@ -881,7 +881,7 @@ namespace CrazyKTV_SongMgr
             }
 
             SongLibraryStore store = SongLibraryStore.Open();
-            SongColumns SongUpdateColumns = (Global.SongAddEnableVolumeDetect == "True") ? SongColumns.All : SongColumns.AllButReplayGain;
+            SongColumns SongUpdateColumns = Global.SongAddEnableVolumeDetect ? SongColumns.All : SongColumns.AllButReplayGain;
 
             foreach (SongRecord song in SongAddSong.SongAddValueList)
             {

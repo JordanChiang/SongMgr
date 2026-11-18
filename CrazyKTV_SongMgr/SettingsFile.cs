@@ -187,6 +187,10 @@ namespace CrazyKTV_SongMgr
         static Setting<string> Text(string name, SettingsGroup group, string initial)
             => Add(new Setting<string>(name, group, initial, v => v, (string text, out string v) => { v = text; return true; }, v => v));
 
+        /// <summary>Stored as "True"/"False"; read in any case, and a value that is neither keeps the current one.</summary>
+        static Setting<bool> Bool(string name, SettingsGroup group, bool initial)
+            => Add(new Setting<bool>(name, group, initial, v => v ? "True" : "False", bool.TryParse, v => v));
+
         static Setting<List<string>> List(string name, SettingsGroup group, char separator, params string[] initial)
             => Add(new Setting<List<string>>(name, group, new List<string>(initial),
                 v => string.Join(separator.ToString(), v),
@@ -197,7 +201,7 @@ namespace CrazyKTV_SongMgr
         public static readonly Setting<string> SongMgrSupportFormat = Text("SongMgrSupportFormat", SongMgrCfg, ".avi;.flv;.dat;.mkv;.mp4;.mov;.mpeg;.mpg;.rmvb;.ts;.vob;.webm;.wmv");
         public static readonly Setting<string> SongMgrDestFolder = Text("SongMgrDestFolder", SongMgrCfg, "");
         public static readonly Setting<string> SongMgrSongAddMode = Text("SongMgrSongAddMode", SongMgrCfg, "3");
-        public static readonly Setting<string> SongMgrChorusMerge = Text("SongMgrChorusMerge", SongMgrCfg, "False");
+        public static readonly Setting<bool> SongMgrChorusMerge = Bool("SongMgrChorusMerge", SongMgrCfg, false);
         public static readonly Setting<string> SongMgrMaxDigitCode = Text("SongMgrMaxDigitCode", SongMgrCfg, "2");
         public static readonly Setting<string> SongMgrLangCode = Text("SongMgrLangCode", SongMgrCfg, "");
         public static readonly Setting<string> SongMgrSongType = Text("SongMgrSongType", SongMgrCfg, "");
@@ -211,41 +215,41 @@ namespace CrazyKTV_SongMgr
         public static readonly Setting<string> SongAddSpecialStr = Text("SongAddSpecialStr", SongAdd, "");
         public static readonly Setting<string> SongMgrFolderStructure = Text("SongMgrFolderStructure", SongMgrCfg, "1");
         public static readonly Setting<string> SongMgrFileStructure = Text("SongMgrFileStructure", SongMgrCfg, "1");
-        public static readonly Setting<string> SongMgrSongTrackMode = Text("SongMgrSongTrackMode", SongMgrCfg, "False");
+        public static readonly Setting<bool> SongMgrSongTrackMode = Bool("SongMgrSongTrackMode", SongMgrCfg, false);
         public static readonly Setting<string> SongAddSongIdentificationMode = Text("SongAddSongIdentificationMode", SongAdd, "1");
         public static readonly Setting<string> SongAddDupSongMode = Text("SongAddDupSongMode", SongAdd, "1");
         public static readonly Setting<List<string>> CrazyktvSongLangStr = List("CrazyktvSongLangStr", Direct, ',', "國語", "台語", "粵語", "日語", "英語", "客語", "原住民語", "韓語", "兒歌", "其它");
         public static readonly Setting<List<string>> CrazyktvSongLangKeyWord = List("CrazyktvSongLangKeyWord", Direct, '|', "國語,國", "台語,台,閩南,閩,臺語,臺", "粵語,粵,廣東", "日語,日文,日", "英語,英文,英", "客語,客", "原住民語,民謠", "韓語,韓", "兒歌,兒", "其它");
-        public static readonly Setting<string> SongMgrBackupRemoveSong = Text("SongMgrBackupRemoveSong", SongMgrCfg, "False");
-        public static readonly Setting<string> SongAddEngSongNameFormat = Text("SongAddEngSongNameFormat", SongAdd, "False");
-        public static readonly Setting<string> MainCfgAlwaysOnTop = Text("MainCfgAlwaysOnTop", MainCfg, "False");
-        public static readonly Setting<string> MainCfgHideSongDBConverterTabPage = Text("MainCfgHideSongDBConverterTabPage", MainCfg, "False");
-        public static readonly Setting<string> MainCfgHideSongAddResultTabPage = Text("MainCfgHideSongAddResultTabPage", MainCfg, "True");
-        public static readonly Setting<string> MainCfgHideSongLogTabPage = Text("MainCfgHideSongLogTabPage", MainCfg, "True");
+        public static readonly Setting<bool> SongMgrBackupRemoveSong = Bool("SongMgrBackupRemoveSong", SongMgrCfg, false);
+        public static readonly Setting<bool> SongAddEngSongNameFormat = Bool("SongAddEngSongNameFormat", SongAdd, false);
+        public static readonly Setting<bool> MainCfgAlwaysOnTop = Bool("MainCfgAlwaysOnTop", MainCfg, false);
+        public static readonly Setting<bool> MainCfgHideSongDBConverterTabPage = Bool("MainCfgHideSongDBConverterTabPage", MainCfg, false);
+        public static readonly Setting<bool> MainCfgHideSongAddResultTabPage = Bool("MainCfgHideSongAddResultTabPage", MainCfg, true);
+        public static readonly Setting<bool> MainCfgHideSongLogTabPage = Bool("MainCfgHideSongLogTabPage", MainCfg, true);
         public static readonly Setting<string> MainCfgBackupRemoveSongDays = Text("MainCfgBackupRemoveSongDays", MainCfg, "7");
         public static readonly Setting<string> MainCfgUIScale = Text("MainCfgUIScale", MainCfg, "3");
         public static readonly Setting<string> SongMaintenanceReplayGainVolume = Text("SongMaintenanceReplayGainVolume", Direct, "50");
-        public static readonly Setting<string> SongAddEnableVolumeDetect = Text("SongAddEnableVolumeDetect", SongAdd, "False");
-        public static readonly Setting<string> SongAddUseCustomSongID = Text("SongAddUseCustomSongID", SongAdd, "False");
+        public static readonly Setting<bool> SongAddEnableVolumeDetect = Bool("SongAddEnableVolumeDetect", SongAdd, false);
+        public static readonly Setting<bool> SongAddUseCustomSongID = Bool("SongAddUseCustomSongID", SongAdd, false);
         public static readonly Setting<string> MainCfgUIFont = Text("MainCfgUIFont", MainCfg, "Arial");
-        public static readonly Setting<string> MainCfgEnableUIScale = Text("MainCfgEnableUIScale", MainCfg, "False");
+        public static readonly Setting<bool> MainCfgEnableUIScale = Bool("MainCfgEnableUIScale", MainCfg, false);
         public static readonly Setting<string> SongMgrCustomSingerTypeStructure = Text("SongMgrCustomSingerTypeStructure", SongMgrCfg, "1,1,1,1,1,1,1,2");
-        public static readonly Setting<string> MainCfgEnableAutoUpdate = Text("MainCfgEnableAutoUpdate", MainCfg, "True");
-        public static readonly Setting<string> SongAddEnableConvToTC = Text("SongAddEnableConvToTC", SongAdd, "False");
-        public static readonly Setting<string> SongMgrEnableMonitorFolders = Text("SongMgrEnableMonitorFolders", SongMgrCfg, "False");
+        public static readonly Setting<bool> MainCfgEnableAutoUpdate = Bool("MainCfgEnableAutoUpdate", MainCfg, true);
+        public static readonly Setting<bool> SongAddEnableConvToTC = Bool("SongAddEnableConvToTC", SongAdd, false);
+        public static readonly Setting<bool> SongMgrEnableMonitorFolders = Bool("SongMgrEnableMonitorFolders", SongMgrCfg, false);
         public static readonly Setting<List<string>> SongMgrMonitorFolders = List("SongMgrMonitorFolders", SongMgrCfg, ',', "", "", "", "", "");
-        public static readonly Setting<string> SingerMgrSyncSongSinger = Text("SingerMgrSyncSongSinger", Direct, "True");
+        public static readonly Setting<bool> SingerMgrSyncSongSinger = Bool("SingerMgrSyncSongSinger", Direct, true);
         public static readonly Setting<string> SongMgrSingerGroup = Text("SongMgrSingerGroup", SongMgrCfg, "");
-        public static readonly Setting<string> MainCfgHideApplyCashboxIdButton = Text("MainCfgHideApplyCashboxIdButton", MainCfg, "True");
+        public static readonly Setting<bool> MainCfgHideApplyCashboxIdButton = Bool("MainCfgHideApplyCashboxIdButton", MainCfg, true);
         public static readonly Setting<string> MainCfgUICustomScale = Text("MainCfgUICustomScale", MainCfg, "100");
-        public static readonly Setting<string> MainCfgBackupDB = Text("MainCfgBackupDB", MainCfg, "False");
+        public static readonly Setting<bool> MainCfgBackupDB = Bool("MainCfgBackupDB", MainCfg, false);
         public static readonly Setting<string> MainCfgBackupDBPath = Text("MainCfgBackupDBPath", MainCfg, "");
         public static readonly Setting<string> MainCfgPlayerCore = Text("MainCfgPlayerCore", MainCfg, "1");
         public static readonly Setting<string> MainCfgPlayerOutput = Text("MainCfgPlayerOutput", MainCfg, "1");
-        public static readonly Setting<string> MainCfgPlayerEnableAudioCompressor = Text("MainCfgPlayerEnableAudioCompressor", MainCfg, "False");
-        public static readonly Setting<string> MainCfgPlayerEnableAudioProcessor = Text("MainCfgPlayerEnableAudioProcessor", MainCfg, "False");
+        public static readonly Setting<bool> MainCfgPlayerEnableAudioCompressor = Bool("MainCfgPlayerEnableAudioCompressor", MainCfg, false);
+        public static readonly Setting<bool> MainCfgPlayerEnableAudioProcessor = Bool("MainCfgPlayerEnableAudioProcessor", MainCfg, false);
         public static readonly Setting<string> MainCfgPlayerDefaultVolume = Text("MainCfgPlayerDefaultVolume", MainCfg, "100");
-        public static readonly Setting<string> MainCfgAutoSongFileCount = Text("MainCfgAutoSongFileCount", MainCfg, "False");
+        public static readonly Setting<bool> MainCfgAutoSongFileCount = Bool("MainCfgAutoSongFileCount", MainCfg, false);
         public static readonly Setting<string> SingerMgrDefaultSingerDataTable = Text("SingerMgrDefaultSingerDataTable", LoadOnly, "ktv_Singer");
 
         /// <summary>A copy of every setting's value, for tests to put back with <see cref="Restore"/>.</summary>

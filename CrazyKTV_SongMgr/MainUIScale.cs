@@ -43,7 +43,7 @@ namespace CrazyKTV_SongMgr
             Cashbox_TabControl.ItemSize = new System.Drawing.Size(0, 0);
             Cashbox_TabControl.SizeMode = TabSizeMode.Normal;
 
-            if (Global.MainCfgHideSongDBConverterTabPage == "True")
+            if (Global.MainCfgHideSongDBConverterTabPage)
             {
                 if (MainTabControl.TabPages.IndexOf(SongDBConverter_TabPage) < 0)
                 {
@@ -52,7 +52,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (Global.MainCfgHideSongAddResultTabPage == "True")
+            if (Global.MainCfgHideSongAddResultTabPage)
             {
                 if (MainTabControl.TabPages.IndexOf(SongAddResult_TabPage) < 0)
                 {
@@ -61,7 +61,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (Global.MainCfgHideSongLogTabPage == "True")
+            if (Global.MainCfgHideSongLogTabPage)
             {
                 if (MainTabControl.TabPages.IndexOf(SongLog_TabPage) < 0)
                 {
@@ -162,7 +162,7 @@ namespace CrazyKTV_SongMgr
                 Cashbox_TabControl.ItemSize = new System.Drawing.Size(MainCfg_SubTabWidth_Button.Width, Cashbox_TabControl.ItemSize.Height);
             }
 
-            if (Global.MainCfgHideSongDBConverterTabPage == "True")
+            if (Global.MainCfgHideSongDBConverterTabPage)
             {
                 if (MainTabControl.TabPages.IndexOf(SongDBConverter_TabPage) >= 0)
                 {
@@ -171,7 +171,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (Global.MainCfgHideSongAddResultTabPage == "True")
+            if (Global.MainCfgHideSongAddResultTabPage)
             {
                 if (MainTabControl.TabPages.IndexOf(SongAddResult_TabPage) >= 0)
                 {
@@ -180,7 +180,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (Global.MainCfgHideSongLogTabPage == "True")
+            if (Global.MainCfgHideSongLogTabPage)
             {
                 if (MainTabControl.TabPages.IndexOf(SongLog_TabPage) >= 0)
                 {

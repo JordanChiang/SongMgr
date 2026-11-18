@@ -37,7 +37,7 @@ namespace CrazyKTV_SongMgr
         private void DetectUnusedFileForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             this.Owner.Show();
-            this.Owner.TopMost = (Global.MainCfgAlwaysOnTop == "True") ? true : false;
+            this.Owner.TopMost = Global.MainCfgAlwaysOnTop;
         }
 
         private void DetectUnusedFile_Path_Button_Click(object sender, EventArgs e)

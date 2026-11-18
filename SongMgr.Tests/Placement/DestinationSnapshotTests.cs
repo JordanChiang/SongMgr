@@ -42,7 +42,7 @@ namespace SongMgr.Tests.Placement
             foreach (string file in new[] { "1", "2", "3" })
             foreach (string infoSep in new[] { "1", "2" })
             foreach (string chorusSep in new[] { "1", "2" })
-            foreach (string merge in new[] { "True", "False" })
+            foreach (bool merge in new[] { true, false })
             {
                 Global.SongMgrDestFolder = DestFolder;
                 Global.SongMgrSongAddMode = mode;
@@ -64,7 +64,7 @@ namespace SongMgr.Tests.Placement
                     {
                         result = "EXCEPTION " + ex.GetType().Name;
                     }
-                    sb.Append(mode).Append(folder).Append(file).Append(infoSep).Append(chorusSep).Append(merge[0])
+                    sb.Append(mode).Append(folder).Append(file).Append(infoSep).Append(chorusSep).Append(merge.ToString()[0])
                       .Append(' ').Append(s[0]).Append(' ').Append(purpose).Append(" => ").Append(result).Append('\n');
                 }
             }

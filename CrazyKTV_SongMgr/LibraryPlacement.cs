@@ -86,7 +86,7 @@ namespace CrazyKTV_SongMgr
             switch (Global.SongMgrFolderStructure)
             {
                 case "1":
-                    if (Global.SongMgrChorusMerge == "True" && SongSingerType == 3)
+                    if (Global.SongMgrChorusMerge && SongSingerType == 3)
                     {
                         folderTail = SongLang + @"\" + SingerTypeStr + @"\";
                         levels = 2;
