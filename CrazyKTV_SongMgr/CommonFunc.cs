@@ -1638,7 +1638,7 @@ namespace CrazyKTV_SongMgr
             SongAdd_DefaultSongInfo_GroupBox.Visible = true;
             SongAdd_Add_Button.Enabled = false;
             SongAdd_Tooltip_Label.Text = "";
-            SongAdd_DragDrop_Label.Visible = (Global.AddMode != SongAddMode.Monitor) ? true : false;
+            SongAdd_DragDrop_Label.Visible = (Global.SongMgrSongAddMode != SongAddMode.Monitor) ? true : false;
 
 
             SingerMgr_DataGridView.DataSource = null;

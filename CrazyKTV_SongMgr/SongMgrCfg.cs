@@ -79,7 +79,7 @@ namespace CrazyKTV_SongMgr
             {
                 case "1":
                 case "2":
-                    Global.SongMgrSongAddMode = SongMgrCfg_SongAddMode_ComboBox.SelectedValue.ToString();
+                    Global.SongMgrSongAddMode = (SongAddMode)(int)SongMgrCfg_SongAddMode_ComboBox.SelectedValue;
 
                     SongMaintenance_RebuildSongStructure_GroupBox.Enabled = true;
                     SongMgrCfg_DestFolder_TextBox.Enabled = true;
@@ -115,7 +115,7 @@ namespace CrazyKTV_SongMgr
                     break;
                 case "3":
                 case "4":
-                    Global.SongMgrSongAddMode = SongMgrCfg_SongAddMode_ComboBox.SelectedValue.ToString();
+                    Global.SongMgrSongAddMode = (SongAddMode)(int)SongMgrCfg_SongAddMode_ComboBox.SelectedValue;
 
                     SongMaintenance_RebuildSongStructure_GroupBox.Enabled = false;
                     SongMgrCfg_DestFolder_TextBox.Enabled = false;

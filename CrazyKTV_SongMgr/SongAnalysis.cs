@@ -114,7 +114,7 @@ namespace CrazyKTV_SongMgr
             SongAnalysisResult r = SongAnalyzer.Analyze(file, Settings, Singers);
 
             // 歌庫監視
-            if (Global.AddMode == SongAddMode.Monitor && r.Lang == "未知")
+            if (Global.SongMgrSongAddMode == SongAddMode.Monitor && r.Lang == "未知")
             {
                 Global.SongLog.Add("【歌庫監視】檔案結構中須有語系類別資訊才能加歌: " + r.SrcPath);
                 return;

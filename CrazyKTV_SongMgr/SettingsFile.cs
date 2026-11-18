@@ -74,7 +74,7 @@ namespace CrazyKTV_SongMgr
     /// <summary>加歌模式: what happens to a song's file when it enters the 歌庫.</summary>
     enum SongAddMode
     {
-        /// <summary>A value the settings file should never hold.</summary>
+        /// <summary>Never the setting's value: a stored value other than 1-4 keeps the current one.</summary>
         Unknown = 0,
         /// <summary>1: move the file into the 歌庫 folder.</summary>
         Move = 1,
@@ -191,6 +191,19 @@ namespace CrazyKTV_SongMgr
         static Setting<bool> Bool(string name, SettingsGroup group, bool initial)
             => Add(new Setting<bool>(name, group, initial, v => v ? "True" : "False", bool.TryParse, v => v));
 
+        /// <summary>Only the stored codes "1"-"4"; anything else keeps the current 加歌模式.</summary>
+        static bool ParseSongAddMode(string text, out SongAddMode mode)
+        {
+            switch (text)
+            {
+                case "1": mode = SongAddMode.Move; return true;
+                case "2": mode = SongAddMode.Copy; return true;
+                case "3": mode = SongAddMode.InPlace; return true;
+                case "4": mode = SongAddMode.Monitor; return true;
+                default: mode = SongAddMode.Unknown; return false;
+            }
+        }
+
         static Setting<List<string>> List(string name, SettingsGroup group, char separator, params string[] initial)
             => Add(new Setting<List<string>>(name, group, new List<string>(initial),
                 v => string.Join(separator.ToString(), v),
@@ -200,7 +213,7 @@ namespace CrazyKTV_SongMgr
         public static readonly Setting<string> CrazyktvDatabaseFile = Text("CrazyktvDatabaseFile", SongMgrCfg, Application.StartupPath + @"\CrazySong.mdb");
         public static readonly Setting<string> SongMgrSupportFormat = Text("SongMgrSupportFormat", SongMgrCfg, ".avi;.flv;.dat;.mkv;.mp4;.mov;.mpeg;.mpg;.rmvb;.ts;.vob;.webm;.wmv");
         public static readonly Setting<string> SongMgrDestFolder = Text("SongMgrDestFolder", SongMgrCfg, "");
-        public static readonly Setting<string> SongMgrSongAddMode = Text("SongMgrSongAddMode", SongMgrCfg, "3");
+        public static readonly Setting<SongAddMode> SongMgrSongAddMode = Add(new Setting<SongAddMode>("SongMgrSongAddMode", SongMgrCfg, SongAddMode.InPlace, v => ((int)v).ToString(), ParseSongAddMode, v => v));
         public static readonly Setting<bool> SongMgrChorusMerge = Bool("SongMgrChorusMerge", SongMgrCfg, false);
         public static readonly Setting<string> SongMgrMaxDigitCode = Text("SongMgrMaxDigitCode", SongMgrCfg, "2");
         public static readonly Setting<string> SongMgrLangCode = Text("SongMgrLangCode", SongMgrCfg, "");

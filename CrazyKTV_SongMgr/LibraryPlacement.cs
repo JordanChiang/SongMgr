@@ -38,7 +38,7 @@ namespace CrazyKTV_SongMgr
         public static string RemoveSongFolder = Application.StartupPath + @"\SongMgr\RemoveSong";
 
         /// <summary>True for 加歌模式 1 (move) and 2 (copy); modes 3 and 4 leave files where they are.</summary>
-        public static bool MovesFiles => Global.AddMode != SongAddMode.InPlace && Global.AddMode != SongAddMode.Monitor;
+        public static bool MovesFiles => Global.SongMgrSongAddMode != SongAddMode.InPlace && Global.SongMgrSongAddMode != SongAddMode.Monitor;
 
         /// <summary>Both paths name the same file (Windows paths are case-insensitive).</summary>
         public static bool IsSameFile(string a, string b)

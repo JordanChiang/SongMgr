@@ -275,7 +275,7 @@ namespace CrazyKTV_SongMgr
                     SongQuery_Query_Button_Click(new Button(), new EventArgs());
                     break;
                 case "刪除資料列":
-                    string MessageText = (Global.AddMode != SongAddMode.InPlace) ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
+                    string MessageText = (Global.SongMgrSongAddMode != SongAddMode.InPlace) ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
                     if (MessageBox.Show(MessageText, "刪除提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         List<string> SongIdlist = new List<string>();
@@ -448,7 +448,7 @@ namespace CrazyKTV_SongMgr
                     switch (e.KeyCode)
                     {
                         case Keys.Delete:
-                            string MessageText = (Global.AddMode != SongAddMode.InPlace) ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
+                            string MessageText = (Global.SongMgrSongAddMode != SongAddMode.InPlace) ? "你確定要刪除歌曲資料及歌曲檔案嗎?" : "你確定要刪除歌曲資料嗎?";
                             if (MessageBox.Show(MessageText, "刪除提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                             {
                                 List<string> SongIdlist = new List<string>();

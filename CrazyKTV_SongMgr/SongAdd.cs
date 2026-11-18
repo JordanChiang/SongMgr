@@ -56,7 +56,7 @@ namespace CrazyKTV_SongMgr
                     SongAdd_DefaultSongInfo_GroupBox.Visible = true;
                     SongAdd_Add_Button.Enabled = false;
                     SongAdd_Tooltip_Label.Text = "已取消更新重複歌曲!";
-                    SongAdd_DragDrop_Label.Visible = (Global.AddMode != SongAddMode.Monitor) ? true : false;
+                    SongAdd_DragDrop_Label.Visible = (Global.SongMgrSongAddMode != SongAddMode.Monitor) ? true : false;
                     Common_SwitchSetUI(true);
                     break;
                 case "取消加入":
@@ -71,7 +71,7 @@ namespace CrazyKTV_SongMgr
                     SongAdd_DefaultSongInfo_GroupBox.Visible = true;
                     SongAdd_Add_Button.Enabled = false;
                     SongAdd_Tooltip_Label.Text = "已取消加入歌曲!";
-                    SongAdd_DragDrop_Label.Visible = (Global.AddMode != SongAddMode.Monitor) ? true : false;
+                    SongAdd_DragDrop_Label.Visible = (Global.SongMgrSongAddMode != SongAddMode.Monitor) ? true : false;
                     break;
             }
         }
@@ -278,7 +278,7 @@ namespace CrazyKTV_SongMgr
 
             foreach (string item in droplist)
             {
-                if (item.Contains(Global.SongMgrDestFolder) && Global.AddMode != SongAddMode.InPlace)
+                if (item.Contains(Global.SongMgrDestFolder) && Global.SongMgrSongAddMode != SongAddMode.InPlace)
                 {
                     SongAdd_Tooltip_Label.Text = "要加入的歌曲檔案或資料夾不可與歌庫資料夾同目錄!";
                     break;
@@ -325,7 +325,7 @@ namespace CrazyKTV_SongMgr
 
                     Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
                     {
-                        if (Global.AddMode != SongAddMode.Monitor)
+                        if (Global.SongMgrSongAddMode != SongAddMode.Monitor)
                         {
                             this.BeginInvoke((Action)delegate()
                             {
@@ -363,7 +363,7 @@ namespace CrazyKTV_SongMgr
                     this.BeginInvoke((Action)delegate()
                     {
                         SongAdd_Tooltip_Label.Text = "正在分析第 " + total + " 首歌曲...";
-                        if (Global.AddMode == SongAddMode.Monitor)
+                        if (Global.SongMgrSongAddMode == SongAddMode.Monitor)
                         {
                             SongQuery_QueryStatus_Label.Text = SongAdd_Tooltip_Label.Text;
                             SongMgrCfg_Tooltip_Label.Text = SongAdd_Tooltip_Label.Text;
@@ -387,7 +387,7 @@ namespace CrazyKTV_SongMgr
                     this.BeginInvoke((Action)delegate()
                     {
                         SongAdd_Tooltip_Label.Text = "正在分析第 " + total + " 首歌曲...";
-                        if (Global.AddMode == SongAddMode.Monitor)
+                        if (Global.SongMgrSongAddMode == SongAddMode.Monitor)
                         {
                             SongQuery_QueryStatus_Label.Text = SongAdd_Tooltip_Label.Text;
                             SongMgrCfg_Tooltip_Label.Text = SongAdd_Tooltip_Label.Text;
@@ -432,7 +432,7 @@ namespace CrazyKTV_SongMgr
                 }
                 SongAdd_DataGridView.Sort(SongAdd_DataGridView.Columns[sortindex], ListSortDirection.Ascending);
 
-                if (Global.AddMode != SongAddMode.Monitor)
+                if (Global.SongMgrSongAddMode != SongAddMode.Monitor)
                 {
                     Common_SwitchSetUI(true);
                     this.Activate();
@@ -578,7 +578,7 @@ namespace CrazyKTV_SongMgr
                     this.BeginInvoke((Action)delegate()
                     {
                         SongAdd_Tooltip_Label.Text = "已成功加入 " + Global.TotalList[0] + " 首歌曲,忽略重複歌曲 " + Global.TotalList[1] + " 首...";
-                        if (Global.AddMode == SongAddMode.Monitor)
+                        if (Global.SongMgrSongAddMode == SongAddMode.Monitor)
                         {
                             SongQuery_QueryStatus_Label.Text = SongAdd_Tooltip_Label.Text;
                             SongMgrCfg_Tooltip_Label.Text = SongAdd_Tooltip_Label.Text;
@@ -664,7 +664,7 @@ namespace CrazyKTV_SongMgr
                     this.BeginInvoke((Action)delegate ()
                     {
                         SongAdd_Tooltip_Label.Text = "正在將第 " + Global.TotalList[3] + " 首歌曲寫入資料庫,請稍待...";
-                        if (Global.AddMode == SongAddMode.Monitor)
+                        if (Global.SongMgrSongAddMode == SongAddMode.Monitor)
                         {
                             SongQuery_QueryStatus_Label.Text = SongAdd_Tooltip_Label.Text;
                             SongMgrCfg_Tooltip_Label.Text = SongAdd_Tooltip_Label.Text;
@@ -749,7 +749,7 @@ namespace CrazyKTV_SongMgr
                         this.BeginInvoke((Action)delegate ()
                         {
                             SongAdd_Tooltip_Label.Text = "正在檢查並加入第 " + Global.TotalList[4] + " 位合唱歌手,請稍待...";
-                            if (Global.AddMode == SongAddMode.Monitor)
+                            if (Global.SongMgrSongAddMode == SongAddMode.Monitor)
                             {
                                 SongQuery_QueryStatus_Label.Text = SongAdd_Tooltip_Label.Text;
                                 SongMgrCfg_Tooltip_Label.Text = SongAdd_Tooltip_Label.Text;
@@ -827,7 +827,7 @@ namespace CrazyKTV_SongMgr
                     SongAdd_DefaultSongInfo_GroupBox.Visible = true;
                     SongAdd_Add_Button.Enabled = false;
 
-                    if (Global.AddMode != SongAddMode.Monitor)
+                    if (Global.SongMgrSongAddMode != SongAddMode.Monitor)
                     {
                         SongAdd_DragDrop_Label.Visible = true;
                         Common_SwitchSetUI(true);
@@ -939,7 +939,7 @@ namespace CrazyKTV_SongMgr
                     SongAdd_SpecialStr_GroupBox.Visible = true;
                     SongAdd_DefaultSongInfo_GroupBox.Visible = true;
                     SongAdd_Add_Button.Enabled = false;
-                    SongAdd_DragDrop_Label.Visible = (Global.AddMode != SongAddMode.Monitor) ? true : false;
+                    SongAdd_DragDrop_Label.Visible = (Global.SongMgrSongAddMode != SongAddMode.Monitor) ? true : false;
                     Common_SwitchSetUI(true);
 
                     MainTabControl.SelectedIndex = MainTabControl.TabPages.IndexOf(SongQuery_TabPage);

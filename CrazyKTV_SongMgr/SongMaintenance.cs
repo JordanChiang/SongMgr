@@ -1643,7 +1643,7 @@ namespace CrazyKTV_SongMgr
 
                         var tasks = new List<Task>()
                         {
-                            Task.Factory.StartNew(() => SongMaintenance_RebuildSongStructureTask(RebuildSongPath, Global.AddMode))
+                            Task.Factory.StartNew(() => SongMaintenance_RebuildSongStructureTask(RebuildSongPath, Global.SongMgrSongAddMode))
                         };                        ;
 
                         Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>

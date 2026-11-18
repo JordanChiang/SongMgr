@@ -276,6 +276,7 @@ namespace SongMgr.Tests.Settings
         static string Changed(Setting s, string tag)
         {
             if (s is Setting<bool> b) return b.Default ? "False" : "True";
+            if (s is Setting<SongAddMode>) return "4";
             return s.Name + tag;
         }
 

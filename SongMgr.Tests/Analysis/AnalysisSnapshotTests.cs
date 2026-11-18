@@ -109,7 +109,7 @@ namespace SongMgr.Tests.Analysis
                 Apply = () =>
                 {
                     Global.SongAddSongIdentificationMode = "1";
-                    Global.SongMgrSongAddMode = "4";
+                    Global.SongMgrSongAddMode = SongAddMode.Monitor;
                     Global.SongAddDefaultSongLang = "11";
                     Global.SongAddDefaultSingerType = "3";
                     Global.SongAddDefaultSongTrack = "6";
@@ -127,7 +127,7 @@ namespace SongMgr.Tests.Analysis
             Global.SongMgrSongType = "";
             Global.SongAddDefaultSongType = "1";
             Global.SongAddSpecialStr = "";
-            Global.SongMgrSongAddMode = "3";
+            Global.SongMgrSongAddMode = SongAddMode.InPlace;
             Global.SongAddDefaultSongLang = "1";
             Global.SongAddDefaultSingerType = "8";
             Global.SongAddDefaultSongTrack = "1";

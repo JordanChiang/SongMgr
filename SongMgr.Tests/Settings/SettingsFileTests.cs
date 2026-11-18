@@ -113,19 +113,38 @@ namespace SongMgr.Tests.Settings
         }
 
         [Theory]
-        [InlineData("1", 1, true)]
-        [InlineData("2", 2, true)]
-        [InlineData("3", 3, false)]
-        [InlineData("4", 4, false)]
-        [InlineData("", 0, true)]
-        [InlineData("01", 0, true)]
-        public void Add_mode_names_the_stored_value_and_decides_whether_files_move(string stored, int mode, bool moves)
+        [InlineData("1", "Move", true)]
+        [InlineData("2", "Copy", true)]
+        [InlineData("3", "InPlace", false)]
+        [InlineData("4", "Monitor", false)]
+        public void Add_mode_reads_the_stored_code_and_decides_whether_files_move(string stored, string mode, bool moves)
         {
-            Global.SongMgrSongAddMode = stored;
-            Assert.Equal((SongAddMode)mode, Global.AddMode);
-            // the old check, verbatim
-            Assert.Equal(Global.SongMgrSongAddMode != "3" && Global.SongMgrSongAddMode != "4", LibraryPlacement.MovesFiles);
+            SongMgrSettings.SongMgrSongAddMode.Set(stored);
+
+            Assert.Equal(mode, Global.SongMgrSongAddMode.ToString());
+            Assert.Equal(stored, SongMgrSettings.SongMgrSongAddMode.Get());
             Assert.Equal(moves, LibraryPlacement.MovesFiles);
+        }
+
+        [Theory]
+        [InlineData("01")]
+        [InlineData("0")]
+        [InlineData("5")]
+        [InlineData("Move")]
+        public void Add_mode_other_than_1_to_4_keeps_its_value(string stored)
+        {
+            Global.SongMgrSongAddMode = SongAddMode.Copy;
+
+            SongMgrSettings.SongMgrSongAddMode.Set(stored);
+
+            Assert.Equal(SongAddMode.Copy, Global.SongMgrSongAddMode);
+        }
+
+        [Fact]
+        public void Add_mode_defaults_to_in_place()
+        {
+            Assert.Equal(SongAddMode.InPlace, SongMgrSettings.SongMgrSongAddMode.Default);
+            Assert.Contains(("SongMgrSongAddMode", "3"), SongMgrSettings.Defaults());
         }
     }
 }

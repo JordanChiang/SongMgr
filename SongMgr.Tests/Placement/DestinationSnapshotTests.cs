@@ -45,7 +45,7 @@ namespace SongMgr.Tests.Placement
             foreach (bool merge in new[] { true, false })
             {
                 Global.SongMgrDestFolder = DestFolder;
-                Global.SongMgrSongAddMode = mode;
+                Global.SongMgrSongAddMode = (SongAddMode)int.Parse(mode);
                 Global.SongMgrFolderStructure = folder;
                 Global.SongMgrFileStructure = file;
                 Global.SongMgrSongInfoSeparate = infoSep;

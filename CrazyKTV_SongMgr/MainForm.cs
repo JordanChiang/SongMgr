@@ -356,7 +356,7 @@ namespace CrazyKTV_SongMgr
             SongMgrCfg_SongAddMode_ComboBox.DataSource = SongMgrCfg.GetSongAddModeList();
             SongMgrCfg_SongAddMode_ComboBox.DisplayMember = "Display";
             SongMgrCfg_SongAddMode_ComboBox.ValueMember = "Value";
-            SongMgrCfg_SongAddMode_ComboBox.SelectedValue = int.Parse(Global.SongMgrSongAddMode);
+            SongMgrCfg_SongAddMode_ComboBox.SelectedValue = (int)Global.SongMgrSongAddMode;
 
             // 建立歌曲操作記錄資料表
             Global.SongLog.Reset();

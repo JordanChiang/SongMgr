@@ -87,23 +87,7 @@ namespace CrazyKTV_SongMgr
         public static string SongMgrCfgFile = Application.StartupPath + @"\CrazyKTV_SongMgr.cfg";
         public static string SongMgrSupportFormat { get => SongMgrSettings.SongMgrSupportFormat.Value; set => SongMgrSettings.SongMgrSupportFormat.Value = value; }
         public static string SongMgrDestFolder { get => SongMgrSettings.SongMgrDestFolder.Value; set => SongMgrSettings.SongMgrDestFolder.Value = value; }
-        public static string SongMgrSongAddMode { get => SongMgrSettings.SongMgrSongAddMode.Value; set => SongMgrSettings.SongMgrSongAddMode.Value = value; }
-
-        /// <summary><see cref="SongMgrSongAddMode"/> as a name. The string stays the stored and bound form.</summary>
-        public static SongAddMode AddMode
-        {
-            get
-            {
-                switch (SongMgrSongAddMode)
-                {
-                    case "1": return SongAddMode.Move;
-                    case "2": return SongAddMode.Copy;
-                    case "3": return SongAddMode.InPlace;
-                    case "4": return SongAddMode.Monitor;
-                    default: return SongAddMode.Unknown;
-                }
-            }
-        }
+        public static SongAddMode SongMgrSongAddMode { get => SongMgrSettings.SongMgrSongAddMode.Value; set => SongMgrSettings.SongMgrSongAddMode.Value = value; }
         public static bool SongMgrChorusMerge { get => SongMgrSettings.SongMgrChorusMerge.Value; set => SongMgrSettings.SongMgrChorusMerge.Value = value; }
         public static string SongMgrMaxDigitCode { get => SongMgrSettings.SongMgrMaxDigitCode.Value; set => SongMgrSettings.SongMgrMaxDigitCode.Value = value; }
         public static string SongMgrLangCode { get => SongMgrSettings.SongMgrLangCode.Value; set => SongMgrSettings.SongMgrLangCode.Value = value; }

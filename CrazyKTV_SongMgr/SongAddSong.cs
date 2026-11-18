@@ -355,7 +355,7 @@ namespace CrazyKTV_SongMgr
                     if (LibraryPlacement.MovesFiles)
                     {
                         string SongDestPath = Path.Combine(SongPath, SongFileName);
-                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong))
+                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.SongMgrSongAddMode, Global.SongMgrBackupRemoveSong))
                         {
                             FileIOError = true;
                             lock (LockThis) { Global.TotalList[2]++; }
@@ -489,7 +489,7 @@ namespace CrazyKTV_SongMgr
                     if (LibraryPlacement.MovesFiles)
                     {
                         string SongDestPath = Path.Combine(SongPath, SongFileName);
-                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.AddMode, Global.SongMgrBackupRemoveSong))
+                        if (!LibraryPlacement.Import(SongSrcPath, SongDestPath, Global.SongMgrSongAddMode, Global.SongMgrBackupRemoveSong))
                         {
                             FileIOError = true;
                             lock (LockThis) { Global.TotalList[2]++; }
