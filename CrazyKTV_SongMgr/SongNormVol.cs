@@ -501,17 +501,90 @@ namespace CrazyKTV_SongMgr
                     Track = track, Volume = volume, ReplayGain = replayGain,
                 },
                 FilePath = filePath,
-                RowIndex = e.RowIndex.ToString(),
-                Source = "NormVol",
+                TrackSaved = newTrack => NormVol_SaveTrack(row, songId, newTrack),
+                VolumeSaved = newVolume => NormVol_SaveVolume(row, songId, newVolume),
             };
+            SongPlayer.Open(this, playerInfo);
+        }
 
-            Global.PlayerTrackUpdate = null;
-            if (Global.MainCfgPlayerCore == "1")
+        private void NormVol_SaveVolume(DataGridViewRow row, string songId, string volume)
+        {
+            using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
             {
-                DShowForm playerForm = new DShowForm(this, playerInfo);
-                playerForm.Show();
+                store.UpdateSong(new SongRecord { Id = songId, Volume = volume }, SongColumns.Volume);
             }
-            this.Hide();
+
+            // The row is gone once the list was searched again.
+            if (row.DataGridView != null) row.Cells[NV_COL_ORIGVOL].Value = volume;
+        }
+
+        /// <summary>
+        /// Saves the 伴唱 track; when 加歌模式 moves files, the file is renamed or moved to where the 歌庫結構
+        /// puts the new track, as a 歌庫查詢 edit does.
+        /// </summary>
+        private void NormVol_SaveTrack(DataGridViewRow row, string songId, string track)
+        {
+            SongRecord song = NormVol_ReadPlacement(songId);
+            if (song == null) throw new InvalidOperationException("歌庫中找不到歌曲編號 " + songId);
+            song.Track = track;
+
+            if (LibraryPlacement.MovesFiles)
+            {
+                string src = Path.Combine(song.Path, song.FileName);
+                string dest = LibraryPlacement.Destination(song, PlacementPurpose.Relocate);
+                switch (LibraryPlacement.Relocate(src, dest))
+                {
+                    case PlacementOutcome.SourceMissing: throw new IOException("來源檔案不存在: " + src);
+                    case PlacementOutcome.DestinationOccupied: throw new IOException("歌庫裡已存在該首歌曲的檔案: " + dest);
+                    case PlacementOutcome.FileLocked: throw new IOException("檔案唯讀或正在使用: " + src);
+                }
+                song.Path = Path.GetDirectoryName(dest) + @"\";
+                song.FileName = Path.GetFileName(dest);
+            }
+
+            using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
+            {
+                store.UpdateSong(song, SongColumns.Track | SongColumns.Path | SongColumns.FileName);
+            }
+
+            if (row.DataGridView != null)
+            {
+                row.Cells[NV_COL_TRACKDISP].Value = track;
+                row.Cells[NV_COL_TRACK].Value = track;
+                row.Cells[NV_COL_PATH].Value = song.Path;
+                row.Cells[NV_COL_FILE].Value = song.FileName;
+            }
+            NormVol_AppendLog(string.Format("已更新音軌: {0} → {1}", songId, track));
+        }
+
+        /// <summary>The fields <see cref="LibraryPlacement.Destination"/> uses, read from the 歌庫; null if the song is gone.</summary>
+        private static SongRecord NormVol_ReadPlacement(string songId)
+        {
+            const string sql =
+                "SELECT Song_Id, Song_Lang, Song_SingerType, Song_Singer, Song_SongName, Song_SongType, Song_Path, Song_FileName " +
+                "FROM ktv_Song WHERE Song_Id = @SongId";
+
+            DataTable dt = new DataTable();
+            using (DbConnection conn = Db.Open(Global.CrazyktvDatabaseFile))
+            using (DbCommand cmd = Db.Command(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@SongId", songId);
+                Db.Adapter(cmd).Fill(dt);
+            }
+            if (dt.Rows.Count == 0) return null;
+
+            DataRow r = dt.Rows[0];
+            return new SongRecord
+            {
+                Id = r["Song_Id"].ToString(),
+                Lang = r["Song_Lang"].ToString(),
+                SingerType = Convert.ToInt32(r["Song_SingerType"]).ToString(),
+                Singer = r["Song_Singer"].ToString(),
+                SongName = r["Song_SongName"].ToString(),
+                SongType = r["Song_SongType"].ToString(),
+                Path = r["Song_Path"].ToString(),
+                FileName = r["Song_FileName"].ToString(),
+            };
         }
 
         // ─────────────────────────────────────────────────────────────────────

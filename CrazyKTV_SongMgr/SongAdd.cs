@@ -1112,17 +1112,11 @@ namespace CrazyKTV_SongMgr
                                 ReplayGain = selected.ReplayGain,
                             },
                             FilePath = SongFilePath,
-                            RowIndex = "0",
-                            Source = "SongAdd",
+                            // Into the edit fields only: the user applies them with 套用.
+                            TrackSaved = track => SongAdd_EditSongTrack_ComboBox.SelectedValue = track,
+                            VolumeSaved = volume => SongAdd_EditSongVolume_TextBox.Text = volume,
                         };
-
-                        Global.PlayerTrackUpdate = null;
-                        if (Global.MainCfgPlayerCore == "1")
-                        {
-                            DShowForm newPlayerForm = new DShowForm(this, request);
-                            newPlayerForm.Show();
-                        }
-                        this.Hide();
+                        SongPlayer.Open(this, request);
                     }
                 }
             }

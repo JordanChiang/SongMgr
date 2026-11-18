@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
@@ -122,21 +123,16 @@ namespace CrazyKTV_SongMgr
                     {
                         int i = SongAdd_DataGridView.CurrentCell.RowIndex;
 
+                        // The song is not in the 歌庫 yet: a saved track or volume goes into its row, which 加歌 adds from.
+                        DataRow row = ((DataRowView)SongAdd_DataGridView.Rows[i].DataBoundItem).Row;
                         PlayerRequest request = new PlayerRequest
                         {
                             Song = SongRecord.ForPlayer(SongAdd_DataGridView.Rows[i]),
                             FilePath = file,
-                            RowIndex = i.ToString(),
-                            Source = "SongAdd",
+                            TrackSaved = track => row["Song_Track"] = Convert.ToInt32(track),
+                            VolumeSaved = volume => row["Song_Volume"] = Convert.ToInt32(volume),
                         };
-
-                        Global.PlayerTrackUpdate = null;
-                        if (Global.MainCfgPlayerCore == "1")
-                        {
-                            DShowForm newPlayerForm = new DShowForm(this, request);
-                            newPlayerForm.Show();
-                        }
-                        this.Hide();
+                        SongPlayer.Open(this, request);
                     }
                     break;
                 case "刪除資料列":

@@ -2319,17 +2319,11 @@ namespace CrazyKTV_SongMgr
                                 ReplayGain = selected.ReplayGain,
                             },
                             FilePath = SongFilePath,
-                            RowIndex = "0",
-                            Source = "SongQueryEdit",
+                            // Into the edit fields only: the user saves them with the rest of the edit.
+                            TrackSaved = track => SongQuery_EditSongTrack_ComboBox.SelectedValue = track,
+                            VolumeSaved = volume => SongQuery_EditSongVolume_TextBox.Text = volume,
                         };
-
-                        Global.PlayerTrackUpdate = null;
-                        if (Global.MainCfgPlayerCore == "1")
-                        {
-                            DShowForm newPlayerForm = new DShowForm(this, request);
-                            newPlayerForm.Show();
-                        }
-                        this.Hide();
+                        SongPlayer.Open(this, request);
                     }
                 }
             }

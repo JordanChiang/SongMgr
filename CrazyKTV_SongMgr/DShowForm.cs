@@ -15,7 +15,6 @@ namespace CrazyKTV_SongMgr
 {
     public partial class DShowForm : Form
     {
-        private string SongId;
         private string SongLang;
         private string SongSinger;
         private string SongSongName;
@@ -23,9 +22,11 @@ namespace CrazyKTV_SongMgr
         private string SongVolume;
         private string SongReplayGain;
         private string SongFilePath;
-        private string dvRowIndex;
         private string UpdateSongTrack;
-        private string UpdateDataGridView;
+        private Action<string> TrackSaved;
+        private Action<string> VolumeSaved;
+        // The track saved with 更新音軌, handed to TrackSaved once the file is released.
+        private string SavedTrack;
 
         private MediaUriElement mediaUriElement;
         private System.Timers.Timer mouseClickTimer;
@@ -67,7 +68,6 @@ namespace CrazyKTV_SongMgr
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
             this.Owner = ParentForm;
-            SongId = request.Song.Id;
             SongLang = request.Song.Lang;
             SongSinger = request.Song.Singer;
             SongSongName = request.Song.SongName;
@@ -75,8 +75,8 @@ namespace CrazyKTV_SongMgr
             SongVolume = request.Song.Volume;
             SongReplayGain = request.Song.ReplayGain;
             SongFilePath = request.FilePath;
-            dvRowIndex = request.RowIndex;
-            UpdateDataGridView = request.Source;
+            TrackSaved = request.TrackSaved;
+            VolumeSaved = request.VolumeSaved;
 
             this.Text = "【" + SongLang + "】" + SongSinger + " - " + SongSongName;
 
@@ -88,8 +88,7 @@ namespace CrazyKTV_SongMgr
             mediaUriElement.EndInit();
 
             mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec_x86";
-            mediaUriElement.VideoRenderer = (Global.MainCfgPlayerOutput == "1") ? CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.VideoMixingRenderer9 : CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.EnhancedVideoRenderer;
-            mediaUriElement.DeeperColor = (Global.MainCfgPlayerOutput == "1") ? false : true;
+            ApplyVideoOutput();
             mediaUriElement.Stretch = System.Windows.Media.Stretch.Fill;
             mediaUriElement.EnableAudioCompressor = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
             mediaUriElement.EnableAudioProcessor = bool.Parse(Global.MainCfgPlayerEnableAudioProcessor);
@@ -139,6 +138,13 @@ namespace CrazyKTV_SongMgr
             Player_VolumeSlider.TrackBarValueChanged += Player_VolumeSlider_ValueChanged;
 
             NativeMethods.SystemSleepManagement.PreventSleep(true);
+        }
+
+        private void ApplyVideoOutput()
+        {
+            bool vmr9 = PlayerOutput.Current == VideoOutput.Vmr9;
+            mediaUriElement.VideoRenderer = vmr9 ? VideoRendererType.VideoMixingRenderer9 : VideoRendererType.EnhancedVideoRenderer;
+            mediaUriElement.DeeperColor = !vmr9;
         }
 
         private void mediaUriElement_MediaOpened(object sender, RoutedEventArgs e)
@@ -314,8 +320,7 @@ namespace CrazyKTV_SongMgr
 
             // 4. Re-apply all the initial settings from the constructor.
             mediaUriElement.MediaUriPlayer.CodecsDirectory = System.Windows.Forms.Application.StartupPath + @"\Codec_x86";
-            mediaUriElement.VideoRenderer = (Global.MainCfgPlayerOutput == "1") ? CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.VideoMixingRenderer9 : CrazyKTV_MediaKit.DirectShow.MediaPlayers.VideoRendererType.EnhancedVideoRenderer;
-            mediaUriElement.DeeperColor = (Global.MainCfgPlayerOutput == "1") ? false : true;
+            ApplyVideoOutput();
             mediaUriElement.Stretch = System.Windows.Media.Stretch.Fill;
             mediaUriElement.EnableAudioCompressor = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
             mediaUriElement.EnableAudioProcessor = bool.Parse(Global.MainCfgPlayerEnableAudioProcessor);
@@ -471,32 +476,14 @@ namespace CrazyKTV_SongMgr
 
         private void Player_UpdateVolume_Button_Click(object sender, EventArgs e)
         {
+            if (VolumeSaved == null) return;
             try
             {
-                using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
-                {
-                    store.UpdateSong(new SongRecord { Id = SongId, Volume = Player_VolumeSlider.TrackBarValue.ToString() }, SongColumns.Volume);
-                }
-                
-                SongVolume = Player_VolumeSlider.TrackBarValue.ToString();
-                Player_UpdateVolume_Button.Enabled = false;
+                string volume = Player_VolumeSlider.TrackBarValue.ToString();
+                VolumeSaved(volume);
 
-                // Sync to MainForm DataGridView
-                if (this.Owner != null)
-                {
-                    System.Reflection.FieldInfo field = this.Owner.GetType().GetField("SongQuery_DataGridView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                    if (field != null)
-                    {
-                        System.Windows.Forms.DataGridView grid = (System.Windows.Forms.DataGridView)field.GetValue(this.Owner);
-                        if (grid != null && int.TryParse(dvRowIndex, out int rowIndex) && rowIndex >= 0 && rowIndex < grid.Rows.Count)
-                        {
-                            if (grid.Columns.Contains("Song_Volume"))
-                            {
-                                grid.Rows[rowIndex].Cells["Song_Volume"].Value = SongVolume;
-                            }
-                        }
-                    }
-                }
+                SongVolume = volume;
+                Player_UpdateVolume_Button.Enabled = false;
 
                 this.Text = "【" + SongLang + "】" + SongSinger + " - " + SongSongName + " - 音量更新成功!";
             }
@@ -579,14 +566,17 @@ namespace CrazyKTV_SongMgr
             // always enable the button if multiple audio track
             if (mediaUriElement.AudioStreams.Count > 2)
                 Player_UpdateChannel_Button.Enabled = true;
+
+            if (TrackSaved == null)
+                Player_UpdateChannel_Button.Enabled = false;
         }
 
         private void Player_UpdateChannel_Button_Click(object sender, EventArgs e)
         {
             SongTrack = UpdateSongTrack;
+            SavedTrack = SongTrack;
             Player_UpdateChannel_Button.Enabled = false;
             Player_CurrentChannelValue_Label.Text = "伴唱";
-            Global.PlayerTrackUpdate = new PlayerTrackUpdate { Source = UpdateDataGridView, RowIndex = dvRowIndex, Track = SongTrack };
         }
 
         private void Player_PlayControl_Button_Click(object sender, EventArgs e)
@@ -773,14 +763,7 @@ namespace CrazyKTV_SongMgr
             }
             Player_VolumeSlider.ProgressBarValue = val;
             Player_CurrentVolValue_Label.BeginInvokeIfRequired(lbl => lbl.Text = val.ToString() + " %");
-            if(val.ToString() == SongVolume)
-            {
-                Player_UpdateVolume_Button.Enabled = false;
-            }
-            else
-            {
-                Player_UpdateVolume_Button.Enabled = true;
-            }
+            Player_UpdateVolume_Button.Enabled = VolumeSaved != null && val.ToString() != SongVolume;
         }
             
         private void Player_VolumeSlider_Click(object sender, EventArgs e)
@@ -791,6 +774,19 @@ namespace CrazyKTV_SongMgr
 
         private void DShowForm_FormClosed(object sender, FormClosedEventArgs e)
         {
+            // FormClosing has released the file and shown the owner again.
+            if (SavedTrack != null && TrackSaved != null)
+            {
+                try
+                {
+                    TrackSaved(SavedTrack);
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.Forms.MessageBox.Show("音軌更新失敗: " + ex.Message, "錯誤", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                }
+            }
+
             mediaUriElement = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();

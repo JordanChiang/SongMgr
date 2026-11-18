@@ -263,22 +263,7 @@ namespace CrazyKTV_SongMgr
                     else
                     {
                         int i = SongQuery_DataGridView.CurrentCell.RowIndex;
-
-                        PlayerRequest request = new PlayerRequest
-                        {
-                            Song = SongRecord.ForPlayer(SongQuery_DataGridView.Rows[i]),
-                            FilePath = Path.Combine(SongPath, SongFileName),
-                            RowIndex = i.ToString(),
-                            Source = "SongQuery",
-                        };
-
-                        Global.PlayerTrackUpdate = null;
-                        if (Global.MainCfgPlayerCore == "1")
-                        {
-                            DShowForm newPlayerForm = new DShowForm(this, request);
-                            newPlayerForm.Show();
-                        }
-                        this.Hide();
+                        SongPlayer.Open(this, SongQuery_GridPlayerRequest(SongQuery_DataGridView.Rows[i], Path.Combine(SongPath, SongFileName)));
                     }
                     break;
                 case "查詢此歌手所有歌曲":
@@ -419,21 +404,7 @@ namespace CrazyKTV_SongMgr
                 }
                 else
                 {
-                    PlayerRequest request = new PlayerRequest
-                    {
-                        Song = SongRecord.ForPlayer(SongQuery_DataGridView.Rows[i]),
-                        FilePath = Path.Combine(SongPath, SongFileName),
-                        RowIndex = i.ToString(),
-                        Source = "SongQuery",
-                    };
-
-                    Global.PlayerTrackUpdate = null;
-                    if (Global.MainCfgPlayerCore == "1")
-                    {
-                        DShowForm newPlayerForm = new DShowForm(this, request);
-                        newPlayerForm.Show();
-                    }
-                    this.Hide();
+                    SongPlayer.Open(this, SongQuery_GridPlayerRequest(SongQuery_DataGridView.Rows[i], file));
                 }
             }
         }
@@ -819,6 +790,85 @@ namespace CrazyKTV_SongMgr
                     }
                 }
             };
+        }
+
+        #endregion
+
+        #region --- SongQuery 播放器 ---
+
+        /// <summary>Plays a song of the 歌庫查詢 grid; a saved track or volume goes to the 歌庫 and to that song's row.</summary>
+        private PlayerRequest SongQuery_GridPlayerRequest(DataGridViewRow row, string filePath)
+        {
+            string songId = row.Cells["Song_Id"].Value.ToString();
+            return new PlayerRequest
+            {
+                Song = SongRecord.ForPlayer(row),
+                FilePath = filePath,
+                TrackSaved = track => SongQuery_SaveTrack(songId, track),
+                VolumeSaved = volume => SongQuery_SaveVolume(songId, volume),
+            };
+        }
+
+        /// <summary>The grid row of <paramref name="songId"/>, or null once it is no longer listed.</summary>
+        private DataGridViewRow SongQuery_FindRow(string songId)
+        {
+            return SongQuery_DataGridView.Rows.Cast<DataGridViewRow>()
+                .FirstOrDefault(r => r.Cells["Song_Id"].Value?.ToString() == songId);
+        }
+
+        /// <summary>Saves like a 歌庫查詢 edit, so the file is moved or renamed when the 歌庫結構 includes the track.</summary>
+        private void SongQuery_SaveTrack(string songId, string track)
+        {
+            DataGridViewRow row = SongQuery_FindRow(songId);
+            if (row == null) return;
+
+            SongRecord song = SongRecord.FromQueryGridRow(row);
+            song.OldId = song.Id;
+            song.SingerType = row.Cells["Song_SingerType"].Value.ToString();
+            song.Track = track;
+
+            List<SongRecord> UpdateList = new List<SongRecord>() { song };
+
+            SongQuery.CreateSongDataTable();
+            Common_SwitchSetUI(false);
+
+            Global.TotalList = new List<int>() { 0, 0, 0, 0 };
+            Global.SongQueryDataGridViewRestoreSelectList = new List<string>();
+            Global.SongQueryDataGridViewRestoreCurrentRow = songId;
+            SongQuery_DataGridView.Sorted -= new EventHandler(SongQuery_DataGridView_Sorted);
+            SongQuery_QueryStatus_Label.Text = "正在更新音軌資料,請稍待...";
+
+            using (DataTable UpdateDT = (DataTable)SongQuery_DataGridView.DataSource)
+            {
+                var tasks = new List<Task>()
+                {
+                    Task.Factory.StartNew(() => SongQuery_SongUpdate(UpdateList, UpdateDT, false))
+                };
+
+                Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
+                {
+                    this.BeginInvoke((Action)delegate()
+                    {
+                        SongQuery_DataGridView.Sorted += new EventHandler(SongQuery_DataGridView_Sorted);
+                        SongQuery_DataGridView_Sorted(new object(), new EventArgs());
+                        SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲的音軌資料。";
+                        Common_SwitchSetUI(true);
+                    });
+                    UpdateList.Clear();
+                    SongQuery.DisposeSongDataTable();
+                });
+            }
+        }
+
+        private void SongQuery_SaveVolume(string songId, string volume)
+        {
+            using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
+            {
+                store.UpdateSong(new SongRecord { Id = songId, Volume = volume }, SongColumns.Volume);
+            }
+
+            DataGridViewRow row = SongQuery_FindRow(songId);
+            if (row != null) row.Cells["Song_Volume"].Value = volume;
         }
 
         #endregion

@@ -669,64 +669,6 @@ namespace CrazyKTV_SongMgr
             }
         }
 
-        private void MainForm_VisibleChanged(object sender, EventArgs e)
-        {
-            if (Global.PlayerTrackUpdate != null)
-            {
-                PlayerTrackUpdate update = Global.PlayerTrackUpdate;
-                int i = Convert.ToInt32(update.RowIndex);
-                switch (update.Source)
-                {
-                    case "SongQuery":
-                        SongRecord song = SongRecord.FromQueryGridRow(SongQuery_DataGridView.Rows[i]);
-                        string OldSongId = song.Id;
-                        song.OldId = song.Id;
-                        song.SingerType = SongQuery_DataGridView.Rows[i].Cells["Song_SingerType"].Value.ToString();
-                        song.Track = update.Track;
-
-                        List<SongRecord> UpdateList = new List<SongRecord>() { song };
-
-                        SongQuery.CreateSongDataTable();
-                        Common_SwitchSetUI(false);
-
-                        Global.TotalList = new List<int>() { 0, 0, 0, 0 };
-                        Global.SongQueryDataGridViewRestoreSelectList = new List<string>();
-                        Global.SongQueryDataGridViewRestoreCurrentRow = OldSongId;
-                        SongQuery_DataGridView.Sorted -= new EventHandler(SongQuery_DataGridView_Sorted);
-                        SongQuery_QueryStatus_Label.Text = "正在更新音軌資料,請稍待...";
-
-                        using (DataTable UpdateDT = (DataTable)SongQuery_DataGridView.DataSource)
-                        {
-                            var tasks = new List<Task>()
-                            {
-                                Task.Factory.StartNew(() => SongQuery_SongUpdate(UpdateList, UpdateDT, false))
-                            };
-
-                            Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
-                            {
-                                this.BeginInvoke((Action)delegate()
-                                {
-                                    SongQuery_DataGridView.Sorted += new EventHandler(SongQuery_DataGridView_Sorted);
-                                    SongQuery_DataGridView_Sorted(new object(), new EventArgs());
-                                    SongQuery_QueryStatus_Label.Text = "已成功更新 " + Global.TotalList[0] + " 首歌曲的音軌資料。";
-                                    Common_SwitchSetUI(true);
-                                });
-                                UpdateList.Clear();
-                                SongQuery.DisposeSongDataTable();
-                            });
-                        }
-                        break;
-                    case "SongQueryEdit":
-                        SongQuery_EditSongTrack_ComboBox.SelectedValue = update.Track;
-                        break;
-                    case "SongAdd":
-                        SongAdd_EditSongTrack_ComboBox.SelectedValue = update.Track;
-                        break;
-                }
-                Global.PlayerTrackUpdate = null;
-            }
-        }
-
         private void SongMgrCfg_TabControl_SelectedIndexChanged(object sender, EventArgs e)
         {
             switch (SongMgrCfg_TabControl.SelectedTab.Name)

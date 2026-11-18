@@ -42,6 +42,7 @@ Domain terms used in CrazyKTV SongMgr, with the code that owns each one.
 
 - **媒體探測** (media probe) — everything asked of ffprobe / ffmpeg: audio stream count, which 聲道 is the 伴唱 (`DetectTrack`), duration, 重播增益 per track, whether a file decodes cleanly. `MediaProbe`.
 - **重播增益 (ReplayGain)** — measured loudness offset of the 伴唱, stored in `Song_ReplayGain`.
+- **播放器** — plays one song in its own window while the window that opened it is hidden. `SongPlayer.Open` with a `PlayerRequest`; the opener decides what a saved 伴唱 track (`TrackSaved`, after the player closes, since it can rename the file) or volume (`VolumeSaved`, right away) changes — the 歌庫, a grid row or the edit fields. A null callback disables that button.
 - **影片輸出** — the video renderer the player uses, VMR9 or EVR (`MainCfgPlayerOutput`). `PlayerOutput`; VMR9 is probed (`VideoEnvCheck`) only when chosen, once the settings are loaded.
 - **歌曲音量** — playback volume stored in `Song_Volume`; derived from 重播增益 by `MediaProbe.SongVolume` and kept inside a `VolumeRange`: 10..100 for 加歌 and 音量平衡 (`VolumeRange.Library`), 5..100 for 音量正規化 (`VolumeRange.Normalize`).
 

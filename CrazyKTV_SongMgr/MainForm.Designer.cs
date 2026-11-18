@@ -8259,7 +8259,6 @@
             this.Text = "CrazyKTV 加歌程式";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
             this.Load += new System.EventHandler(this.MainForm_Load);
-            this.VisibleChanged += new System.EventHandler(this.MainForm_VisibleChanged);
             this.MainTabControl.ResumeLayout(false);
             this.SongQuery_TabPage.ResumeLayout(false);
             this.SongQuery_TabControl.ResumeLayout(false);

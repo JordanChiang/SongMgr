@@ -252,8 +252,6 @@ namespace CrazyKTV_SongMgr
         public static string CashboxDataGridViewRestoreCurrentRow = "";
         public static List<string> CashboxDataGridViewRestoreSelectList = new List<string>();
 
-        /// <summary>Set by the player when the user picks another 伴唱 track; read when MainForm becomes visible again.</summary>
-        public static PlayerTrackUpdate PlayerTrackUpdate;
         public static List<string> PlayerRandomVideoList = new List<string>();
         public static bool PlayerInitialized = false;
 
