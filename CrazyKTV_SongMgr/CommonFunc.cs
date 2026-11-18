@@ -2186,15 +2186,13 @@ namespace CrazyKTV_SongMgr
 
                         if (UsedIdlist.Count > 0)
                         {
-                            int iMin = 1;
-                            int iMax = Convert.ToInt32(UsedIdlist[UsedIdlist.Count - 1]);
-                            Parallel.For(iMin, iMax, (i, ForloopState) =>
+                            // 缺號 lowest first: callers hand out list[0] first
+                            HashSet<int> used = new HashSet<int>(UsedIdlist);
+                            int iMax = UsedIdlist[UsedIdlist.Count - 1];
+                            for (int i = 1; i < iMax; i++)
                             {
-                                if (UsedIdlist.IndexOf(i) < 0)
-                                {
-                                    list.Add(i.ToString());
-                                }
-                            });
+                                if (!used.Contains(i)) list.Add(i.ToString());
+                            }
                         }
                     }
                 }
