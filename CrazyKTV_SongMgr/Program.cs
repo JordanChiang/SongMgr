@@ -64,11 +64,15 @@ namespace CrazyKTV_SongMgr
     }
 
 
+    /// <summary>
+    /// Shared app state. A property that reads and writes <c>SongMgrSettings.…Value</c> is a view of a 歌庫設定:
+    /// its type and default live in <see cref="SongMgrSettings"/>.
+    /// </summary>
     class Global
     {
         public static float DPIScalingFactor = 1;
 
-        public static string CrazyktvDatabaseFile = Application.StartupPath + @"\CrazySong.mdb";
+        public static string CrazyktvDatabaseFile { get => SongMgrSettings.CrazyktvDatabaseFile.Value; set => SongMgrSettings.CrazyktvDatabaseFile.Value = value; }
         public static string CrazyktvSongMgrDatabaseFile = Application.StartupPath + @"\SongMgr\CrazySongMgr.mdb";
         public static string CrazyktvCfgFile = Application.StartupPath + @"\CrazyKTV.cfg";
         public static bool CrazyktvDatabaseStatus = false;
@@ -81,9 +85,9 @@ namespace CrazyKTV_SongMgr
 
         public static string SongMgrVer = FileVersionInfo.GetVersionInfo(Environment.ProcessPath).FileVersion.ToString().Replace(".", "");
         public static string SongMgrCfgFile = Application.StartupPath + @"\CrazyKTV_SongMgr.cfg";
-        public static string SongMgrSupportFormat = ".avi;.flv;.dat;.mkv;.mp4;.mov;.mpeg;.mpg;.rmvb;.ts;.vob;.webm;.wmv";
-        public static string SongMgrDestFolder = "";
-        public static string SongMgrSongAddMode = "3";
+        public static string SongMgrSupportFormat { get => SongMgrSettings.SongMgrSupportFormat.Value; set => SongMgrSettings.SongMgrSupportFormat.Value = value; }
+        public static string SongMgrDestFolder { get => SongMgrSettings.SongMgrDestFolder.Value; set => SongMgrSettings.SongMgrDestFolder.Value = value; }
+        public static string SongMgrSongAddMode { get => SongMgrSettings.SongMgrSongAddMode.Value; set => SongMgrSettings.SongMgrSongAddMode.Value = value; }
 
         /// <summary><see cref="SongMgrSongAddMode"/> as a name. The string stays the stored and bound form.</summary>
         public static SongAddMode AddMode
@@ -100,69 +104,69 @@ namespace CrazyKTV_SongMgr
                 }
             }
         }
-        public static string SongMgrChorusMerge = "False";
-        public static string SongMgrMaxDigitCode = "2";
-        public static string SongMgrLangCode = "";
-        public static string SongMgrSongType = "";
-        public static string SongMgrSongInfoSeparate = "1";
-        public static string SongMgrChorusSeparate = "1";
-        public static string SongMgrFolderStructure = "1";
-        public static string SongMgrFileStructure = "1";
-        public static string SongMgrSongTrackMode = "False";
-        public static string SongMgrBackupRemoveSong = "False";
-        public static string SongMgrCustomSingerTypeStructure = "1,1,1,1,1,1,1,2";
-        public static string SongMgrEnableMonitorFolders = "False";
-        public static string SongMgrSingerGroup = "";
+        public static string SongMgrChorusMerge { get => SongMgrSettings.SongMgrChorusMerge.Value; set => SongMgrSettings.SongMgrChorusMerge.Value = value; }
+        public static string SongMgrMaxDigitCode { get => SongMgrSettings.SongMgrMaxDigitCode.Value; set => SongMgrSettings.SongMgrMaxDigitCode.Value = value; }
+        public static string SongMgrLangCode { get => SongMgrSettings.SongMgrLangCode.Value; set => SongMgrSettings.SongMgrLangCode.Value = value; }
+        public static string SongMgrSongType { get => SongMgrSettings.SongMgrSongType.Value; set => SongMgrSettings.SongMgrSongType.Value = value; }
+        public static string SongMgrSongInfoSeparate { get => SongMgrSettings.SongMgrSongInfoSeparate.Value; set => SongMgrSettings.SongMgrSongInfoSeparate.Value = value; }
+        public static string SongMgrChorusSeparate { get => SongMgrSettings.SongMgrChorusSeparate.Value; set => SongMgrSettings.SongMgrChorusSeparate.Value = value; }
+        public static string SongMgrFolderStructure { get => SongMgrSettings.SongMgrFolderStructure.Value; set => SongMgrSettings.SongMgrFolderStructure.Value = value; }
+        public static string SongMgrFileStructure { get => SongMgrSettings.SongMgrFileStructure.Value; set => SongMgrSettings.SongMgrFileStructure.Value = value; }
+        public static string SongMgrSongTrackMode { get => SongMgrSettings.SongMgrSongTrackMode.Value; set => SongMgrSettings.SongMgrSongTrackMode.Value = value; }
+        public static string SongMgrBackupRemoveSong { get => SongMgrSettings.SongMgrBackupRemoveSong.Value; set => SongMgrSettings.SongMgrBackupRemoveSong.Value = value; }
+        public static string SongMgrCustomSingerTypeStructure { get => SongMgrSettings.SongMgrCustomSingerTypeStructure.Value; set => SongMgrSettings.SongMgrCustomSingerTypeStructure.Value = value; }
+        public static string SongMgrEnableMonitorFolders { get => SongMgrSettings.SongMgrEnableMonitorFolders.Value; set => SongMgrSettings.SongMgrEnableMonitorFolders.Value = value; }
+        public static string SongMgrSingerGroup { get => SongMgrSettings.SongMgrSingerGroup.Value; set => SongMgrSettings.SongMgrSingerGroup.Value = value; }
         public static bool SongMgrInitializeStatus = false;
         public static bool SongMgrDBVerErrorUIStatus = false;
         public static List<string> SongMgrCustomSingerTypeStructureList = new List<string>() { "男", "女", "團", "合唱", "外男", "外女", "外團", "其他", "歌星姓氏", "全部歌星", "新進" };
-        public static List<string> SongMgrMonitorFoldersList = new List<string>() { "", "", "", "", "" };
+        public static List<string> SongMgrMonitorFoldersList { get => SongMgrSettings.SongMgrMonitorFolders.Value; set => SongMgrSettings.SongMgrMonitorFolders.Value = value; }
 
-        public static string SingerMgrDefaultSingerDataTable = "ktv_Singer";
-        public static string SingerMgrSyncSongSinger = "True";
+        public static string SingerMgrDefaultSingerDataTable { get => SongMgrSettings.SingerMgrDefaultSingerDataTable.Value; set => SongMgrSettings.SingerMgrDefaultSingerDataTable.Value = value; }
+        public static string SingerMgrSyncSongSinger { get => SongMgrSettings.SingerMgrSyncSongSinger.Value; set => SongMgrSettings.SingerMgrSyncSongSinger.Value = value; }
         public static string SingerMgrLastNameSortMethod = "1";
 
-        public static string SongAddDefaultSongLang = "11";
-        public static string SongAddDefaultSingerType = "8";
-        public static string SongAddDefaultSongTrack = "1";
-        public static string SongAddDefaultSongType = "1";
-        public static string SongAddDefaultSongVolume = "100";
-        public static string SongAddSpecialStr = "";
-        public static string SongAddSongIdentificationMode = "1";
-        public static string SongAddDupSongMode = "1";
-        public static string SongAddEngSongNameFormat = "False";
-        public static string SongAddUseCustomSongID = "False";
-        public static string SongAddEnableConvToTC = "False";
-        public static string SongAddEnableVolumeDetect = "False";
+        public static string SongAddDefaultSongLang { get => SongMgrSettings.SongAddDefaultSongLang.Value; set => SongMgrSettings.SongAddDefaultSongLang.Value = value; }
+        public static string SongAddDefaultSingerType { get => SongMgrSettings.SongAddDefaultSingerType.Value; set => SongMgrSettings.SongAddDefaultSingerType.Value = value; }
+        public static string SongAddDefaultSongTrack { get => SongMgrSettings.SongAddDefaultSongTrack.Value; set => SongMgrSettings.SongAddDefaultSongTrack.Value = value; }
+        public static string SongAddDefaultSongType { get => SongMgrSettings.SongAddDefaultSongType.Value; set => SongMgrSettings.SongAddDefaultSongType.Value = value; }
+        public static string SongAddDefaultSongVolume { get => SongMgrSettings.SongAddDefaultSongVolume.Value; set => SongMgrSettings.SongAddDefaultSongVolume.Value = value; }
+        public static string SongAddSpecialStr { get => SongMgrSettings.SongAddSpecialStr.Value; set => SongMgrSettings.SongAddSpecialStr.Value = value; }
+        public static string SongAddSongIdentificationMode { get => SongMgrSettings.SongAddSongIdentificationMode.Value; set => SongMgrSettings.SongAddSongIdentificationMode.Value = value; }
+        public static string SongAddDupSongMode { get => SongMgrSettings.SongAddDupSongMode.Value; set => SongMgrSettings.SongAddDupSongMode.Value = value; }
+        public static string SongAddEngSongNameFormat { get => SongMgrSettings.SongAddEngSongNameFormat.Value; set => SongMgrSettings.SongAddEngSongNameFormat.Value = value; }
+        public static string SongAddUseCustomSongID { get => SongMgrSettings.SongAddUseCustomSongID.Value; set => SongMgrSettings.SongAddUseCustomSongID.Value = value; }
+        public static string SongAddEnableConvToTC { get => SongMgrSettings.SongAddEnableConvToTC.Value; set => SongMgrSettings.SongAddEnableConvToTC.Value = value; }
+        public static string SongAddEnableVolumeDetect { get => SongMgrSettings.SongAddEnableVolumeDetect.Value; set => SongMgrSettings.SongAddEnableVolumeDetect.Value = value; }
 
-        public static string MainCfgAlwaysOnTop = "False";
-        public static string MainCfgEnableAutoUpdate = "True";
-        public static string MainCfgAutoSongFileCount = "False";
-        public static string MainCfgHideSongDBConverterTabPage = "False";
-        public static string MainCfgHideSongAddResultTabPage = "True";
-        public static string MainCfgHideSongLogTabPage = "True";
-        public static string MainCfgHideApplyCashboxIdButton = "True";
-        public static string MainCfgBackupRemoveSongDays = "7";
-        public static string MainCfgUIScale = "3";
-        public static string MainCfgUICustomScale = "100";
-        public static string MainCfgUIFont = "Arial";
-        public static string MainCfgEnableUIScale = "False";
-        public static string MainCfgBackupDB = "False";
-        public static string MainCfgBackupDBPath = "";
-        public static string MainCfgPlayerCore = "1";
-        public static string MainCfgPlayerOutput = "1";
-        public static string MainCfgPlayerEnableAudioCompressor = "False";
-        public static string MainCfgPlayerEnableAudioProcessor = "False";
-        public static string MainCfgPlayerDefaultVolume = "100";
+        public static string MainCfgAlwaysOnTop { get => SongMgrSettings.MainCfgAlwaysOnTop.Value; set => SongMgrSettings.MainCfgAlwaysOnTop.Value = value; }
+        public static string MainCfgEnableAutoUpdate { get => SongMgrSettings.MainCfgEnableAutoUpdate.Value; set => SongMgrSettings.MainCfgEnableAutoUpdate.Value = value; }
+        public static string MainCfgAutoSongFileCount { get => SongMgrSettings.MainCfgAutoSongFileCount.Value; set => SongMgrSettings.MainCfgAutoSongFileCount.Value = value; }
+        public static string MainCfgHideSongDBConverterTabPage { get => SongMgrSettings.MainCfgHideSongDBConverterTabPage.Value; set => SongMgrSettings.MainCfgHideSongDBConverterTabPage.Value = value; }
+        public static string MainCfgHideSongAddResultTabPage { get => SongMgrSettings.MainCfgHideSongAddResultTabPage.Value; set => SongMgrSettings.MainCfgHideSongAddResultTabPage.Value = value; }
+        public static string MainCfgHideSongLogTabPage { get => SongMgrSettings.MainCfgHideSongLogTabPage.Value; set => SongMgrSettings.MainCfgHideSongLogTabPage.Value = value; }
+        public static string MainCfgHideApplyCashboxIdButton { get => SongMgrSettings.MainCfgHideApplyCashboxIdButton.Value; set => SongMgrSettings.MainCfgHideApplyCashboxIdButton.Value = value; }
+        public static string MainCfgBackupRemoveSongDays { get => SongMgrSettings.MainCfgBackupRemoveSongDays.Value; set => SongMgrSettings.MainCfgBackupRemoveSongDays.Value = value; }
+        public static string MainCfgUIScale { get => SongMgrSettings.MainCfgUIScale.Value; set => SongMgrSettings.MainCfgUIScale.Value = value; }
+        public static string MainCfgUICustomScale { get => SongMgrSettings.MainCfgUICustomScale.Value; set => SongMgrSettings.MainCfgUICustomScale.Value = value; }
+        public static string MainCfgUIFont { get => SongMgrSettings.MainCfgUIFont.Value; set => SongMgrSettings.MainCfgUIFont.Value = value; }
+        public static string MainCfgEnableUIScale { get => SongMgrSettings.MainCfgEnableUIScale.Value; set => SongMgrSettings.MainCfgEnableUIScale.Value = value; }
+        public static string MainCfgBackupDB { get => SongMgrSettings.MainCfgBackupDB.Value; set => SongMgrSettings.MainCfgBackupDB.Value = value; }
+        public static string MainCfgBackupDBPath { get => SongMgrSettings.MainCfgBackupDBPath.Value; set => SongMgrSettings.MainCfgBackupDBPath.Value = value; }
+        public static string MainCfgPlayerCore { get => SongMgrSettings.MainCfgPlayerCore.Value; set => SongMgrSettings.MainCfgPlayerCore.Value = value; }
+        public static string MainCfgPlayerOutput { get => SongMgrSettings.MainCfgPlayerOutput.Value; set => SongMgrSettings.MainCfgPlayerOutput.Value = value; }
+        public static string MainCfgPlayerEnableAudioCompressor { get => SongMgrSettings.MainCfgPlayerEnableAudioCompressor.Value; set => SongMgrSettings.MainCfgPlayerEnableAudioCompressor.Value = value; }
+        public static string MainCfgPlayerEnableAudioProcessor { get => SongMgrSettings.MainCfgPlayerEnableAudioProcessor.Value; set => SongMgrSettings.MainCfgPlayerEnableAudioProcessor.Value = value; }
+        public static string MainCfgPlayerDefaultVolume { get => SongMgrSettings.MainCfgPlayerDefaultVolume.Value; set => SongMgrSettings.MainCfgPlayerDefaultVolume.Value = value; }
 
         public static string SongMaintenanceEnableMultiSongPath = "False";
-        public static string SongMaintenanceReplayGainVolume = "50";
+        public static string SongMaintenanceReplayGainVolume { get => SongMgrSettings.SongMaintenanceReplayGainVolume.Value; set => SongMgrSettings.SongMaintenanceReplayGainVolume.Value = value; }
 
         public static List<int> MTotalList = new List<int>();
         public static List<int> TotalList = new List<int>();
 
-        public static List<string> CrazyktvSongLangList = new List<string>() { "國語", "台語", "粵語", "日語", "英語", "客語", "原住民語", "韓語", "兒歌", "其它" };
-        public static List<string> CrazyktvSongLangKeyWordList = new List<string>() { "國語,國", "台語,台,閩南,閩,臺語,臺", "粵語,粵,廣東", "日語,日文,日", "英語,英文,英", "客語,客", "原住民語,民謠", "韓語,韓", "兒歌,兒", "其它" };
+        public static List<string> CrazyktvSongLangList { get => SongMgrSettings.CrazyktvSongLangStr.Value; set => SongMgrSettings.CrazyktvSongLangStr.Value = value; }
+        public static List<string> CrazyktvSongLangKeyWordList { get => SongMgrSettings.CrazyktvSongLangKeyWord.Value; set => SongMgrSettings.CrazyktvSongLangKeyWord.Value = value; }
         public static List<string> CrazyktvSingerTypeList = new List<string>() { "男歌星", "女歌星", "團體", "合唱", "外國男", "外國女", "外國團體", "其他", "未使用", "未使用", "新進歌星" };
         public static List<string> CrazyktvSingerTypeKeyWordList = new List<string>() { "男,男星,男歌星,男歌手", "女,女星,女歌星,女歌手", "團,團體,樂團", "合唱,對唱", "外男,外國男星,外國男歌星,外國男歌手", "外女,外國女星,外國女歌星,外國女歌手", "外團,外國團體,外國樂團", "未知,其他,其他歌星,其他歌手" };
         public static List<string> CrazyktvSongTrackList = new List<string>() { "V0", "VR", "VL", "V3", "V4", "V5" };

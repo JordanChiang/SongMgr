@@ -106,9 +106,20 @@ namespace SongMgr.Tests.Compare
 
             // ---------- reflection helpers ----------
 
-            static FieldInfo GlobalField(string name) => typeof(Global).GetField(name, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            static void SetGlobal(string name, object value) { GlobalField(name)?.SetValue(null, value); }
-            static object GetGlobal(string name) => GlobalField(name)?.GetValue(null);
+            // A Global member may be a field or, for a 歌庫設定, a property; a missing one throws rather than being skipped.
+            const BindingFlags GlobalFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+            static void SetGlobal(string name, object value)
+            {
+                FieldInfo field = typeof(Global).GetField(name, GlobalFlags);
+                if (field != null) { field.SetValue(null, value); return; }
+                (typeof(Global).GetProperty(name, GlobalFlags) ?? throw new MissingMemberException(nameof(Global), name)).SetValue(null, value);
+            }
+            static object GetGlobal(string name)
+            {
+                FieldInfo field = typeof(Global).GetField(name, GlobalFlags);
+                if (field != null) return field.GetValue(null);
+                return (typeof(Global).GetProperty(name, GlobalFlags) ?? throw new MissingMemberException(nameof(Global), name)).GetValue(null);
+            }
 
             T C<T>(string name) where T : class =>
                 (T)typeof(MainForm).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).GetValue(form);

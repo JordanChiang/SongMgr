@@ -91,6 +91,56 @@ namespace SongMgr.Tests.Settings
         }
 
         [Fact]
+        public void Entries_are_every_setting_field_in_declaration_order()
+        {
+            var fields = typeof(SongMgrSettings).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Where(f => typeof(Setting).IsAssignableFrom(f.FieldType))
+                .Select(f => (Setting)f.GetValue(null)).ToList();
+
+            Assert.Equal(fields.OrderBy(s => s.Name), SongMgrSettings.Entries.OrderBy(s => s.Name));
+            Assert.All(typeof(SongMgrSettings).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Where(f => typeof(Setting).IsAssignableFrom(f.FieldType)),
+                f => Assert.Equal(f.Name, ((Setting)f.GetValue(null)).Name));
+        }
+
+        [Fact]
+        public void Global_is_a_view_of_the_registry()
+        {
+            Global.SongMgrDestFolder = @"D:\KTV\歌庫";
+            Assert.Equal(@"D:\KTV\歌庫", SongMgrSettings.SongMgrDestFolder.Value);
+
+            SongMgrSettings.MainCfgUIFont.Value = "Tahoma";
+            Assert.Equal("Tahoma", Global.MainCfgUIFont);
+
+            Global.SongMgrMonitorFoldersList[0] = @"E:\監視";
+            Assert.Equal(@"E:\監視,,,,", SongMgrSettings.SongMgrMonitorFolders.Get());
+        }
+
+        [Fact]
+        public void A_snapshot_restores_values_and_list_contents_more_than_once()
+        {
+            var snapshot = SongMgrSettings.Snapshot();
+            for (int i = 0; i < 2; i++)
+            {
+                Global.SongMgrDestFolder = "改過";
+                Global.CrazyktvSongLangList.Add("新語言");
+
+                SongMgrSettings.Restore(snapshot);
+
+                Assert.Equal("", Global.SongMgrDestFolder);
+                Assert.Equal(SongMgrSettings.CrazyktvSongLangStr.Default, Global.CrazyktvSongLangList);
+            }
+        }
+
+        [Fact]
+        public void A_list_default_is_a_new_copy_each_time()
+        {
+            SongMgrSettings.SongMgrMonitorFolders.Default.Add("不該留下");
+
+            Assert.Equal(new[] { "", "", "", "", "" }, SongMgrSettings.SongMgrMonitorFolders.Default);
+        }
+
+        [Fact]
         public void Defaults_are_every_saved_setting_with_its_current_value()
         {
             Global.SongMgrDestFolder = @"D:\KTV\歌庫";

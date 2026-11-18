@@ -72,11 +72,19 @@ namespace SongMgr.Tests.Support
             return dt.AsEnumerable().Select(r => r[1] + ":" + r[0]).ToList();
         }
 
-        /// <summary>Snapshot of every Global field a test may mutate, restored by <see cref="Restore"/>.</summary>
+        /// <summary>Key of the 歌庫設定 snapshot; no Global field can have this name.</summary>
+        const string SettingsKey = "<SongMgrSettings>";
+
+        /// <summary>
+        /// Snapshot of every Global field a test may mutate and of every 歌庫設定 (the Global properties that view them),
+        /// restored by <see cref="Restore"/>.
+        /// </summary>
         public static Dictionary<string, object> Capture()
         {
-            return typeof(Global).GetFields().Where(f => f.IsStatic && !f.IsInitOnly)
+            var state = typeof(Global).GetFields().Where(f => f.IsStatic && !f.IsInitOnly)
                 .ToDictionary(f => f.Name, f => f.GetValue(null));
+            state[SettingsKey] = SongMgrSettings.Snapshot();
+            return state;
         }
 
         public static void Restore(Dictionary<string, object> state)
@@ -85,6 +93,7 @@ namespace SongMgr.Tests.Support
             {
                 f.SetValue(null, state[f.Name]);
             }
+            SongMgrSettings.Restore((IReadOnlyDictionary<Setting, object>)state[SettingsKey]);
         }
     }
 }
