@@ -1,4 +1,4 @@
-using HtmlAgilityPack;
+﻿using HtmlAgilityPack;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -652,7 +652,7 @@ namespace CrazyKTV_SongMgr
                 foreach (DataRow row in Global.SongDT.AsEnumerable())
                 {
                     string str = "";
-                    if (CommonFunc.GetSongLangStr(0, 0, row["Song_Lang"].ToString()) != "-1")
+                    if (songIds.HasLang(row["Song_Lang"].ToString()))
                     {
                         string NewSongId = songIds.Take(row["Song_Lang"].ToString());
 
@@ -784,7 +784,7 @@ namespace CrazyKTV_SongMgr
                 foreach (DataRow row in query)
                 {
                     string str = "";
-                    if (CommonFunc.GetSongLangStr(0, 0, row["Song_Lang"].ToString()) != "-1")
+                    if (songIds.HasLang(row["Song_Lang"].ToString()))
                     {
                         string LangStr = row["Song_Lang"].ToString();
                         string NewSongId = songIds.Take(LangStr);

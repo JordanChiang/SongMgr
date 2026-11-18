@@ -148,5 +148,50 @@ namespace SongMgr.Tests.EndToEnd
                 Assert.False(File.Exists(Path.Combine(app.AppDir, "SongMgr", "Backup", "Favorite.txt")), "我的最愛 are no longer exported to Favorite.txt");
             }
         }
+
+        // 「未知」 is not a 語系 of the 歌庫 (加歌 refuses it), but a 歌庫 written by another program can have it.
+
+        [DesktopFact]
+        public void 轉換為6位數_counts_a_song_whose_語系_is_未知_as_failed_and_converts_the_rest()
+        {
+            using (var app = new AppSession("to6unknown"))
+            {
+                app.WriteSettings(5);
+                app.InsertSong("10001", "國語", "周杰倫", "晴天");
+                app.InsertSong("10002", "未知", "歌手", "不明語系");
+                app.InsertSong("20005", "台語", "江蕙", "家後");
+
+                app.Start();
+                app.Click("轉換為 6 位數", onTab: "歌庫維護");
+                app.Answer("確認提示", "是(Y)");
+                AppSession.WaitUntil(() => app.Value("SongMaintenance_Tooltip_Label").StartsWith("總共轉換"), 60, "轉換為 6 位數 to finish");
+
+                Assert.StartsWith("總共轉換 2 首歌曲的歌曲編號,失敗 1 首", app.Value("SongMaintenance_Tooltip_Label"));
+                Assert.Equal(new[] { ("100001", "晴天"), ("10002", "不明語系"), ("200001", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
+            }
+        }
+
+        [DesktopFact]
+        public void 校正編碼位數_counts_a_song_whose_語系_is_未知_as_failed_and_corrects_the_rest()
+        {
+            using (var app = new AppSession("correctunknown"))
+            {
+                app.WriteSettings(5);
+                app.InsertSong("10001", "國語", "周杰倫", "晴天");
+                app.InsertSong("10002", "國語", "王菲", "紅豆");
+                app.InsertSong("20001", "台語", "江蕙", "家後");
+                app.InsertSong("100005", "國語", "蔡依林", "日不落");
+                app.InsertSong("100006", "未知", "歌手", "不明語系");
+
+                app.Start();
+                app.Click("校正編碼位數", onTab: "歌庫維護");
+                app.Answer("確認提示", "是(Y)");
+                AppSession.WaitUntil(() => app.Value("SongMaintenance_Tooltip_Label").StartsWith("總共校正"), 60, "校正編碼位數 to finish");
+
+                Assert.StartsWith("總共校正 1 首歌曲的歌曲編號,失敗 1 首", app.Value("SongMaintenance_Tooltip_Label"));
+                Assert.Equal(new[] { ("100006", "不明語系"), ("10001", "晴天"), ("10002", "紅豆"), ("10003", "日不落"), ("20001", "家後") },
+                    app.Songs().Select(s => (s.Id, s.Name)));
+            }
+        }
     }
 }

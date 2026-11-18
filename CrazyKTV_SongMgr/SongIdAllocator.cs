@@ -89,6 +89,12 @@ namespace CrazyKTV_SongMgr
             return new SongIdAllocator(Global.CrazyktvSongLangList, startIds, Global.SongMgrMaxDigitCode == "1" ? 5 : 6, usedIds);
         }
 
+        /// <summary>
+        /// Whether <paramref name="lang"/> is a 語系 of this allocator. <see cref="Take"/>, <see cref="Peek"/>,
+        /// <see cref="TryClaim"/> and <see cref="Remaining"/> throw for any other, 「未知」 included.
+        /// </summary>
+        public bool HasLang(string lang) => langs.Contains(lang);
+
         /// <summary>The number <see cref="Take"/> would hand out next, without taking it.</summary>
         public string Peek(string lang)
         {

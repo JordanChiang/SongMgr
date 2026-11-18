@@ -245,6 +245,20 @@ namespace SongMgr.Tests.Allocation
         }
 
         [Fact]
+        public void HasLang_is_true_exactly_for_the_語系_Take_accepts()
+        {
+            var a = Allocator(Code6, 6);
+            foreach (string lang in Langs)
+            {
+                Assert.True(a.HasLang(lang), lang);
+                a.Take(lang);
+            }
+            Assert.False(a.HasLang("未知"));
+            Assert.False(a.HasLang("未使用"));
+            Assert.False(a.HasLang(""));
+        }
+
+        [Fact]
         public void Parallel_takes_never_repeat()
         {
             var a = Allocator(Code6, 6, "100001", "100005", "100009");
