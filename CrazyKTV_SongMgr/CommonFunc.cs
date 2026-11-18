@@ -357,12 +357,15 @@ namespace CrazyKTV_SongMgr
             MainCfg_GroupBox.Enabled = status;
         }
         
-        // Common_SwitchSetUI(false) 鎖定介面期間有背景工作在進行 (加歌、歌庫維護等會寫入資料庫)
-        private bool Common_TaskRunning = false;
+        // 背景工作的執行者; Common_SwitchSetUI(false) 鎖定介面期間 Jobs.IsBusy 為 true (加歌、歌庫維護等會寫入資料庫)
+        private BackgroundJobRunner jobs;
+        private BackgroundJobRunner Jobs => jobs ??= new BackgroundJobRunner(
+            locked => Common_SwitchSetUI(!locked),
+            action => { if (!IsDisposed && IsHandleCreated) BeginInvoke(action); });
 
         private void Common_SwitchSetUI(bool status)
         {
-            Common_TaskRunning = !status;
+            if (!status) Jobs.SetBusy(true);
 
             if (!status)
             {
@@ -466,6 +469,8 @@ namespace CrazyKTV_SongMgr
                     }
                 }
             }
+
+            if (status) Jobs.SetBusy(false);
         }
 
         #endregion
@@ -1711,28 +1716,8 @@ namespace CrazyKTV_SongMgr
 
                 if (IsDisposed || !IsHandleCreated) return;
                 // 有背景工作 (例如加歌) 時, 等工作完成才詢問, 避免更新時中斷資料庫寫入
-                BeginInvoke((Action)(() => Common_RunWhenIdle(() => Common_UpdateSongMgr(plan))));
+                BeginInvoke((Action)(() => Jobs.RunWhenIdle(() => Common_UpdateSongMgr(plan))));
             });
-        }
-
-        /// <summary>沒有背景工作時立即執行; 否則每秒檢查一次, 等工作完成後才執行.</summary>
-        private void Common_RunWhenIdle(Action action)
-        {
-            if (!Common_TaskRunning)
-            {
-                action();
-                return;
-            }
-
-            System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer() { Interval = 1000 };
-            timer.Tick += (s, e) =>
-            {
-                if (Common_TaskRunning || IsDisposed) return;
-                timer.Stop();
-                timer.Dispose();
-                action();
-            };
-            timer.Start();
         }
 
         private void Common_UpdateSongMgr(AppUpdater.UpdatePlan plan)
@@ -1774,12 +1759,12 @@ namespace CrazyKTV_SongMgr
             }
 
             // 下載期間若有背景工作開始 (例如歌庫監視), 等它完成才關閉程式
-            if (Common_TaskRunning)
+            if (Jobs.IsBusy)
             {
                 MessageBox.Show(this, "更新檔已下載完成, 目前有工作正在進行。" + Environment.NewLine + "工作完成後程式會自動關閉並更新。",
                     "自動更新", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            Common_RunWhenIdle(() => Common_ReplaceAndClose(packageRoot, appDir));
+            Jobs.RunWhenIdle(() => Common_ReplaceAndClose(packageRoot, appDir));
         }
 
         private void Common_ReplaceAndClose(string packageRoot, string appDir)

@@ -855,18 +855,6 @@ namespace CrazyKTV_SongMgr
         #region --- 歌曲路徑變更 ---
 
 
-        private string NormalizeDirectoryPath(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path)) return "";
-            string normalized = path.Trim().Replace('/', '\\');
-            normalized = Regex.Replace(normalized, @"(?<!^)\\{2,}", @"\");
-            if (!normalized.EndsWith(@"\"))
-            {
-                normalized += @"\";
-            }
-            return normalized;
-        }
-
         private void SongMaintenance_SongPathChange_Button_Click(object sender, EventArgs e)
         {
             if (SongMaintenance_SongPathChange_Button.Text == "瀏覽")
@@ -876,7 +864,7 @@ namespace CrazyKTV_SongMgr
 
                 if (opd.ShowDialog() == DialogResult.OK && opd.SelectedPath.Length > 0)
                 {
-                    SongMaintenance_DestSongPath_TextBox.Text = NormalizeDirectoryPath(opd.SelectedPath);
+                    SongMaintenance_DestSongPath_TextBox.Text = SongPathChange.NormalizeDirectory(opd.SelectedPath);
                     SongMaintenance_SongPathChange_Button.Text = "變更";
                 }
             }
@@ -895,212 +883,49 @@ namespace CrazyKTV_SongMgr
                 }
                 else
                 {
-                    string SrcSongPath = NormalizeDirectoryPath(rawSrcPath);
-                    string DestSongPath = NormalizeDirectoryPath(rawDestPath);
+                    string SrcSongPath = SongPathChange.NormalizeDirectory(rawSrcPath);
+                    string DestSongPath = SongPathChange.NormalizeDirectory(rawDestPath);
 
                     SongMaintenance_SrcSongPath_TextBox.Text = SrcSongPath;
                     SongMaintenance_DestSongPath_TextBox.Text = DestSongPath;
 
                     if (MessageBox.Show("你確定要變更歌曲路徑嗎?", "確認提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
-                        Global.TimerStartTime = DateTime.Now;
-                        Global.TotalList = new List<int>() { 0, 0, 0, 0 };
-                        SongMaintenance.CreateSongDataTable();
-                        Common_SwitchSetUI(false);
-
-                        var tasks = new List<Task>()
+                        Jobs.TryStart(new BackgroundJob
                         {
-                            Task.Factory.StartNew(() => SongMaintenance_SongPathChangeTask(SrcSongPath, DestSongPath))
-                        };
-
-                        Task.Factory.ContinueWhenAll(tasks.ToArray(), EndTask =>
-                        {
-                            Global.TimerEndTime = DateTime.Now;
-                            this.BeginInvoke((Action)delegate()
+                            Name = "變更歌曲路徑",
+                            Status = text => SongMaintenance_Tooltip_Label.Text = text,
+                            Work = ctx =>
                             {
-                                SongMaintenance_Tooltip_Label.Text = "總共更新 " + Global.TotalList[0] + " 首歌曲的歌曲路徑資料,失敗 " + Global.TotalList[1] + " 首,共花費 " + (long)(Global.TimerEndTime - Global.TimerStartTime).TotalSeconds + " 秒完成。";
+                                ThreadPriority priority = Thread.CurrentThread.Priority;
+                                Thread.CurrentThread.Priority = ThreadPriority.Lowest;
+                                try
+                                {
+                                    SongMaintenance.CreateSongDataTable();
+                                    var changes = SongPathChange.Plan(Global.SongDT, SrcSongPath, DestSongPath, ctx);
+                                    using (SongLibraryStore store = SongLibraryStore.Open())
+                                    {
+                                        SongPathChange.Apply(store, changes, ctx);
+                                    }
+                                }
+                                finally
+                                {
+                                    SongMaintenance.DisposeSongDataTable();
+                                    Thread.CurrentThread.Priority = priority;
+                                }
+                            },
+                            Summary = (c, secs) => "總共更新 " + c[0] + " 首歌曲的歌曲路徑資料,失敗 " + c[1] + " 首,共花費 " + secs + " 秒完成。",
+                            Completed = () =>
+                            {
                                 SongMaintenance_SrcSongPath_TextBox.Text = "";
                                 SongMaintenance_DestSongPath_TextBox.Text = "";
                                 SongMaintenance_SongPathChange_Button.Text = "瀏覽";
                                 Task.Factory.StartNew(() => Common_GetSongStatisticsTask());
-                                Common_SwitchSetUI(true);
-                            });
-                            SongMaintenance.DisposeSongDataTable();
+                            },
                         });
                     }
                 }
             }
-        }
-
-        private void SongMaintenance_SongPathChangeTask(object ObjSrcSongPath, object ObjDestSongPath)
-        {
-            Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-            string SongPath = "";
-            string SrcSongPath = NormalizeDirectoryPath((string)ObjSrcSongPath);
-            string DestSongPath = NormalizeDirectoryPath((string)ObjDestSongPath);
-            List<string> list = new List<string>();
-
-            // Debug: Log total records in Global.SongDT
-            System.Diagnostics.Debug.WriteLine($"[SongPathChange] Total records in Global.SongDT: {Global.SongDT.Rows.Count}");
-            System.Diagnostics.Debug.WriteLine($"[SongPathChange] Source path filter: {SrcSongPath}");
-            System.Diagnostics.Debug.WriteLine($"[SongPathChange] Destination path: {DestSongPath}");
-
-            var query = from row in Global.SongDT.AsEnumerable()
-                        where row.Field<string>("Song_Path").ToLower().Contains(SrcSongPath.ToLower())
-                        select row;
-
-            // Debug: Log query result count
-            int queryCount = query.Count<DataRow>();
-            System.Diagnostics.Debug.WriteLine($"[SongPathChange] Query matched records: {queryCount}");
-
-            if (queryCount > 0)
-            {
-                int processedCount = 0;
-                foreach (DataRow row in query)
-                {
-                    processedCount++;
-                    //Trace.WriteLine("Current song:", row["Song_Path"].ToString());
-                    
-                    // Case-insensitive path replacement
-                    string originalPath = row["Song_Path"].ToString();
-                    
-                    // Use Regex for case-insensitive replacement
-                    SongPath = Regex.Replace(originalPath, Regex.Escape(SrcSongPath), DestSongPath, RegexOptions.IgnoreCase);
-
-                    if (!SongPath.EndsWith(@"\")) 
-                        SongPath += @"\";
-
-                    // Debug: Log first few replacements to verify
-                    if (processedCount <= 3)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[SongPathChange] Path replacement example #{processedCount}:");
-                        System.Diagnostics.Debug.WriteLine($"  Original: {originalPath}");
-                        System.Diagnostics.Debug.WriteLine($"  New:      {SongPath}");
-                    }
-                    
-                    list.Add(SongPath + "|" + row["Song_Id"].ToString());
-
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        SongMaintenance_Tooltip_Label.Text = "正在解析第 " + list.Count + " 首歌曲的歌曲路徑資料,請稍待...";
-                    });
-                }
-                
-                // Debug: Final count
-                System.Diagnostics.Debug.WriteLine($"[SongPathChange] Total processed records: {processedCount}");
-                System.Diagnostics.Debug.WriteLine($"[SongPathChange] Total items in list: {list.Count}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[SongPathChange] No records matched the filter criteria");
-            }
-            
-            // Debug: Start database update
-            System.Diagnostics.Debug.WriteLine($"[SongPathChange] Starting database update for {list.Count} records...");
-            
-            try
-            {
-                SongLibraryStore store = SongLibraryStore.Open();
-                
-                // Use batch commits every 500 records to avoid Access database limitations
-                const int BATCH_SIZE = 500;
-                store.BeginTransaction();
-                
-                List<string> valuelist = new List<string>();
-
-                int updateCount = 0;
-                int batchCount = 0;
-                int totalCommitted = 0;
-                bool hasError = false;
-                foreach (string str in list)
-                {
-                    valuelist = new List<string>(str.Split('|'));
-
-                    try
-                    {
-                        int rowsAffected = store.UpdateSong(new SongRecord { Id = valuelist[1], Path = valuelist[0] }, SongColumns.Path);
-                        lock (LockThis)
-                        {
-                            Global.TotalList[0]++;
-                        }
-                        updateCount++;
-                        batchCount++;
-                        
-                        // Commit in batches to avoid Access database limitations
-                        if (batchCount >= BATCH_SIZE)
-                        {
-                            store.Commit();
-                            totalCommitted += batchCount;
-                             
-                            // Start new transaction for next batch
-                            store.BeginTransaction();
-                            batchCount = 0;
-                        }                        
-                       
-                        // Debug: Log if no rows were affected
-                        if (rowsAffected == 0)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[SongPathChange] WARNING: No rows affected for Song_Id={valuelist[1]}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        hasError = true;
-                        lock (LockThis)
-                        {
-                            Global.TotalList[1]++;
-                        }
-                        Global.SongLog.Add("【變更歌曲路徑】更新資料庫時發生錯誤: " + str + " - " + ex.Message);
-                        
-                        // Debug: Log the actual error
-                        System.Diagnostics.Debug.WriteLine($"[SongPathChange] ERROR updating Song_Id={valuelist[1]}: {ex.Message}");
-                    }
-
-                    this.BeginInvoke((Action)delegate()
-                    {
-                        SongMaintenance_Tooltip_Label.Text = "正在轉換第 " + Global.TotalList[0] + " 首歌曲的歌曲路徑資料,請稍待...";
-                    });
-                }
-
-                // Commit remaining records in the last batch
-                if (batchCount > 0)
-                {
-                    if (hasError)
-                    {
-                        store.Rollback();
-                        System.Diagnostics.Debug.WriteLine($"[SongPathChange] Last batch rolled back due to errors ({batchCount} records)");
-                    }
-                    else
-                    {
-                        store.Commit();
-                        totalCommitted += batchCount;
-                        System.Diagnostics.Debug.WriteLine($"[SongPathChange] Last batch committed: {batchCount} records (Total committed: {totalCommitted})");
-                    }
-                }
-                
-                System.Diagnostics.Debug.WriteLine($"[SongPathChange] All transactions completed. Total records committed: {totalCommitted}");
-
-                store.Dispose();
-                
-                // Debug: Final database update summary
-                System.Diagnostics.Debug.WriteLine($"[SongPathChange] Database update complete. Success: {Global.TotalList[0]}, Failed: {Global.TotalList[1]}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SongPathChange] CRITICAL ERROR in database update: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[SongPathChange] Stack trace: {ex.StackTrace}");
-                Global.SongLog.Add("【變更歌曲路徑】資料庫連線錯誤: " + ex.Message);
-                
-                // Try to rollback if transaction exists
-                try
-                {
-                    // Transaction will be out of scope here, but log the attempt
-                    System.Diagnostics.Debug.WriteLine($"[SongPathChange] Attempting to handle transaction after critical error");
-                }
-                catch { }
-            }
-            
-            list.Clear();
         }
 
 
