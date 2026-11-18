@@ -74,7 +74,7 @@ namespace CrazyKTV_SongMgr
     /// <summary>加歌模式: what happens to a song's file when it enters the 歌庫.</summary>
     enum SongAddMode
     {
-        /// <summary>A value the settings file should never hold.</summary>
+        /// <summary>Never the setting's value: a stored value other than 1-4 keeps the current one.</summary>
         Unknown = 0,
         /// <summary>1: move the file into the 歌庫 folder.</summary>
         Move = 1,
@@ -101,99 +101,182 @@ namespace CrazyKTV_SongMgr
         LoadOnly,
     }
 
-    /// <summary>One 歌庫設定 entry: its name in the file, its save group, and the Global field it reads and writes as text.</summary>
-    sealed class Setting
+    /// <summary>One 歌庫設定 entry: its name in the file, its save group, and its value as the file stores it.</summary>
+    abstract class Setting
     {
         public string Name { get; }
         public SettingsGroup Group { get; }
-        /// <summary>The value as stored in the file.</summary>
-        public Func<string> Get { get; }
-        /// <summary>Takes a non-empty value from the file.</summary>
-        public Action<string> Set { get; }
 
-        public Setting(string name, SettingsGroup group, Func<string> get, Action<string> set)
+        protected Setting(string name, SettingsGroup group)
         {
             Name = name;
             Group = group;
-            Get = get;
-            Set = set;
         }
+
+        /// <summary>The value as stored in the file.</summary>
+        public abstract string Get();
+
+        /// <summary>Takes a non-empty value from the file; one that does not parse keeps the current value.</summary>
+        public abstract void Set(string text);
+
+        /// <summary>A copy of the current value, for <see cref="SongMgrSettings.Snapshot"/>.</summary>
+        internal abstract object Capture();
+
+        internal abstract void Restore(object state);
+    }
+
+    /// <summary>A 歌庫設定 entry holding a <typeparamref name="T"/>; it starts at its default.</summary>
+    sealed class Setting<T> : Setting
+    {
+        public delegate bool Parser(string text, out T value);
+
+        readonly T initial;
+        readonly Func<T, string> format;
+        readonly Parser parse;
+        readonly Func<T, T> copy;
+
+        public T Value { get; set; }
+
+        /// <summary>The value a fresh settings file starts with; a new copy each time for a list.</summary>
+        public T Default => copy(initial);
+
+        public Setting(string name, SettingsGroup group, T initial, Func<T, string> format, Parser parse, Func<T, T> copy)
+            : base(name, group)
+        {
+            this.initial = initial;
+            this.format = format;
+            this.parse = parse;
+            this.copy = copy;
+            Value = copy(initial);
+        }
+
+        public override string Get() => format(Value);
+
+        public override void Set(string text)
+        {
+            if (parse(text, out T value)) Value = value;
+        }
+
+        internal override object Capture() => copy(Value);
+
+        internal override void Restore(object state) => Value = copy((T)state);
     }
 
     /// <summary>
-    /// 歌庫設定 (CrazyKTV_SongMgr.cfg). <see cref="Entries"/> is the one list of settings:
-    /// loading, saving and the content of a fresh file all come from it, so adding a setting is one line here.
-    /// The values still live in the Global fields; their initial values are the defaults.
+    /// 歌庫設定 (CrazyKTV_SongMgr.cfg). Each setting is one field here, named as in the file, holding its type and default;
+    /// <see cref="Entries"/> lists them in declaration order, which is the order of a fresh file.
+    /// Loading, saving and the content of a fresh file all come from it, so adding a setting is one line here
+    /// (plus its view in <see cref="Global"/> while code still reads it there).
     /// </summary>
     static class SongMgrSettings
     {
-        const SettingsGroup MainCfg = SettingsGroup.MainCfg, SongMgrCfg = SettingsGroup.SongMgrCfg, SongAdd = SettingsGroup.SongAdd, Direct = SettingsGroup.Direct;
+        const SettingsGroup MainCfg = SettingsGroup.MainCfg, SongMgrCfg = SettingsGroup.SongMgrCfg, SongAdd = SettingsGroup.SongAdd, Direct = SettingsGroup.Direct, LoadOnly = SettingsGroup.LoadOnly;
 
-        static Setting Text(string name, SettingsGroup group, Func<string> get, Action<string> set) => new Setting(name, group, get, set);
-
-        static Setting List(string name, SettingsGroup group, char separator, Func<List<string>> get, Action<List<string>> set)
-            => new Setting(name, group, () => string.Join(separator.ToString(), get()), v => set(new List<string>(v.Split(separator))));
+        // Declared before the settings: static fields are initialized in text order, and each setting adds itself.
+        static readonly List<Setting> entries = new List<Setting>();
 
         /// <summary>Every setting, in the order a fresh file lists them.</summary>
-        public static readonly IReadOnlyList<Setting> Entries = new List<Setting>
-        {
-            Text("CrazyktvDatabaseFile", SongMgrCfg, () => Global.CrazyktvDatabaseFile, v => Global.CrazyktvDatabaseFile = v),
-            Text("SongMgrSupportFormat", SongMgrCfg, () => Global.SongMgrSupportFormat, v => Global.SongMgrSupportFormat = v),
-            Text("SongMgrDestFolder", SongMgrCfg, () => Global.SongMgrDestFolder, v => Global.SongMgrDestFolder = v),
-            Text("SongMgrSongAddMode", SongMgrCfg, () => Global.SongMgrSongAddMode, v => Global.SongMgrSongAddMode = v),
-            Text("SongMgrChorusMerge", SongMgrCfg, () => Global.SongMgrChorusMerge, v => Global.SongMgrChorusMerge = v),
-            Text("SongMgrMaxDigitCode", SongMgrCfg, () => Global.SongMgrMaxDigitCode, v => Global.SongMgrMaxDigitCode = v),
-            Text("SongMgrLangCode", SongMgrCfg, () => Global.SongMgrLangCode, v => Global.SongMgrLangCode = v),
-            Text("SongMgrSongType", SongMgrCfg, () => Global.SongMgrSongType, v => Global.SongMgrSongType = v),
-            Text("SongMgrSongInfoSeparate", SongMgrCfg, () => Global.SongMgrSongInfoSeparate, v => Global.SongMgrSongInfoSeparate = v),
-            Text("SongMgrChorusSeparate", SongMgrCfg, () => Global.SongMgrChorusSeparate, v => Global.SongMgrChorusSeparate = v),
-            Text("SongAddDefaultSongLang", SongAdd, () => Global.SongAddDefaultSongLang, v => Global.SongAddDefaultSongLang = v),
-            Text("SongAddDefaultSingerType", SongAdd, () => Global.SongAddDefaultSingerType, v => Global.SongAddDefaultSingerType = v),
-            Text("SongAddDefaultSongTrack", SongAdd, () => Global.SongAddDefaultSongTrack, v => Global.SongAddDefaultSongTrack = v),
-            Text("SongAddDefaultSongType", SongAdd, () => Global.SongAddDefaultSongType, v => Global.SongAddDefaultSongType = v),
-            Text("SongAddDefaultSongVolume", SongAdd, () => Global.SongAddDefaultSongVolume, v => Global.SongAddDefaultSongVolume = v),
-            Text("SongAddSpecialStr", SongAdd, () => Global.SongAddSpecialStr, v => Global.SongAddSpecialStr = v),
-            Text("SongMgrFolderStructure", SongMgrCfg, () => Global.SongMgrFolderStructure, v => Global.SongMgrFolderStructure = v),
-            Text("SongMgrFileStructure", SongMgrCfg, () => Global.SongMgrFileStructure, v => Global.SongMgrFileStructure = v),
-            Text("SongMgrSongTrackMode", SongMgrCfg, () => Global.SongMgrSongTrackMode, v => Global.SongMgrSongTrackMode = v),
-            Text("SongAddSongIdentificationMode", SongAdd, () => Global.SongAddSongIdentificationMode, v => Global.SongAddSongIdentificationMode = v),
-            Text("SongAddDupSongMode", SongAdd, () => Global.SongAddDupSongMode, v => Global.SongAddDupSongMode = v),
-            List("CrazyktvSongLangStr", Direct, ',', () => Global.CrazyktvSongLangList, v => Global.CrazyktvSongLangList = v),
-            List("CrazyktvSongLangKeyWord", Direct, '|', () => Global.CrazyktvSongLangKeyWordList, v => Global.CrazyktvSongLangKeyWordList = v),
-            Text("SongMgrBackupRemoveSong", SongMgrCfg, () => Global.SongMgrBackupRemoveSong, v => Global.SongMgrBackupRemoveSong = v),
-            Text("SongAddEngSongNameFormat", SongAdd, () => Global.SongAddEngSongNameFormat, v => Global.SongAddEngSongNameFormat = v),
-            Text("MainCfgAlwaysOnTop", MainCfg, () => Global.MainCfgAlwaysOnTop, v => Global.MainCfgAlwaysOnTop = v),
-            Text("MainCfgHideSongDBConverterTabPage", MainCfg, () => Global.MainCfgHideSongDBConverterTabPage, v => Global.MainCfgHideSongDBConverterTabPage = v),
-            Text("MainCfgHideSongAddResultTabPage", MainCfg, () => Global.MainCfgHideSongAddResultTabPage, v => Global.MainCfgHideSongAddResultTabPage = v),
-            Text("MainCfgHideSongLogTabPage", MainCfg, () => Global.MainCfgHideSongLogTabPage, v => Global.MainCfgHideSongLogTabPage = v),
-            Text("MainCfgBackupRemoveSongDays", MainCfg, () => Global.MainCfgBackupRemoveSongDays, v => Global.MainCfgBackupRemoveSongDays = v),
-            Text("MainCfgUIScale", MainCfg, () => Global.MainCfgUIScale, v => Global.MainCfgUIScale = v),
-            Text("SongMaintenanceReplayGainVolume", Direct, () => Global.SongMaintenanceReplayGainVolume, v => Global.SongMaintenanceReplayGainVolume = v),
-            Text("SongAddEnableVolumeDetect", SongAdd, () => Global.SongAddEnableVolumeDetect, v => Global.SongAddEnableVolumeDetect = v),
-            Text("SongAddUseCustomSongID", SongAdd, () => Global.SongAddUseCustomSongID, v => Global.SongAddUseCustomSongID = v),
-            Text("MainCfgUIFont", MainCfg, () => Global.MainCfgUIFont, v => Global.MainCfgUIFont = v),
-            Text("MainCfgEnableUIScale", MainCfg, () => Global.MainCfgEnableUIScale, v => Global.MainCfgEnableUIScale = v),
-            Text("SongMgrCustomSingerTypeStructure", SongMgrCfg, () => Global.SongMgrCustomSingerTypeStructure, v => Global.SongMgrCustomSingerTypeStructure = v),
-            Text("MainCfgEnableAutoUpdate", MainCfg, () => Global.MainCfgEnableAutoUpdate, v => Global.MainCfgEnableAutoUpdate = v),
-            Text("SongAddEnableConvToTC", SongAdd, () => Global.SongAddEnableConvToTC, v => Global.SongAddEnableConvToTC = v),
-            Text("SongMgrEnableMonitorFolders", SongMgrCfg, () => Global.SongMgrEnableMonitorFolders, v => Global.SongMgrEnableMonitorFolders = v),
-            List("SongMgrMonitorFolders", SongMgrCfg, ',', () => Global.SongMgrMonitorFoldersList, v => Global.SongMgrMonitorFoldersList = v),
-            Text("SingerMgrSyncSongSinger", Direct, () => Global.SingerMgrSyncSongSinger, v => Global.SingerMgrSyncSongSinger = v),
-            Text("SongMgrSingerGroup", SongMgrCfg, () => Global.SongMgrSingerGroup, v => Global.SongMgrSingerGroup = v),
-            Text("MainCfgHideApplyCashboxIdButton", MainCfg, () => Global.MainCfgHideApplyCashboxIdButton, v => Global.MainCfgHideApplyCashboxIdButton = v),
-            Text("MainCfgUICustomScale", MainCfg, () => Global.MainCfgUICustomScale, v => Global.MainCfgUICustomScale = v),
-            Text("MainCfgBackupDB", MainCfg, () => Global.MainCfgBackupDB, v => Global.MainCfgBackupDB = v),
-            Text("MainCfgBackupDBPath", MainCfg, () => Global.MainCfgBackupDBPath, v => Global.MainCfgBackupDBPath = v),
-            Text("MainCfgPlayerCore", MainCfg, () => Global.MainCfgPlayerCore, v => Global.MainCfgPlayerCore = v),
-            Text("MainCfgPlayerOutput", MainCfg, () => Global.MainCfgPlayerOutput, v => Global.MainCfgPlayerOutput = v),
-            Text("MainCfgPlayerEnableAudioCompressor", MainCfg, () => Global.MainCfgPlayerEnableAudioCompressor, v => Global.MainCfgPlayerEnableAudioCompressor = v),
-            Text("MainCfgPlayerEnableAudioProcessor", MainCfg, () => Global.MainCfgPlayerEnableAudioProcessor, v => Global.MainCfgPlayerEnableAudioProcessor = v),
-            Text("MainCfgPlayerDefaultVolume", MainCfg, () => Global.MainCfgPlayerDefaultVolume, v => Global.MainCfgPlayerDefaultVolume = v),
-            Text("MainCfgAutoSongFileCount", MainCfg, () => Global.MainCfgAutoSongFileCount, v => Global.MainCfgAutoSongFileCount = v),
-            Text("SingerMgrDefaultSingerDataTable", SettingsGroup.LoadOnly, () => Global.SingerMgrDefaultSingerDataTable, v => Global.SingerMgrDefaultSingerDataTable = v),
-        };
+        public static IReadOnlyList<Setting> Entries => entries;
 
-        /// <summary>Takes every non-empty value in <paramref name="cfg"/> into its Global field; an empty or missing value keeps the field as it is.</summary>
+        static Setting<T> Add<T>(Setting<T> setting)
+        {
+            entries.Add(setting);
+            return setting;
+        }
+
+        static Setting<string> Text(string name, SettingsGroup group, string initial)
+            => Add(new Setting<string>(name, group, initial, v => v, (string text, out string v) => { v = text; return true; }, v => v));
+
+        /// <summary>Stored as "True"/"False"; read in any case, and a value that is neither keeps the current one.</summary>
+        static Setting<bool> Bool(string name, SettingsGroup group, bool initial)
+            => Add(new Setting<bool>(name, group, initial, v => v ? "True" : "False", bool.TryParse, v => v));
+
+        /// <summary>Only the stored codes "1"-"4"; anything else keeps the current 加歌模式.</summary>
+        static bool ParseSongAddMode(string text, out SongAddMode mode)
+        {
+            switch (text)
+            {
+                case "1": mode = SongAddMode.Move; return true;
+                case "2": mode = SongAddMode.Copy; return true;
+                case "3": mode = SongAddMode.InPlace; return true;
+                case "4": mode = SongAddMode.Monitor; return true;
+                default: mode = SongAddMode.Unknown; return false;
+            }
+        }
+
+        static Setting<List<string>> List(string name, SettingsGroup group, char separator, params string[] initial)
+            => Add(new Setting<List<string>>(name, group, new List<string>(initial),
+                v => string.Join(separator.ToString(), v),
+                (string text, out List<string> v) => { v = new List<string>(text.Split(separator)); return true; },
+                v => new List<string>(v)));
+
+        public static readonly Setting<string> CrazyktvDatabaseFile = Text("CrazyktvDatabaseFile", SongMgrCfg, Application.StartupPath + @"\CrazySong.mdb");
+        public static readonly Setting<string> SongMgrSupportFormat = Text("SongMgrSupportFormat", SongMgrCfg, ".avi;.flv;.dat;.mkv;.mp4;.mov;.mpeg;.mpg;.rmvb;.ts;.vob;.webm;.wmv");
+        public static readonly Setting<string> SongMgrDestFolder = Text("SongMgrDestFolder", SongMgrCfg, "");
+        public static readonly Setting<SongAddMode> SongMgrSongAddMode = Add(new Setting<SongAddMode>("SongMgrSongAddMode", SongMgrCfg, SongAddMode.InPlace, v => ((int)v).ToString(), ParseSongAddMode, v => v));
+        public static readonly Setting<bool> SongMgrChorusMerge = Bool("SongMgrChorusMerge", SongMgrCfg, false);
+        public static readonly Setting<string> SongMgrMaxDigitCode = Text("SongMgrMaxDigitCode", SongMgrCfg, "2");
+        public static readonly Setting<string> SongMgrLangCode = Text("SongMgrLangCode", SongMgrCfg, "");
+        public static readonly Setting<string> SongMgrSongType = Text("SongMgrSongType", SongMgrCfg, "");
+        public static readonly Setting<string> SongMgrSongInfoSeparate = Text("SongMgrSongInfoSeparate", SongMgrCfg, "1");
+        public static readonly Setting<string> SongMgrChorusSeparate = Text("SongMgrChorusSeparate", SongMgrCfg, "1");
+        public static readonly Setting<string> SongAddDefaultSongLang = Text("SongAddDefaultSongLang", SongAdd, "11");
+        public static readonly Setting<string> SongAddDefaultSingerType = Text("SongAddDefaultSingerType", SongAdd, "8");
+        public static readonly Setting<string> SongAddDefaultSongTrack = Text("SongAddDefaultSongTrack", SongAdd, "1");
+        public static readonly Setting<string> SongAddDefaultSongType = Text("SongAddDefaultSongType", SongAdd, "1");
+        public static readonly Setting<string> SongAddDefaultSongVolume = Text("SongAddDefaultSongVolume", SongAdd, "100");
+        public static readonly Setting<string> SongAddSpecialStr = Text("SongAddSpecialStr", SongAdd, "");
+        public static readonly Setting<string> SongMgrFolderStructure = Text("SongMgrFolderStructure", SongMgrCfg, "1");
+        public static readonly Setting<string> SongMgrFileStructure = Text("SongMgrFileStructure", SongMgrCfg, "1");
+        public static readonly Setting<bool> SongMgrSongTrackMode = Bool("SongMgrSongTrackMode", SongMgrCfg, false);
+        public static readonly Setting<string> SongAddSongIdentificationMode = Text("SongAddSongIdentificationMode", SongAdd, "1");
+        public static readonly Setting<string> SongAddDupSongMode = Text("SongAddDupSongMode", SongAdd, "1");
+        public static readonly Setting<List<string>> CrazyktvSongLangStr = List("CrazyktvSongLangStr", Direct, ',', "國語", "台語", "粵語", "日語", "英語", "客語", "原住民語", "韓語", "兒歌", "其它");
+        public static readonly Setting<List<string>> CrazyktvSongLangKeyWord = List("CrazyktvSongLangKeyWord", Direct, '|', "國語,國", "台語,台,閩南,閩,臺語,臺", "粵語,粵,廣東", "日語,日文,日", "英語,英文,英", "客語,客", "原住民語,民謠", "韓語,韓", "兒歌,兒", "其它");
+        public static readonly Setting<bool> SongMgrBackupRemoveSong = Bool("SongMgrBackupRemoveSong", SongMgrCfg, false);
+        public static readonly Setting<bool> SongAddEngSongNameFormat = Bool("SongAddEngSongNameFormat", SongAdd, false);
+        public static readonly Setting<bool> MainCfgAlwaysOnTop = Bool("MainCfgAlwaysOnTop", MainCfg, false);
+        public static readonly Setting<bool> MainCfgHideSongDBConverterTabPage = Bool("MainCfgHideSongDBConverterTabPage", MainCfg, false);
+        public static readonly Setting<bool> MainCfgHideSongAddResultTabPage = Bool("MainCfgHideSongAddResultTabPage", MainCfg, true);
+        public static readonly Setting<bool> MainCfgHideSongLogTabPage = Bool("MainCfgHideSongLogTabPage", MainCfg, true);
+        public static readonly Setting<string> MainCfgBackupRemoveSongDays = Text("MainCfgBackupRemoveSongDays", MainCfg, "7");
+        public static readonly Setting<string> MainCfgUIScale = Text("MainCfgUIScale", MainCfg, "3");
+        public static readonly Setting<string> SongMaintenanceReplayGainVolume = Text("SongMaintenanceReplayGainVolume", Direct, "50");
+        public static readonly Setting<bool> SongAddEnableVolumeDetect = Bool("SongAddEnableVolumeDetect", SongAdd, false);
+        public static readonly Setting<bool> SongAddUseCustomSongID = Bool("SongAddUseCustomSongID", SongAdd, false);
+        public static readonly Setting<string> MainCfgUIFont = Text("MainCfgUIFont", MainCfg, "Arial");
+        public static readonly Setting<bool> MainCfgEnableUIScale = Bool("MainCfgEnableUIScale", MainCfg, false);
+        public static readonly Setting<string> SongMgrCustomSingerTypeStructure = Text("SongMgrCustomSingerTypeStructure", SongMgrCfg, "1,1,1,1,1,1,1,2");
+        public static readonly Setting<bool> MainCfgEnableAutoUpdate = Bool("MainCfgEnableAutoUpdate", MainCfg, true);
+        public static readonly Setting<bool> SongAddEnableConvToTC = Bool("SongAddEnableConvToTC", SongAdd, false);
+        public static readonly Setting<bool> SongMgrEnableMonitorFolders = Bool("SongMgrEnableMonitorFolders", SongMgrCfg, false);
+        public static readonly Setting<List<string>> SongMgrMonitorFolders = List("SongMgrMonitorFolders", SongMgrCfg, ',', "", "", "", "", "");
+        public static readonly Setting<bool> SingerMgrSyncSongSinger = Bool("SingerMgrSyncSongSinger", Direct, true);
+        public static readonly Setting<string> SongMgrSingerGroup = Text("SongMgrSingerGroup", SongMgrCfg, "");
+        public static readonly Setting<bool> MainCfgHideApplyCashboxIdButton = Bool("MainCfgHideApplyCashboxIdButton", MainCfg, true);
+        public static readonly Setting<string> MainCfgUICustomScale = Text("MainCfgUICustomScale", MainCfg, "100");
+        public static readonly Setting<bool> MainCfgBackupDB = Bool("MainCfgBackupDB", MainCfg, false);
+        public static readonly Setting<string> MainCfgBackupDBPath = Text("MainCfgBackupDBPath", MainCfg, "");
+        public static readonly Setting<string> MainCfgPlayerCore = Text("MainCfgPlayerCore", MainCfg, "1");
+        public static readonly Setting<string> MainCfgPlayerOutput = Text("MainCfgPlayerOutput", MainCfg, "1");
+        public static readonly Setting<bool> MainCfgPlayerEnableAudioCompressor = Bool("MainCfgPlayerEnableAudioCompressor", MainCfg, false);
+        public static readonly Setting<bool> MainCfgPlayerEnableAudioProcessor = Bool("MainCfgPlayerEnableAudioProcessor", MainCfg, false);
+        public static readonly Setting<string> MainCfgPlayerDefaultVolume = Text("MainCfgPlayerDefaultVolume", MainCfg, "100");
+        public static readonly Setting<bool> MainCfgAutoSongFileCount = Bool("MainCfgAutoSongFileCount", MainCfg, false);
+        public static readonly Setting<string> SingerMgrDefaultSingerDataTable = Text("SingerMgrDefaultSingerDataTable", LoadOnly, "ktv_Singer");
+
+        /// <summary>A copy of every setting's value, for tests to put back with <see cref="Restore"/>.</summary>
+        public static IReadOnlyDictionary<Setting, object> Snapshot()
+        {
+            return entries.ToDictionary(s => s, s => s.Capture());
+        }
+
+        /// <summary>Puts back the values of a <see cref="Snapshot"/>; it can be restored more than once.</summary>
+        public static void Restore(IReadOnlyDictionary<Setting, object> snapshot)
+        {
+            foreach (var pair in snapshot) pair.Key.Restore(pair.Value);
+        }
+        /// <summary>Takes every non-empty value in <paramref name="cfg"/> into its setting; an empty or missing value, or one that does not parse, keeps the current value.</summary>
         public static void Load(SettingsFile cfg)
         {
             foreach (Setting setting in Entries)

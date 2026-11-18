@@ -172,7 +172,7 @@ namespace CrazyKTV_SongMgr
 
             SongMgrCfg_DestFolder_TextBox.Text = Global.SongMgrDestFolder;
             
-            SongMgrCfg_CrtchorusMerge_CheckBox.Checked = bool.Parse(Global.SongMgrChorusMerge);
+            SongMgrCfg_CrtchorusMerge_CheckBox.Checked = Global.SongMgrChorusMerge;
 
             SongMgrCfg_MaxDigitCode_ComboBox.DataSource = SongMgrCfg.GetMaxDigitCodeList();
             SongMgrCfg_MaxDigitCode_ComboBox.DisplayMember = "Display";
@@ -232,7 +232,7 @@ namespace CrazyKTV_SongMgr
             SongMgrCfg_FileStructure_ComboBox.ValueMember = "Value";
             SongMgrCfg_FileStructure_ComboBox.SelectedValue = Global.SongMgrFileStructure;
 
-            SongMgrCfg_SongTrackMode_CheckBox.Checked = bool.Parse(Global.SongMgrSongTrackMode);
+            SongMgrCfg_SongTrackMode_CheckBox.Checked = Global.SongMgrSongTrackMode;
 
             SongAdd_SongIdentificationMode_ComboBox.DataSource = SongAdd.GetSongIdentificationModeList();
             SongAdd_SongIdentificationMode_ComboBox.DisplayMember = "Display";
@@ -260,18 +260,18 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            SongMgrCfg_BackupRemoveSong_CheckBox.Checked = bool.Parse(Global.SongMgrBackupRemoveSong);
+            SongMgrCfg_BackupRemoveSong_CheckBox.Checked = Global.SongMgrBackupRemoveSong;
 
-            SongAdd_EngSongNameFormat_CheckBox.Checked = bool.Parse(Global.SongAddEngSongNameFormat);
+            SongAdd_EngSongNameFormat_CheckBox.Checked = Global.SongAddEngSongNameFormat;
 
-            MainCfg_AlwaysOnTop_CheckBox.Checked = bool.Parse(Global.MainCfgAlwaysOnTop);
+            MainCfg_AlwaysOnTop_CheckBox.Checked = Global.MainCfgAlwaysOnTop;
 
 
-            MainCfg_HideSongDBConvTab_CheckBox.Checked = bool.Parse(Global.MainCfgHideSongDBConverterTabPage);
+            MainCfg_HideSongDBConvTab_CheckBox.Checked = Global.MainCfgHideSongDBConverterTabPage;
 
-            MainCfg_HideSongAddResultTab_CheckBox.Checked = bool.Parse(Global.MainCfgHideSongAddResultTabPage);
+            MainCfg_HideSongAddResultTab_CheckBox.Checked = Global.MainCfgHideSongAddResultTabPage;
 
-            MainCfg_HideSongLogTab_CheckBox.Checked = bool.Parse(Global.MainCfgHideSongLogTabPage);
+            MainCfg_HideSongLogTab_CheckBox.Checked = Global.MainCfgHideSongLogTabPage;
 
             MainCfg_BackupRemoveSongDays_ComboBox.DataSource = MainCfg.GetBackupRemoveSongDaysList();
             MainCfg_BackupRemoveSongDays_ComboBox.DisplayMember = "Display";
@@ -298,38 +298,38 @@ namespace CrazyKTV_SongMgr
 
             SongMaintenance_ReplayGain_TextBox.Text = Global.SongMaintenanceReplayGainVolume;
 
-            SongAdd_EnableVolumeDetect_CheckBox.Checked = bool.Parse(Global.SongAddEnableVolumeDetect);
+            SongAdd_EnableVolumeDetect_CheckBox.Checked = Global.SongAddEnableVolumeDetect;
 
-            SongAdd_UseCustomSongID_CheckBox.Checked = bool.Parse(Global.SongAddUseCustomSongID);
+            SongAdd_UseCustomSongID_CheckBox.Checked = Global.SongAddUseCustomSongID;
 
             MainCfg_UIFont_ComboBox.DataSource = MainCfg.GetUIFontList();
             MainCfg_UIFont_ComboBox.DisplayMember = "Display";
             MainCfg_UIFont_ComboBox.ValueMember = "Value";
             MainCfg_UIFont_ComboBox.Text = Global.MainCfgUIFont;
 
-            MainCfg_EnableUIScale_CheckBox.Checked = bool.Parse(Global.MainCfgEnableUIScale);
+            MainCfg_EnableUIScale_CheckBox.Checked = Global.MainCfgEnableUIScale;
 
             SongMgrCfg_SetCustomSingerTypeStructureCbox();
 
-            MainCfg_EnableAutoUpdate_CheckBox.Checked = bool.Parse(Global.MainCfgEnableAutoUpdate);
+            MainCfg_EnableAutoUpdate_CheckBox.Checked = Global.MainCfgEnableAutoUpdate;
 
-            MainCfg_AutoSongFileCount_CheckBox.Checked = bool.Parse(Global.MainCfgAutoSongFileCount);
+            MainCfg_AutoSongFileCount_CheckBox.Checked = Global.MainCfgAutoSongFileCount;
 
-            SongAdd_EnableConvToTC_CheckBox.Checked = bool.Parse(Global.SongAddEnableConvToTC);
+            SongAdd_EnableConvToTC_CheckBox.Checked = Global.SongAddEnableConvToTC;
 
-            SongMgrCfg_MonitorFolders_CheckBox.Checked = bool.Parse(Global.SongMgrEnableMonitorFolders);
+            SongMgrCfg_MonitorFolders_CheckBox.Checked = Global.SongMgrEnableMonitorFolders;
 
-            SingerMgr_EditSyncSongSinger_CheckBox.Checked = bool.Parse(Global.SingerMgrSyncSongSinger);
+            SingerMgr_EditSyncSongSinger_CheckBox.Checked = Global.SingerMgrSyncSongSinger;
 
             SongMgrCfg_SingerGroup_ListBox.DataSource = SongMgrCfg.GetSingerGroupList();
             SongMgrCfg_SingerGroup_ListBox.DisplayMember = "Display";
             SongMgrCfg_SingerGroup_ListBox.ValueMember = "Value";
 
-            MainCfg_HideApplyCashboxIdButton_CheckBox.Checked = bool.Parse(Global.MainCfgHideApplyCashboxIdButton);
+            MainCfg_HideApplyCashboxIdButton_CheckBox.Checked = Global.MainCfgHideApplyCashboxIdButton;
 
             MainCfg_UIScale_TextBox.Text = Global.MainCfgUICustomScale;
 
-            MainCfg_BackupDB_CheckBox.Checked = bool.Parse(Global.MainCfgBackupDB);
+            MainCfg_BackupDB_CheckBox.Checked = Global.MainCfgBackupDB;
 
             MainCfg_BackupDB_TextBox.Text = Global.MainCfgBackupDBPath;
 
@@ -347,16 +347,16 @@ namespace CrazyKTV_SongMgr
 
             // Probed only now that the 影片輸出 setting is known.
             PlayerOutput.WarnIfUnavailable();
-            MainCfg_PlayerEnableAudioCompressor_CheckBox.Checked = bool.Parse(Global.MainCfgPlayerEnableAudioCompressor);
+            MainCfg_PlayerEnableAudioCompressor_CheckBox.Checked = Global.MainCfgPlayerEnableAudioCompressor;
 
-            MainCfg_PlayerEnableAudioProcessor_CheckBox.Checked = bool.Parse(Global.MainCfgPlayerEnableAudioProcessor);
+            MainCfg_PlayerEnableAudioProcessor_CheckBox.Checked = Global.MainCfgPlayerEnableAudioProcessor;
 
             MainCfg_PlayerDefaultVolume_TextBox.Text = Global.MainCfgPlayerDefaultVolume;
 
             SongMgrCfg_SongAddMode_ComboBox.DataSource = SongMgrCfg.GetSongAddModeList();
             SongMgrCfg_SongAddMode_ComboBox.DisplayMember = "Display";
             SongMgrCfg_SongAddMode_ComboBox.ValueMember = "Value";
-            SongMgrCfg_SongAddMode_ComboBox.SelectedValue = int.Parse(Global.SongMgrSongAddMode);
+            SongMgrCfg_SongAddMode_ComboBox.SelectedValue = (int)Global.SongMgrSongAddMode;
 
             // 建立歌曲操作記錄資料表
             Global.SongLog.Reset();
@@ -365,11 +365,11 @@ namespace CrazyKTV_SongMgr
             RegistryKey regKey = Registry.ClassesRoot.OpenSubKey("CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\{B86F6BEE-E7C0-4D03-8D52-5B4430CF6C88}");
             Global.FFDShowAudioProcessorRegistered = (regKey == null) ? false : true;
             MainCfg_PlayerEnableAudioProcessor_CheckBox.Enabled = (Global.MainCfgPlayerCore == "1" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
-            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor == "True" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
+            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
             MainCfg_PlayerRegAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && !Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
             if (!Global.FFDShowAudioProcessorRegistered)
             {
-                if (Global.MainCfgPlayerEnableAudioProcessor == "True")
+                if (Global.MainCfgPlayerEnableAudioProcessor)
                 {
                     MainCfg_PlayerEnableAudioProcessor_CheckBox.Checked = false;
                 }
@@ -521,7 +521,7 @@ namespace CrazyKTV_SongMgr
                 {
                     Db.Compact(Global.CrazyktvDatabaseFile);
                     Db.Compact(Global.CrazyktvSongMgrDatabaseFile);
-                    if (Global.MainCfgBackupDB == "True" && Directory.Exists(Global.MainCfgBackupDBPath))
+                    if (Global.MainCfgBackupDB && Directory.Exists(Global.MainCfgBackupDBPath))
                     {
                         try
                         {
@@ -531,7 +531,7 @@ namespace CrazyKTV_SongMgr
                 }
                 catch
                 {
-                    if (Global.MainCfgBackupDB == "True" && Directory.Exists(Global.MainCfgBackupDBPath))
+                    if (Global.MainCfgBackupDB && Directory.Exists(Global.MainCfgBackupDBPath))
                     {
                         try
                         {

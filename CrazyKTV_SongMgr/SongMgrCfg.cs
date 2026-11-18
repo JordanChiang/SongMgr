@@ -79,7 +79,7 @@ namespace CrazyKTV_SongMgr
             {
                 case "1":
                 case "2":
-                    Global.SongMgrSongAddMode = SongMgrCfg_SongAddMode_ComboBox.SelectedValue.ToString();
+                    Global.SongMgrSongAddMode = (SongAddMode)(int)SongMgrCfg_SongAddMode_ComboBox.SelectedValue;
 
                     SongMaintenance_RebuildSongStructure_GroupBox.Enabled = true;
                     SongMgrCfg_DestFolder_TextBox.Enabled = true;
@@ -115,7 +115,7 @@ namespace CrazyKTV_SongMgr
                     break;
                 case "3":
                 case "4":
-                    Global.SongMgrSongAddMode = SongMgrCfg_SongAddMode_ComboBox.SelectedValue.ToString();
+                    Global.SongMgrSongAddMode = (SongAddMode)(int)SongMgrCfg_SongAddMode_ComboBox.SelectedValue;
 
                     SongMaintenance_RebuildSongStructure_GroupBox.Enabled = false;
                     SongMgrCfg_DestFolder_TextBox.Enabled = false;
@@ -182,14 +182,14 @@ namespace CrazyKTV_SongMgr
 
         private void SongMgrCfg_CrtchorusMerge_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongMgrChorusMerge = SongMgrCfg_CrtchorusMerge_CheckBox.Checked.ToString();
+            Global.SongMgrChorusMerge = SongMgrCfg_CrtchorusMerge_CheckBox.Checked;
         }
 
         private void SongMgrCfg_SongTrackMode_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongMgrSongTrackMode = SongMgrCfg_SongTrackMode_CheckBox.Checked.ToString();
+            Global.SongMgrSongTrackMode = SongMgrCfg_SongTrackMode_CheckBox.Checked;
 
-            if (Global.SongMgrSongTrackMode == "True")
+            if (Global.SongMgrSongTrackMode)
             {
                 Global.CrazyktvSongTrackWordList = new List<string>() { "立體聲", "右聲道 / 音軌2", "左聲道 / 音軌1", "音軌3", "音軌4", "音軌5" };
                 Global.CrazyktvSongTrackList = new List<string>() { "V0", "VR", "VL", "V3", "V4", "V5" };
@@ -696,7 +696,7 @@ namespace CrazyKTV_SongMgr
 
         private void SongMgrCfg_BackupRemoveSong_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongMgrBackupRemoveSong = SongMgrCfg_BackupRemoveSong_CheckBox.Checked.ToString();
+            Global.SongMgrBackupRemoveSong = SongMgrCfg_BackupRemoveSong_CheckBox.Checked;
         }
 
         private void SongMgrCfg_SetCustomSingerTypeStructureCbox()
@@ -1087,7 +1087,7 @@ namespace CrazyKTV_SongMgr
 
         private void SongMgrCfg_MonitorFolders_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SongMgrEnableMonitorFolders = SongMgrCfg_MonitorFolders_CheckBox.Checked.ToString();
+            Global.SongMgrEnableMonitorFolders = SongMgrCfg_MonitorFolders_CheckBox.Checked;
             if (Global.SongMgrInitializeStatus)
             {
                 if (!SongMgrCfg_MonitorFolders_CheckBox.Checked)

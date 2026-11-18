@@ -30,7 +30,7 @@ namespace SongMgr.Tests.Media
             var files = new[] { ("one", f.one), ("two", f.two), ("three", f.three), ("empty", f.empty) };
             StringBuilder sb = new StringBuilder();
 
-            foreach (string trackMode in new[] { "False", "True" })
+            foreach (bool trackMode in new[] { false, true })
             {
                 Global.SongMgrSongTrackMode = trackMode;
                 foreach (var (name, file) in files)
@@ -44,7 +44,7 @@ namespace SongMgr.Tests.Media
                 sb.Append($"duration {name} => {Probe.Duration(file).ToString("F3", CultureInfo.InvariantCulture)}\n");
             }
 
-            foreach (string trackMode in new[] { "False", "True" })
+            foreach (bool trackMode in new[] { false, true })
             {
                 Global.SongMgrSongTrackMode = trackMode;
                 foreach (var (name, file) in files)

@@ -97,7 +97,7 @@ namespace CrazyKTV_SongMgr
                 case 1:
                     return "1";
                 case 2:
-                    return (Global.SongMgrSongTrackMode == "True") ? "2" : "1";
+                    return Global.SongMgrSongTrackMode ? "2" : "1";
                 case 3:
                     return "3";
                 default:
@@ -157,7 +157,7 @@ namespace CrazyKTV_SongMgr
 
             try
             {
-                bool trackMode = (Global.SongMgrSongTrackMode == "True");
+                bool trackMode = Global.SongMgrSongTrackMode;
 
                 string afFilter;
                 string mapArg;

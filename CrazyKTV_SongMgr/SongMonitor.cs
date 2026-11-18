@@ -16,7 +16,7 @@ namespace CrazyKTV_SongMgr
         {
             if (!Global.CrazyktvDatabaseStatus) return;
 
-            if (Global.AddMode != SongAddMode.Monitor)
+            if (Global.SongMgrSongAddMode != SongAddMode.Monitor)
             {
                 if (SongMgrCfg_TabControl.TabPages.IndexOf(SongMgrCfg_MonitorFolders_TabPage) >= 0)
                 {
@@ -25,7 +25,7 @@ namespace CrazyKTV_SongMgr
                 }
             }
 
-            if (Global.AddMode == SongAddMode.Monitor && Global.SongMgrEnableMonitorFolders == "True")
+            if (Global.SongMgrSongAddMode == SongAddMode.Monitor && Global.SongMgrEnableMonitorFolders)
             {
                 Jobs.TryStart(SongMonitor_Job("檢查監視資料夾", SongMonitor_CheckCurSongTask, null));
             }
@@ -243,7 +243,7 @@ namespace CrazyKTV_SongMgr
                 System.Diagnostics.Trace.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][Thread {Thread.CurrentThread.ManagedThreadId}][SongMonitor_SwitchSongMonitorWatcher] Start execution");
                 if (!Global.CrazyktvDatabaseStatus) return;
 
-                if (Global.AddMode == SongAddMode.Monitor && Global.SongMgrEnableMonitorFolders == "True")
+                if (Global.SongMgrSongAddMode == SongAddMode.Monitor && Global.SongMgrEnableMonitorFolders)
                 {
                     bool EnableSongMonitor = false;
                     for (int i = 0; i < Global.SongMgrMonitorFoldersList.Count; i++)

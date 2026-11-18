@@ -752,7 +752,7 @@ namespace CrazyKTV_SongMgr
                     SongLog_TabPage.Text = "操作記錄 (" + Global.SongLog.Count + ")";
                 }
 
-                if (SongQuery_QueryStatus_Label.Text == "") SongQuery_QueryStatus_Label.Text = (Global.AddMode != SongAddMode.InPlace) ? "已成功更新所選歌曲資料及檔案!" : "已成功更新所選歌曲資料!";
+                if (SongQuery_QueryStatus_Label.Text == "") SongQuery_QueryStatus_Label.Text = (Global.SongMgrSongAddMode != SongAddMode.InPlace) ? "已成功更新所選歌曲資料及檔案!" : "已成功更新所選歌曲資料!";
             });
         }
 
@@ -772,9 +772,9 @@ namespace CrazyKTV_SongMgr
 
                     string str = SongFilelist[i];
 
-                    if (Global.AddMode != SongAddMode.InPlace && !SongQuery.QuerySameFileSong)
+                    if (Global.SongMgrSongAddMode != SongAddMode.InPlace && !SongQuery.QuerySameFileSong)
                     {
-                        if (!LibraryPlacement.Remove(str, Global.SongMgrBackupRemoveSong == "True"))
+                        if (!LibraryPlacement.Remove(str, Global.SongMgrBackupRemoveSong))
                         {
                             RemoveError = true;
                             Global.SongLog.Add("【歌庫查詢】異動檔案時發生錯誤: " + str + " (唯讀或使用中)");
@@ -797,7 +797,7 @@ namespace CrazyKTV_SongMgr
 
                         this.BeginInvoke((Action)delegate()
                         {
-                            SongQuery_QueryStatus_Label.Text = (Global.AddMode != SongAddMode.InPlace) ? "已成功移除所選歌曲資料及檔案!" : "已成功移除所選歌曲資料!";
+                            SongQuery_QueryStatus_Label.Text = (Global.SongMgrSongAddMode != SongAddMode.InPlace) ? "已成功移除所選歌曲資料及檔案!" : "已成功移除所選歌曲資料!";
                         });
                     }
                 }

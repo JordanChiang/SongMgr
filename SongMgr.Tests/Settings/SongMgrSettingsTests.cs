@@ -91,6 +91,100 @@ namespace SongMgr.Tests.Settings
         }
 
         [Fact]
+        public void Entries_are_every_setting_field_in_declaration_order()
+        {
+            var fields = typeof(SongMgrSettings).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Where(f => typeof(Setting).IsAssignableFrom(f.FieldType))
+                .Select(f => (Setting)f.GetValue(null)).ToList();
+
+            Assert.Equal(fields.OrderBy(s => s.Name), SongMgrSettings.Entries.OrderBy(s => s.Name));
+            Assert.All(typeof(SongMgrSettings).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Where(f => typeof(Setting).IsAssignableFrom(f.FieldType)),
+                f => Assert.Equal(f.Name, ((Setting)f.GetValue(null)).Name));
+        }
+
+        [Fact]
+        public void Global_is_a_view_of_the_registry()
+        {
+            Global.SongMgrDestFolder = @"D:\KTV\歌庫";
+            Assert.Equal(@"D:\KTV\歌庫", SongMgrSettings.SongMgrDestFolder.Value);
+
+            SongMgrSettings.MainCfgUIFont.Value = "Tahoma";
+            Assert.Equal("Tahoma", Global.MainCfgUIFont);
+
+            Global.SongMgrMonitorFoldersList[0] = @"E:\監視";
+            Assert.Equal(@"E:\監視,,,,", SongMgrSettings.SongMgrMonitorFolders.Get());
+        }
+
+        [Fact]
+        public void A_snapshot_restores_values_and_list_contents_more_than_once()
+        {
+            var snapshot = SongMgrSettings.Snapshot();
+            for (int i = 0; i < 2; i++)
+            {
+                Global.SongMgrDestFolder = "改過";
+                Global.CrazyktvSongLangList.Add("新語言");
+
+                SongMgrSettings.Restore(snapshot);
+
+                Assert.Equal("", Global.SongMgrDestFolder);
+                Assert.Equal(SongMgrSettings.CrazyktvSongLangStr.Default, Global.CrazyktvSongLangList);
+            }
+        }
+
+        [Theory]
+        [InlineData("True", true)]
+        [InlineData("False", false)]
+        [InlineData("true", true)]
+        [InlineData("FALSE", false)]
+        public void A_bool_reads_true_or_false_in_any_case(string text, bool expected)
+        {
+            SongMgrSettings.SongMgrChorusMerge.Value = !expected;
+
+            SongMgrSettings.SongMgrChorusMerge.Set(text);
+
+            Assert.Equal(expected, Global.SongMgrChorusMerge);
+        }
+
+        [Theory]
+        [InlineData("yes")]
+        [InlineData("1")]
+        [InlineData("True-ish")]
+        public void A_bool_that_does_not_parse_keeps_its_value(string text)
+        {
+            SettingsFile.Create(path, new[] { ("SongMgrChorusMerge", text), ("MainCfgEnableAutoUpdate", text) });
+
+            SongMgrSettings.Load(SettingsFile.Load(path));
+
+            Assert.False(Global.SongMgrChorusMerge);
+            Assert.True(Global.MainCfgEnableAutoUpdate);
+        }
+
+        [Fact]
+        public void A_bool_is_written_as_True_or_False()
+        {
+            SettingsFile.Create(path, SongMgrSettings.Defaults());
+            Global.SongMgrChorusMerge = true;
+            Global.SongMgrSongTrackMode = false;
+
+            SongMgrSettings.Save(SettingsGroup.SongMgrCfg);
+
+            SettingsFile cfg = SettingsFile.Load(path);
+            Assert.Equal("True", cfg["SongMgrChorusMerge"]);
+            Assert.Equal("False", cfg["SongMgrSongTrackMode"]);
+            Assert.Equal("True", cfg["MainCfgEnableAutoUpdate"]);
+            Assert.Equal("False", cfg["MainCfgAlwaysOnTop"]);
+        }
+
+        [Fact]
+        public void A_list_default_is_a_new_copy_each_time()
+        {
+            SongMgrSettings.SongMgrMonitorFolders.Default.Add("不該留下");
+
+            Assert.Equal(new[] { "", "", "", "", "" }, SongMgrSettings.SongMgrMonitorFolders.Default);
+        }
+
+        [Fact]
         public void Defaults_are_every_saved_setting_with_its_current_value()
         {
             Global.SongMgrDestFolder = @"D:\KTV\歌庫";
@@ -108,7 +202,7 @@ namespace SongMgr.Tests.Settings
         {
             SettingsFile.Create(path, SongMgrSettings.Defaults());
             string loadOnlyDefault = Global.SingerMgrDefaultSingerDataTable;
-            foreach (Setting s in SongMgrSettings.Entries) s.Set(s.Name + "-值");
+            foreach (Setting s in SongMgrSettings.Entries) s.Set(Changed(s, "-值"));
 
             foreach (SettingsGroup group in SavedGroups) SongMgrSettings.Save(group);
             ResetGlobals();
@@ -116,7 +210,7 @@ namespace SongMgr.Tests.Settings
 
             foreach (Setting s in SongMgrSettings.Entries.Where(s => s.Group != SettingsGroup.LoadOnly))
             {
-                Assert.Equal(s.Name + "-值", s.Get());
+                Assert.Equal(Changed(s, "-值"), s.Get());
             }
             Assert.Equal(loadOnlyDefault, Global.SingerMgrDefaultSingerDataTable);
             Assert.Equal("", SettingsFile.Load(path)["SingerMgrDefaultSingerDataTable"]);
@@ -175,7 +269,15 @@ namespace SongMgr.Tests.Settings
 
         void ChangeEverySetting()
         {
-            foreach (Setting s in SongMgrSettings.Entries) s.Set(s.Name + "-新");
+            foreach (Setting s in SongMgrSettings.Entries) s.Set(Changed(s, "-新"));
+        }
+
+        /// <summary>File text for <paramref name="s"/> that differs from its default and parses: the other bool, or tagged text.</summary>
+        static string Changed(Setting s, string tag)
+        {
+            if (s is Setting<bool> b) return b.Default ? "False" : "True";
+            if (s is Setting<SongAddMode>) return "4";
+            return s.Name + tag;
         }
 
         /// <summary>A file with every setting, a hand-added unknown key, the legacy key, and a repeated key.</summary>

@@ -323,7 +323,7 @@ namespace CrazyKTV_SongMgr
 
                             this.BeginInvoke((Action)delegate ()
                             {
-                                if (Global.SingerMgrSyncSongSinger == "True")
+                                if (Global.SingerMgrSyncSongSinger)
                                 {
                                     SingerMgr_Tooltip_Label.Text = "已成功更新 " + Global.TotalList[0] + " 位歌手資料,失敗 " + Global.TotalList[1] + " 位,同步歌曲 " + Global.TotalList[2] + " 首,失敗 " + Global.TotalList[3] + " 首...";
                                 }
@@ -334,7 +334,7 @@ namespace CrazyKTV_SongMgr
                             });
                         }
 
-                        if (Global.SingerMgrSyncSongSinger == "True")
+                        if (Global.SingerMgrSyncSongSinger)
                         {
                             string OldSingerName = valuelist[8];
                             Regex HasSymbols = new Regex("[']");
@@ -1001,7 +1001,7 @@ namespace CrazyKTV_SongMgr
 
         private void SingerMgr_EditSyncSongSinger_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.SingerMgrSyncSongSinger = SingerMgr_EditSyncSongSinger_CheckBox.Checked.ToString();
+            Global.SingerMgrSyncSongSinger = SingerMgr_EditSyncSongSinger_CheckBox.Checked;
             if (Global.SongMgrInitializeStatus) SongMgrSettings.Save("SingerMgrSyncSongSinger");
         }
 
@@ -1136,7 +1136,7 @@ namespace CrazyKTV_SongMgr
                                 }
                             }
 
-                            if (Global.SingerMgrSyncSongSinger == "True")
+                            if (Global.SingerMgrSyncSongSinger)
                             {
                                 SingerMgr_Tooltip_Label.Text = "已成功更新 " + Global.TotalList[0] + " 位歌手資料,失敗 " + Global.TotalList[1] + " 位,同步歌曲 " + Global.TotalList[2] + " 首,失敗 " + Global.TotalList[3] + " 首。";
                             }

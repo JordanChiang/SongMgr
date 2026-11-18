@@ -96,8 +96,8 @@ namespace SongMgr.Tests.Analysis
                 Apply = () =>
                 {
                     Global.SongAddSongIdentificationMode = "1";
-                    Global.SongAddEnableConvToTC = "True";
-                    Global.SongAddEngSongNameFormat = "True";
+                    Global.SongAddEnableConvToTC = true;
+                    Global.SongAddEngSongNameFormat = true;
                     Global.SongMgrSongType = "演唱會,MTV,Live";
                     Global.SongAddDefaultSongType = "2";
                     Global.SongAddSpecialStr = "S.H.E|F.I.R.";
@@ -109,11 +109,11 @@ namespace SongMgr.Tests.Analysis
                 Apply = () =>
                 {
                     Global.SongAddSongIdentificationMode = "1";
-                    Global.SongMgrSongAddMode = "4";
+                    Global.SongMgrSongAddMode = SongAddMode.Monitor;
                     Global.SongAddDefaultSongLang = "11";
                     Global.SongAddDefaultSingerType = "3";
                     Global.SongAddDefaultSongTrack = "6";
-                    Global.SongAddEnableVolumeDetect = "True";
+                    Global.SongAddEnableVolumeDetect = true;
                     Global.SongMaintenanceReplayGainVolume = "50";
                 }
             };
@@ -122,18 +122,18 @@ namespace SongMgr.Tests.Analysis
         internal static void ResetAnalysisSettings()
         {
             Global.SongAddSongIdentificationMode = "1";
-            Global.SongAddEnableConvToTC = "False";
-            Global.SongAddEngSongNameFormat = "False";
+            Global.SongAddEnableConvToTC = false;
+            Global.SongAddEngSongNameFormat = false;
             Global.SongMgrSongType = "";
             Global.SongAddDefaultSongType = "1";
             Global.SongAddSpecialStr = "";
-            Global.SongMgrSongAddMode = "3";
+            Global.SongMgrSongAddMode = SongAddMode.InPlace;
             Global.SongAddDefaultSongLang = "1";
             Global.SongAddDefaultSingerType = "8";
             Global.SongAddDefaultSongTrack = "1";
             Global.SongAddDefaultSongVolume = "100";
-            Global.SongAddEnableVolumeDetect = "False";
-            Global.SongMgrSongTrackMode = "False";
+            Global.SongAddEnableVolumeDetect = false;
+            Global.SongMgrSongTrackMode = false;
         }
 
         internal static List<string> CreateCorpusFiles(string root)

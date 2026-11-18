@@ -26,18 +26,18 @@ namespace CrazyKTV_SongMgr
 
         private void MainCfg_AlwaysOnTop_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.MainCfgAlwaysOnTop = MainCfg_AlwaysOnTop_CheckBox.Checked.ToString();
+            Global.MainCfgAlwaysOnTop = MainCfg_AlwaysOnTop_CheckBox.Checked;
             this.TopMost = MainCfg_AlwaysOnTop_CheckBox.Checked;
         }
 
         private void MainCfg_EnableAutoUpdate_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.MainCfgEnableAutoUpdate = MainCfg_EnableAutoUpdate_CheckBox.Checked.ToString();
+            Global.MainCfgEnableAutoUpdate = MainCfg_EnableAutoUpdate_CheckBox.Checked;
         }
 
         private void MainCfg_AutoSongFileCount_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.MainCfgAutoSongFileCount = MainCfg_AutoSongFileCount_CheckBox.Checked.ToString();
+            Global.MainCfgAutoSongFileCount = MainCfg_AutoSongFileCount_CheckBox.Checked;
         }
 
         private void MainCfg_HideTab_CheckBox_CheckedChanged(object sender, EventArgs e)
@@ -46,7 +46,7 @@ namespace CrazyKTV_SongMgr
             switch (cbox.Name)
             {
                 case "MainCfg_HideSongDBConvTab_CheckBox":
-                    Global.MainCfgHideSongDBConverterTabPage = MainCfg_HideSongDBConvTab_CheckBox.Checked.ToString();
+                    Global.MainCfgHideSongDBConverterTabPage = MainCfg_HideSongDBConvTab_CheckBox.Checked;
                     if (cbox.Checked)
                     {
                         if (MainTabControl.TabPages.IndexOf(SongDBConverter_TabPage) >= 0)
@@ -65,7 +65,7 @@ namespace CrazyKTV_SongMgr
                     }
                     break;
                 case "MainCfg_HideSongAddResultTab_CheckBox":
-                    Global.MainCfgHideSongAddResultTabPage = MainCfg_HideSongAddResultTab_CheckBox.Checked.ToString();
+                    Global.MainCfgHideSongAddResultTabPage = MainCfg_HideSongAddResultTab_CheckBox.Checked;
                     if (cbox.Checked)
                     {
                         if (MainTabControl.TabPages.IndexOf(SongAddResult_TabPage) >= 0)
@@ -84,7 +84,7 @@ namespace CrazyKTV_SongMgr
                     }
                     break;
                 case "MainCfg_HideSongLogTab_CheckBox":
-                    Global.MainCfgHideSongLogTabPage = MainCfg_HideSongLogTab_CheckBox.Checked.ToString();
+                    Global.MainCfgHideSongLogTabPage = MainCfg_HideSongLogTab_CheckBox.Checked;
                     if (cbox.Checked)
                     {
                         if (MainTabControl.TabPages.IndexOf(SongLog_TabPage) >= 0)
@@ -111,7 +111,7 @@ namespace CrazyKTV_SongMgr
             switch (cbox.Name)
             {
                 case "MainCfg_HideApplyCashboxIdButton_CheckBox":
-                    Global.MainCfgHideApplyCashboxIdButton = MainCfg_HideApplyCashboxIdButton_CheckBox.Checked.ToString();
+                    Global.MainCfgHideApplyCashboxIdButton = MainCfg_HideApplyCashboxIdButton_CheckBox.Checked;
                     if (cbox.Checked)
                     {
                         Cashbox_ApplyCashboxId_Button.Visible = false;
@@ -148,8 +148,8 @@ namespace CrazyKTV_SongMgr
 
         private void MainCfg_EnableUIScale_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.MainCfgEnableUIScale = MainCfg_EnableUIScale_CheckBox.Checked.ToString();
-            if (Global.MainCfgEnableUIScale == "True")
+            Global.MainCfgEnableUIScale = MainCfg_EnableUIScale_CheckBox.Checked;
+            if (Global.MainCfgEnableUIScale)
             {
                 MainCfg_UIScale_ComboBox.Enabled = true;
                 MainCfg_UIFont_ComboBox.Enabled = true;
@@ -170,7 +170,7 @@ namespace CrazyKTV_SongMgr
 
         private void MainCfg_BackupDB_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.MainCfgBackupDB = MainCfg_BackupDB_CheckBox.Checked.ToString();
+            Global.MainCfgBackupDB = MainCfg_BackupDB_CheckBox.Checked;
         }
 
         private void MainCfg_BackupDB_Button_Click(object sender, EventArgs e)
@@ -193,7 +193,7 @@ namespace CrazyKTV_SongMgr
             MainCfg_PlayerOutput_RadioButton2.Enabled = (Environment.OSVersion.Version.Major >= 6) ? true : false;
             MainCfg_PlayerEnableAudioCompressor_CheckBox.Enabled = (Global.MainCfgPlayerCore == "1") ? true : false;
             MainCfg_PlayerEnableAudioProcessor_CheckBox.Enabled = (Global.MainCfgPlayerCore == "1" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
-            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor == "True" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
+            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
             MainCfg_PlayerRegAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && !Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
         }
 
@@ -204,13 +204,13 @@ namespace CrazyKTV_SongMgr
 
         private void MainCfg_PlayerEnableAudioCompressor_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.MainCfgPlayerEnableAudioCompressor = MainCfg_PlayerEnableAudioCompressor_CheckBox.Checked.ToString();
+            Global.MainCfgPlayerEnableAudioCompressor = MainCfg_PlayerEnableAudioCompressor_CheckBox.Checked;
         }
 
         private void MainCfg_PlayerEnableAudioProcessor_CheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            Global.MainCfgPlayerEnableAudioProcessor = MainCfg_PlayerEnableAudioProcessor_CheckBox.Checked.ToString();
-            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor == "True" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
+            Global.MainCfgPlayerEnableAudioProcessor = MainCfg_PlayerEnableAudioProcessor_CheckBox.Checked;
+            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
         }
 
         private void MainCfg_PlayerSetAudioProcessor_Button_Click(object sender, EventArgs e)
@@ -249,7 +249,7 @@ namespace CrazyKTV_SongMgr
             Global.FFDShowAudioProcessorRegistered = (regKey == null) ? false : true;
 
             MainCfg_PlayerEnableAudioProcessor_CheckBox.Enabled = (Global.MainCfgPlayerCore == "1" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
-            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor == "True" && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
+            MainCfg_PlayerSetAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && Global.MainCfgPlayerEnableAudioProcessor && Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
             MainCfg_PlayerRegAudioProcessor_Button.Enabled = (Global.MainCfgPlayerCore == "1" && !Global.FFDShowAudioProcessorRegistered && File.Exists(Application.StartupPath + @"\Codec_x86\ffdshow\ffdshow.ax")) ? true : false;
         }
 
