@@ -101,7 +101,11 @@ namespace SongMgr.Tests.Compare
                 SetGlobal("SongMgrCfgFile", cfg);
                 SetGlobal("CrazyktvCfgFile", Path.Combine(work, "CrazyKTV.cfg"));
                 SetGlobal("CrazyktvSongMgrDatabaseFile", mgr);
-                SetGlobal("CrazyktvSongDBUpdateFile", Path.Combine(work, "SongMgr", "UpdateDB.xml"));
+                // Only versions before 資料庫結構更新 (2.11.4 and older) keep a 歌庫版本 file.
+                if (typeof(Global).GetField("CrazyktvSongDBUpdateFile", GlobalFlags) != null)
+                {
+                    SetGlobal("CrazyktvSongDBUpdateFile", Path.Combine(work, "SongMgr", "UpdateDB.xml"));
+                }
             }
 
             // ---------- reflection helpers ----------
