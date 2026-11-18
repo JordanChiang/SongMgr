@@ -19,24 +19,7 @@ namespace CrazyKTV_SongMgr
         {
             if (Global.SongMgrSongType == "") Global.SongMgrSongType = "null";
             SongMgrCfg_GetSongMgrLangCode();
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvDatabaseFile", Global.CrazyktvDatabaseFile);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSupportFormat", Global.SongMgrSupportFormat);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrDestFolder", Global.SongMgrDestFolder);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongAddMode", Global.SongMgrSongAddMode);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrChorusMerge", Global.SongMgrChorusMerge);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMaxDigitCode", Global.SongMgrMaxDigitCode);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrLangCode", Global.SongMgrLangCode);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongType", Global.SongMgrSongType);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongInfoSeparate", Global.SongMgrSongInfoSeparate);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrChorusSeparate", Global.SongMgrChorusSeparate);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrFolderStructure", Global.SongMgrFolderStructure);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrFileStructure", Global.SongMgrFileStructure);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongTrackMode", Global.SongMgrSongTrackMode);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrBackupRemoveSong", Global.SongMgrBackupRemoveSong);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrCustomSingerTypeStructure", Global.SongMgrCustomSingerTypeStructure);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrEnableMonitorFolders", Global.SongMgrEnableMonitorFolders);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMonitorFolders", string.Join(",", Global.SongMgrMonitorFoldersList));
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSingerGroup", Global.SongMgrSingerGroup);
+            SongMgrSettings.Save(SettingsGroup.SongMgrCfg);
         }
 
 
@@ -58,7 +41,7 @@ namespace CrazyKTV_SongMgr
                 }
 
                 Common_SetDatabaseFile(opd.FileName);
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvDatabaseFile", Global.CrazyktvDatabaseFile);
+                SongMgrSettings.Save("CrazyktvDatabaseFile");
                 Common_RefreshSongMgr(true);
                 if (SongMgrCfg_SongAddMode_ComboBox.SelectedValue.ToString() == "4")
                 {
@@ -84,7 +67,7 @@ namespace CrazyKTV_SongMgr
             {
                 Global.SongMgrDestFolder = opd.SelectedPath;
                 SongMgrCfg_DestFolder_TextBox.Text = opd.SelectedPath;
-                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrDestFolder", Global.SongMgrDestFolder);
+                SongMgrSettings.Save("SongMgrDestFolder");
                 Common_RefreshSongMgr(true);
             }
         }
@@ -283,8 +266,7 @@ namespace CrazyKTV_SongMgr
         /// <summary>Saves the 歌曲編號 digit count and the 語系編號區段 that goes with it to the 設定檔.</summary>
         private void SongMgrCfg_SaveMaxDigitCode()
         {
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMaxDigitCode", Global.SongMgrMaxDigitCode);
-            CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrLangCode", Global.SongMgrLangCode);
+            SongMgrSettings.Save("SongMgrMaxDigitCode", "SongMgrLangCode");
         }
 
         private void SongMgrCfg_MaxDigitCode_ComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -1114,8 +1096,7 @@ namespace CrazyKTV_SongMgr
                 }
                 else
                 {
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrEnableMonitorFolders", Global.SongMgrEnableMonitorFolders);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrMonitorFolders", string.Join(",", Global.SongMgrMonitorFoldersList));
+                    SongMgrSettings.Save("SongMgrEnableMonitorFolders", "SongMgrMonitorFolders");
                     SongMonitor_CheckCurSong();
                 }
             }

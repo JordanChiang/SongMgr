@@ -22,12 +22,6 @@ namespace CrazyKTV_SongMgr
             switch (SongAdd_Save_Button.Text)
             {
                 case "儲存設定":
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongLang", Global.SongAddDefaultSongLang);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSingerType", Global.SongAddDefaultSingerType);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongTrack", Global.SongAddDefaultSongTrack);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongType", Global.SongAddDefaultSongType);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDefaultSongVolume", Global.SongAddDefaultSongVolume);
-
                     string SongQuerySqlStr = "select * from ktv_SongMgr where Config_Type = 'SpecialStr' order by Config_Value";
                     string SongAddSpecialStr = "";
                     using (DataTable dt = Db.GetDataTable(Global.CrazyktvSongMgrDatabaseFile, SongQuerySqlStr, ""))
@@ -46,13 +40,8 @@ namespace CrazyKTV_SongMgr
                     }
                     SongAddSpecialStr = Regex.Replace(SongAddSpecialStr, @"\|$", "");
 
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddSpecialStr", SongAddSpecialStr);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddSongIdentificationMode", Global.SongAddSongIdentificationMode);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddDupSongMode", Global.SongAddDupSongMode);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddEngSongNameFormat", Global.SongAddEngSongNameFormat);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddUseCustomSongID", Global.SongAddUseCustomSongID);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddEnableConvToTC", Global.SongAddEnableConvToTC);
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddEnableVolumeDetect", Global.SongAddEnableVolumeDetect);
+                    // 參考資料庫裡已有的特殊字串不存進設定檔
+                    SongMgrSettings.Save(SettingsGroup.SongAdd, ("SongAddSpecialStr", SongAddSpecialStr));
                     break;
                 case "取消更新":
                     SongAdd_Add_Button.Text = "加入歌庫";
@@ -814,7 +803,7 @@ namespace CrazyKTV_SongMgr
 
                     if (CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongType", null, false) != Global.SongMgrSongType)
                     {
-                        CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongType", Global.SongMgrSongType);
+                        SongMgrSettings.Save("SongMgrSongType");
                     }
                     SongMgrCfg_SongType_ListBox.DataSource = SongMgrCfg.GetSongTypeList();
                     SongMgrCfg_SongType_ListBox.DisplayMember = "Display";
@@ -926,7 +915,7 @@ namespace CrazyKTV_SongMgr
 
                     if (CommonFunc.LoadConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongType", null, false) != Global.SongMgrSongType)
                     {
-                        CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrSongType", Global.SongMgrSongType);
+                        SongMgrSettings.Save("SongMgrSongType");
                     }
                     SongMgrCfg_SongType_ListBox.DataSource = SongMgrCfg.GetSongTypeList();
                     SongMgrCfg_SongType_ListBox.DisplayMember = "Display";
@@ -1485,7 +1474,7 @@ namespace CrazyKTV_SongMgr
                                     }
                                 }
                                 SongAddSpecialStr = Regex.Replace(SongAddSpecialStr, @"\|$", "");
-                                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongAddSpecialStr", SongAddSpecialStr);
+                                SongMgrSettings.SaveValue("SongAddSpecialStr", SongAddSpecialStr);
                             }
                             str = SongAddSpecialStr;
                         }

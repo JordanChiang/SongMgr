@@ -22,7 +22,7 @@ namespace CrazyKTV_SongMgr
             switch (SongMaintenance_Save_Button.Text)
             {
                 case "儲存設定":
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMaintenanceReplayGainVolume", Global.SongMaintenanceReplayGainVolume);
+                    SongMgrSettings.Save("SongMaintenanceReplayGainVolume");
                     break;
                 case "更新語系":
                     Global.CrazyktvSongLangList = new List<string>();
@@ -45,7 +45,7 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.CrazyktvSongLangList.Add(SongMaintenance_Lang_TextBox[i].Text);
                     }
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangStr", string.Join(",", Global.CrazyktvSongLangList));
+                    SongMgrSettings.Save("CrazyktvSongLangStr");
 
                     TextBox[] SongMaintenance_LangIDStr_TextBox =
                     {
@@ -65,7 +65,7 @@ namespace CrazyKTV_SongMgr
                     {
                         Global.CrazyktvSongLangKeyWordList.Add(SongMaintenance_LangIDStr_TextBox[i].Text);
                     }
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "CrazyktvSongLangKeyWord", string.Join("|", Global.CrazyktvSongLangKeyWordList));
+                    SongMgrSettings.Save("CrazyktvSongLangKeyWord");
 
                     Global.TimerStartTime = DateTime.Now;
                     Global.TotalList = new List<int>() { 0, 0, 0, 0 };
@@ -1657,7 +1657,7 @@ namespace CrazyKTV_SongMgr
 
                                 Global.SongMgrDestFolder = RebuildSongPath;
                                 SongMgrCfg_DestFolder_TextBox.Text = RebuildSongPath;
-                                CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMgrDestFolder", Global.SongMgrDestFolder);
+                                SongMgrSettings.Save("SongMgrDestFolder");
 
                                 // 統計歌曲數量
                                 Task.Factory.StartNew(() => Common_GetSongStatisticsTask());
@@ -3186,7 +3186,7 @@ namespace CrazyKTV_SongMgr
                 if (SongMaintenance_ReplayGain_TextBox.Text != Global.SongMaintenanceReplayGainVolume)
                 {
                     Global.SongMaintenanceReplayGainVolume = SongMaintenance_ReplayGain_TextBox.Text;
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMaintenanceReplayGainVolume", Global.SongMaintenanceReplayGainVolume);
+                    SongMgrSettings.Save("SongMaintenanceReplayGainVolume");
                 }
 
                 SongMaintenance_Tooltip_Label.Text = "正在使用音量平衡功能來變更音量,請稍待...";
@@ -3313,7 +3313,7 @@ namespace CrazyKTV_SongMgr
                 if (SongMaintenance_ReplayGain_TextBox.Text != Global.SongMaintenanceReplayGainVolume)
                 {
                     Global.SongMaintenanceReplayGainVolume = SongMaintenance_ReplayGain_TextBox.Text;
-                    CommonFunc.SaveConfigXmlFile(Global.SongMgrCfgFile, "SongMaintenanceReplayGainVolume", Global.SongMaintenanceReplayGainVolume);
+                    SongMgrSettings.Save("SongMaintenanceReplayGainVolume");
                 }
 
                 SongMaintenance_Tooltip_Label.Text = "正在重置播放增益資料,請稍待...";
