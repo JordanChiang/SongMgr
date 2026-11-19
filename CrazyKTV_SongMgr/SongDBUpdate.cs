@@ -233,15 +233,9 @@ namespace CrazyKTV_SongMgr
                             if (SongMgrDestFolder) { Global.SongMgrDBVerErrorUIStatus = true; } else { Global.SongMgrDBVerErrorUIStatus = false; }
                         }
 
-                        switch (Global.SongMgrMaxDigitCode)
-                        {
-                            case "1":
-                                ControlExtensions.BeginInvokeIfRequired(SongMaintenance_CodeConvTo6_Button, btn => btn.Enabled = true);
-                                break;
-                            case "2":
-                                ControlExtensions.BeginInvokeIfRequired(SongMaintenance_CodeConvTo6_Button, btn => btn.Enabled = false);
-                                break;
-                        }
+                        // 依歌庫實際的位數: Global.SongMgrMaxDigitCode 要等上面排進 UI 執行緒的設定變更跑完才會更新
+                        bool canConvertTo6 = MaxDigitCode == 5;
+                        ControlExtensions.BeginInvokeIfRequired(SongMaintenance_CodeConvTo6_Button, btn => btn.Enabled = canConvertTo6);
                         ControlExtensions.BeginInvokeIfRequired(SongMaintenance_CodeCorrect_Button, btn => btn.Enabled = false);
                         Global.CrazyktvDatabaseMaxDigitCode = true;
                     }

@@ -42,6 +42,16 @@ namespace SongMgr.Tests.EndToEnd
         Process process;
         AutomationElement main;
         readonly List<string> tabLog = new List<string>();
+        int shots;
+
+        /// <summary>
+        /// With SONGMGR_E2E_EVIDENCE set to a folder, each session keeps its proof there, in a folder named after its
+        /// sandbox: a screenshot before every <see cref="Click"/>, one when it ends, and the 歌庫 and 設定檔 it ended
+        /// with. The sandbox itself is deleted; this folder is not.
+        /// </summary>
+        public static string EvidenceRoot => Environment.GetEnvironmentVariable("SONGMGR_E2E_EVIDENCE") is string s && s.Length > 0 ? s : null;
+
+        public string EvidenceDir => EvidenceRoot == null ? null : Path.Combine(EvidenceRoot, Path.GetFileName(Root));
 
         public static string SkipReason =>
             Environment.GetEnvironmentVariable("SONGMGR_SKIP_E2E") == "1" ? "SONGMGR_SKIP_E2E=1" :
@@ -237,22 +247,53 @@ namespace SongMgr.Tests.EndToEnd
             string shot = Path.Combine(Path.GetTempPath(), "SongMgrTests", "e2e-" + Path.GetFileName(Root) + ".png");
             try
             {
-                System.Windows.Rect r = main.Current.BoundingRectangle;
-                using (var bmp = new System.Drawing.Bitmap((int)r.Width, (int)r.Height))
-                using (var g = System.Drawing.Graphics.FromImage(bmp))
-                {
-                    g.CopyFromScreen((int)r.X, (int)r.Y, 0, 0, bmp.Size);
-                    bmp.Save(shot, System.Drawing.Imaging.ImageFormat.Png);
-                }
+                SaveScreenshot(shot);
             }
             catch (Exception ex)
             {
                 shot = "(no screenshot: " + ex.Message + ")";
             }
+            Snap("timeout");
             var seen = main.FindAll(TreeScope.Descendants, Condition.TrueCondition).Cast<AutomationElement>()
                 .Where(x => x.Current.ControlType == ControlType.Button || x.Current.ControlType == ControlType.TabItem)
                 .Select(x => x.Current.ControlType.ProgrammaticName.Replace("ControlType.", "") + ":" + x.Current.Name + (x.Current.IsEnabled ? "" : "(disabled)"));
             return "Tabs: " + string.Join(" / ", tabLog.Skip(Math.Max(0, tabLog.Count - 8))) + Environment.NewLine + "Screenshot: " + shot + Environment.NewLine + "On screen: " + string.Join(", ", seen);
+        }
+
+        /// <summary>The main window as it is on screen, as a PNG at <paramref name="path"/>.</summary>
+        void SaveScreenshot(string path)
+        {
+            IntPtr previous = SetThreadDpiAwarenessContext(new IntPtr(-4)); // per-monitor v2: same pixels as the bounding rectangle
+            try
+            {
+                System.Windows.Rect r = main.Current.BoundingRectangle;
+                using (var bmp = new System.Drawing.Bitmap((int)r.Width, (int)r.Height))
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                {
+                    g.CopyFromScreen((int)r.X, (int)r.Y, 0, 0, bmp.Size);
+                    bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                }
+            }
+            finally
+            {
+                SetThreadDpiAwarenessContext(previous);
+            }
+        }
+
+        /// <summary>
+        /// With <see cref="EvidenceRoot"/> set, a numbered screenshot of the main window in <see cref="EvidenceDir"/>;
+        /// otherwise nothing. Never fails the test.
+        /// </summary>
+        public void Snap(string label)
+        {
+            if (EvidenceDir == null || main == null) return;
+            try
+            {
+                Directory.CreateDirectory(EvidenceDir);
+                string safe = new string(label.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c).ToArray());
+                SaveScreenshot(Path.Combine(EvidenceDir, (++shots).ToString("D2") + "-" + safe + ".png"));
+            }
+            catch (Exception) { } // a window that has just closed has nothing to show
         }
 
         void ClickOrTimeout(string name, string onTab)
@@ -263,6 +304,7 @@ namespace SongMgr.Tests.EndToEnd
                 if (onTab != null) SelectTab(onTab);
                 return (e = ByName(main, name, ControlType.Button) ?? ByName(main, name)) != null && e.Current.IsEnabled;
             }, 30, "「" + name + "」");
+            Snap("click-" + name);
             if (e.Current.ControlType == ControlType.Button && e.Current.NativeWindowHandle != 0)
             {
                 // Posted, not invoked: a Click handler that opens a MessageBox would hold an Invoke until it closes.
@@ -380,6 +422,7 @@ namespace SongMgr.Tests.EndToEnd
             {
                 if (process != null && !process.HasExited)
                 {
+                    Snap("end");
                     process.CloseMainWindow();
                     if (!process.WaitForExit(10000)) process.Kill();
                     process.WaitForExit();
@@ -388,8 +431,27 @@ namespace SongMgr.Tests.EndToEnd
             finally
             {
                 process?.Dispose();
+                KeepEvidence();
                 try { TestEnv.DeleteDir(Root); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             }
+        }
+
+        /// <summary>Copies the 歌庫, 設定檔 and backups the program left in the sandbox to <see cref="EvidenceDir"/>.</summary>
+        void KeepEvidence()
+        {
+            if (EvidenceDir == null) return;
+            try
+            {
+                Directory.CreateDirectory(EvidenceDir);
+                foreach (string f in new[] { Database, SettingsPath })
+                {
+                    if (File.Exists(f)) File.Copy(f, Path.Combine(EvidenceDir, Path.GetFileName(f)), true);
+                }
+                string backup = Path.Combine(AppDir, "SongMgr", "Backup");
+                if (Directory.Exists(backup)) CopyDir(backup, Path.Combine(EvidenceDir, "Backup"));
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
 
         const int MOUSEEVENTF_LEFTDOWN = 0x02, MOUSEEVENTF_LEFTUP = 0x04, TCM_GETCURSEL = 0x130B, KEYEVENTF_KEYUP = 0x2;

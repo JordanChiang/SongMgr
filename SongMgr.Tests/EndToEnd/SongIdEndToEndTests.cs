@@ -151,6 +151,29 @@ namespace SongMgr.Tests.EndToEnd
             }
         }
 
+        // At start-up the 歌庫's own digit count wins over the 設定檔's; the button has to follow the 歌庫, not the
+        // 設定檔 value that is only replaced afterwards on the UI thread.
+
+        [DesktopFact]
+        public void 轉換為6位數_works_on_a_5_digit_歌庫_whose_設定檔_says_6_digits()
+        {
+            using (var app = new AppSession("to6cfg6"))
+            {
+                app.WriteSettings(6);
+                app.InsertSong("10001", "國語", "周杰倫", "晴天");
+                app.InsertSong("20005", "台語", "江蕙", "家後");
+
+                app.Start();
+                app.Click("轉換為 6 位數", onTab: "歌庫維護");
+                app.Answer("確認提示", "是(Y)");
+                AppSession.WaitUntil(() => app.Songs().All(s => s.Id.Length == 6), 60, "轉換為 6 位數 to finish");
+
+                Assert.Equal(new[] { ("100001", "晴天"), ("200001", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
+                AppSession.WaitUntil(() => app.Setting("SongMgrMaxDigitCode") == "2", 20, "the 設定檔 to say 6 digits");
+                Assert.Equal(AppSession.Code6, app.Setting("SongMgrLangCode"));
+            }
+        }
+
         // 「未知」 is not a 語系 of the 歌庫 (加歌 refuses it), but a 歌庫 written by another program can have it.
 
         [DesktopFact]

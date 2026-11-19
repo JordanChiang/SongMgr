@@ -14,7 +14,20 @@
 | `Codec_x86` | 影音解碼器 | 很少，換 LAV 版本時才會變 |
 | `Tools` | ffmpeg / ffplay / ffprobe | 很少 |
 
-### 發佈步驟
+### 自動發佈 (GitHub Actions)
+
+`.github/workflows/release.yml` 會在推送版本號 tag 時自動發佈：
+
+1. 修改 `CrazyKTV_SongMgr\Properties\AssemblyInfo.cs` 的 `AssemblyFileVersion` (例如 `2.12.0`) 並 commit 到 master。
+2. 推送同名 tag：`git tag 2.12.0 && git push origin 2.12.0`。
+
+workflow 會檢查 tag 與 `AssemblyFileVersion` 一致、`dotnet publish` (FolderProfile)、補上 `Codec_x86\` (發佈時 PostBuild 不會複製)、驗證產出、執行 `pack-release.ps1`、建立 Release 並上傳附檔，最後把 `CrazyKTV_SongMgr.exe` 送 VirusTotal，結果附加到 Release notes。
+
+- 手動觸發 (Actions → Release → Run workflow) 可勾 `dry_run`：照常建置、打包、送 VirusTotal，但不建立 Release；附檔上傳為 workflow artifact，VT 結果寫在該 run 的 Summary。
+- VirusTotal 需要 repo secret `VT_API_KEY`，沒設定就略過掃描，不影響發佈。VT 結果對照 `vt-baseline.json` 白名單，出現白名單外的新命中才建議送 Hybrid Analysis。
+- UltimateKtvPublic 的發佈會抓本 repo 最新 release 的 `SongMgr_App_*.zip`，所以本程式要先發佈，UltimateKtv 才會帶到新版。
+
+### 手動發佈步驟
 
 1. 修改 `CrazyKTV_SongMgr\Properties\AssemblyInfo.cs` 裡的 `AssemblyFileVersion`，例如 `2.12.0`。
 2. 在 Visual Studio 用 `FolderProfile` 發佈，輸出到 `CrazyKTV_SongMgr\Publish`。
