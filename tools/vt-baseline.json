@@ -1,0 +1,8 @@
+{
+  "_comment": "VirusTotal 誤判白名單。VT 掃描 (tools/vt-scan.ps1) 只在出現『白名單以外』且筆數 > threshold 的 malicious/suspicious 命中時，才在 run Summary 標記並建議送 Hybrid Analysis。",
+  "_how": "accepted_results：對命中結果字串做子字串比對 (不分大小寫)，命中任一即視為已知誤判並排除。accepted_engines：整個引擎都忽略 (較少用，會連真命中也漏)。threshold：排除白名單後仍可容忍的殘餘命中數 (要 > threshold 才標記)。",
+  "_note": "threshold=1：要有 ≥2 家白名單外命中才標記，放掉單一引擎的 ML 噪音 (tools/README.md 記錄目前固定剩 APEX 1 家)。白名單先留空；日後若某特定命中一直出現且確認是誤判，把它的結果字串加進 accepted_results 精準放行。",
+  "threshold": 1,
+  "accepted_results": [],
+  "accepted_engines": []
+}
