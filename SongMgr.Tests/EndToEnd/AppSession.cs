@@ -23,8 +23,8 @@ namespace SongMgr.Tests.EndToEnd
     internal sealed class AppSession : IDisposable
     {
         public static readonly List<string> Langs = new List<string> { "國語", "台語", "粵語", "日語", "英語", "客語", "原住民語", "韓語", "兒歌", "其它" };
-        public const string Code5 = "10001,20001,30001,40001,50001,60001,70001,80001,90001,95001";
-        public const string Code6 = "100001,200001,300001,400001,500001,600001,700001,800001,900001,950001";
+        public const string Code5 = "00000,40000,70000,75000,80000,85000,88000,90000,97000,98000";
+        public const string Code6 = "000000,300000,500000,550000,600000,650000,700000,750000,850000,900000";
 
         static readonly string[] AppFiles =
         {

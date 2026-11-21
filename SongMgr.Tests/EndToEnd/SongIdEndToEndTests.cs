@@ -119,9 +119,9 @@ namespace SongMgr.Tests.EndToEnd
                 app.Answer("確認提示", "是(Y)");
                 AppSession.WaitUntil(() => app.Songs().Any(s => s.Name == "去年下的那場雪" && s.Id == "002034"), 60, "套用錢櫃編號 to finish");
 
-                Assert.Equal(new[] { ("002034", "去年下的那場雪"), ("002035", "別戀"), ("002036", "Want Me Back"), ("100003", "不在錢櫃的歌") },
+                Assert.Equal(new[] { ("000000", "不在錢櫃的歌"), ("002034", "去年下的那場雪"), ("002035", "別戀"), ("002036", "Want Me Back") },
                     app.Songs().Select(s => (s.Id, s.Name)));
-                Assert.Equal(new[] { "0001:002034", "0001:002036", "0001:100003" }, app.Favorites());
+                Assert.Equal(new[] { "0001:000000", "0001:002034", "0001:002036" }, app.Favorites());
                 Assert.False(File.Exists(Path.Combine(app.AppDir, "SongMgr", "Backup", "Favorite.txt")), "我的最愛 are no longer exported to Favorite.txt");
             }
         }
@@ -132,19 +132,19 @@ namespace SongMgr.Tests.EndToEnd
             using (var app = new AppSession("to6"))
             {
                 app.WriteSettings(5);
-                app.InsertSong("10001", "國語", "周杰倫", "晴天");
-                app.InsertSong("10002", "國語", "王菲", "紅豆");
-                app.InsertSong("20005", "台語", "江蕙", "家後");
-                app.InsertFavorite("0001", "10002");
-                app.InsertFavorite("0001", "20005");
+                app.InsertSong("00000", "國語", "周杰倫", "晴天");
+                app.InsertSong("00001", "國語", "王菲", "紅豆");
+                app.InsertSong("40004", "台語", "江蕙", "家後");
+                app.InsertFavorite("0001", "00001");
+                app.InsertFavorite("0001", "40004");
 
                 app.Start();
                 app.Click("轉換為 6 位數", onTab: "歌庫維護");
                 app.Answer("確認提示", "是(Y)");
                 AppSession.WaitUntil(() => app.Songs().All(s => s.Id.Length == 6), 60, "轉換為 6 位數 to finish");
 
-                Assert.Equal(new[] { ("100001", "晴天"), ("100002", "紅豆"), ("200001", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
-                Assert.Equal(new[] { "0001:100002", "0001:200001" }, app.Favorites());
+                Assert.Equal(new[] { ("000000", "晴天"), ("000001", "紅豆"), ("300000", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
+                Assert.Equal(new[] { "0001:000001", "0001:300000" }, app.Favorites());
                 AppSession.WaitUntil(() => app.Setting("SongMgrMaxDigitCode") == "2", 20, "the 設定檔 to say 6 digits");
                 Assert.Equal(AppSession.Code6, app.Setting("SongMgrLangCode"));
                 Assert.False(File.Exists(Path.Combine(app.AppDir, "SongMgr", "Backup", "Favorite.txt")), "我的最愛 are no longer exported to Favorite.txt");
@@ -160,15 +160,15 @@ namespace SongMgr.Tests.EndToEnd
             using (var app = new AppSession("to6cfg6"))
             {
                 app.WriteSettings(6);
-                app.InsertSong("10001", "國語", "周杰倫", "晴天");
-                app.InsertSong("20005", "台語", "江蕙", "家後");
+                app.InsertSong("00000", "國語", "周杰倫", "晴天");
+                app.InsertSong("40004", "台語", "江蕙", "家後");
 
                 app.Start();
                 app.Click("轉換為 6 位數", onTab: "歌庫維護");
                 app.Answer("確認提示", "是(Y)");
                 AppSession.WaitUntil(() => app.Songs().All(s => s.Id.Length == 6), 60, "轉換為 6 位數 to finish");
 
-                Assert.Equal(new[] { ("100001", "晴天"), ("200001", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
+                Assert.Equal(new[] { ("000000", "晴天"), ("300000", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
                 AppSession.WaitUntil(() => app.Setting("SongMgrMaxDigitCode") == "2", 20, "the 設定檔 to say 6 digits");
                 Assert.Equal(AppSession.Code6, app.Setting("SongMgrLangCode"));
             }
@@ -182,9 +182,9 @@ namespace SongMgr.Tests.EndToEnd
             using (var app = new AppSession("to6unknown"))
             {
                 app.WriteSettings(5);
-                app.InsertSong("10001", "國語", "周杰倫", "晴天");
-                app.InsertSong("10002", "未知", "歌手", "不明語系");
-                app.InsertSong("20005", "台語", "江蕙", "家後");
+                app.InsertSong("00000", "國語", "周杰倫", "晴天");
+                app.InsertSong("00001", "未知", "歌手", "不明語系");
+                app.InsertSong("40004", "台語", "江蕙", "家後");
 
                 app.Start();
                 app.Click("轉換為 6 位數", onTab: "歌庫維護");
@@ -192,7 +192,7 @@ namespace SongMgr.Tests.EndToEnd
                 AppSession.WaitUntil(() => app.Value("SongMaintenance_Tooltip_Label").StartsWith("總共轉換"), 60, "轉換為 6 位數 to finish");
 
                 Assert.StartsWith("總共轉換 2 首歌曲的歌曲編號,失敗 1 首", app.Value("SongMaintenance_Tooltip_Label"));
-                Assert.Equal(new[] { ("100001", "晴天"), ("10002", "不明語系"), ("200001", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
+                Assert.Equal(new[] { ("000000", "晴天"), ("00001", "不明語系"), ("300000", "家後") }, app.Songs().Select(s => (s.Id, s.Name)));
             }
         }
 
@@ -202,9 +202,9 @@ namespace SongMgr.Tests.EndToEnd
             using (var app = new AppSession("correctunknown"))
             {
                 app.WriteSettings(5);
-                app.InsertSong("10001", "國語", "周杰倫", "晴天");
-                app.InsertSong("10002", "國語", "王菲", "紅豆");
-                app.InsertSong("20001", "台語", "江蕙", "家後");
+                app.InsertSong("00000", "國語", "周杰倫", "晴天");
+                app.InsertSong("00001", "國語", "王菲", "紅豆");
+                app.InsertSong("40000", "台語", "江蕙", "家後");
                 app.InsertSong("100005", "國語", "蔡依林", "日不落");
                 app.InsertSong("100006", "未知", "歌手", "不明語系");
 
@@ -214,7 +214,7 @@ namespace SongMgr.Tests.EndToEnd
                 AppSession.WaitUntil(() => app.Value("SongMaintenance_Tooltip_Label").StartsWith("總共校正"), 60, "校正編碼位數 to finish");
 
                 Assert.StartsWith("總共校正 1 首歌曲的歌曲編號,失敗 1 首", app.Value("SongMaintenance_Tooltip_Label"));
-                Assert.Equal(new[] { ("100006", "不明語系"), ("10001", "晴天"), ("10002", "紅豆"), ("10003", "日不落"), ("20001", "家後") },
+                Assert.Equal(new[] { ("00000", "晴天"), ("00001", "紅豆"), ("00002", "日不落"), ("100006", "不明語系"), ("40000", "家後") },
                     app.Songs().Select(s => (s.Id, s.Name)));
             }
         }
