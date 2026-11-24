@@ -896,11 +896,12 @@ namespace CrazyKTV_SongMgr
             }
         }
 
-        private void SongQuery_FavoriteRemove(object SongIdlist, object UserId)
+        private void SongQuery_FavoriteRemove(List<string> SongIdlist, List<string> VideoIdlist, string UserId)
         {
             using (SongLibraryStore store = SongLibraryStore.Open())
             {
-                store.RemoveFavorites((string)UserId, (List<string>)SongIdlist);
+                if (SongIdlist.Count > 0) store.RemoveFavorites(UserId, SongIdlist);
+                if (VideoIdlist.Count > 0) store.RemoveYoutubeFavorites(UserId, VideoIdlist);
             }
         }
 

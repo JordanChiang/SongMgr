@@ -2036,6 +2036,20 @@ namespace CrazyKTV_SongMgr
                     }
                 }
             }
+
+            if (YoutubeFavorites.TableExists(Global.CrazyktvDatabaseFile))
+            {
+                SongQuerySqlStr = "select User_Id, VideoId, Name, Length, CreatDate from YoutubeFavorite order by CreatDate, VideoId";
+                using (DataTable dt = Db.GetDataTable(Global.CrazyktvDatabaseFile, SongQuerySqlStr, ""))
+                {
+                    foreach (DataRow row in dt.AsEnumerable())
+                    {
+                        string UserID = Convert.ToString(row["User_Id"]);
+                        if (UserIDList.IndexOf(UserID) >= 0 && Regex.IsMatch(UserID, @"^\^#\d{4}$")) UserID = Regex.Replace(UserID, @"\^#", "");
+                        list.Add(SongMaintenance.YoutubeFavoriteLine(UserID, row));
+                    }
+                }
+            }
             UserIDList.Clear();
             UserIDList = null;
 
@@ -3666,11 +3680,28 @@ namespace CrazyKTV_SongMgr
             }
         }
 
+        private const string YoutubeFavoritePrefix = "YoutubeFavorite";
+
+        /// <summary>
+        /// A YouTube 我的最愛 as 我的最愛匯出 saves it: YoutubeFavorite|User_Id|VideoId|Length|CreatDate|Name, the 名稱 last
+        /// since it may hold '|'. <paramref name="row"/> has YoutubeFavorite's VideoId, Name, Length and CreatDate.
+        /// </summary>
+        public static string YoutubeFavoriteLine(string userId, DataRow row)
+        {
+            DateTime? created = YoutubeFavorites.ReadDate(row["CreatDate"]);
+            return YoutubeFavoritePrefix + "|" + userId + "|" + Convert.ToString(row["VideoId"]) + "|" +
+                ((row["Length"] == DBNull.Value) ? 0 : Convert.ToInt32(row["Length"])) + "|" +
+                ((created == null) ? "" : created.Value.ToString(YoutubeFavorites.DateFormat, CultureInfo.InvariantCulture)) + "|" +
+                Convert.ToString(row["Name"]);
+        }
+
         /// <summary>
         /// 我的最愛匯入: empties ktv_User and ktv_Favorite and writes back the lines 我的最愛匯出 saved, all or nothing.
         /// A ktv_Favorite line finds its song by 語系, 歌手 and 歌名 in <paramref name="songs"/> (lines whose song is
-        /// gone are skipped); a repeated User_Id keeps its first line. Returns the 最愛用戶 and songs written;
-        /// throws with nothing changed when a line cannot be read or a write fails.
+        /// gone are skipped); a repeated User_Id keeps its first line. When the backup has YouTube 我的最愛 lines they
+        /// replace YoutubeFavorite too; an older backup without them keeps the YouTube 我的最愛 of the users it brings back.
+        /// Returns the 最愛用戶 and songs (YouTube ones included) written; throws with nothing changed when a line cannot
+        /// be read or a write fails.
         /// </summary>
         public static (int Users, int Songs) ImportFavorites(SongLibraryStore store, IEnumerable<string> lines, DataTable songs)
         {
@@ -3678,9 +3709,26 @@ namespace CrazyKTV_SongMgr
             var userIds = new HashSet<string>();
             var favorites = new Dictionary<string, List<string>>();
             var favoriteOrder = new List<string>();
+            var youtube = new Dictionary<string, List<YoutubeFavoriteItem>>();
+            var youtubeOrder = new List<string>();
 
             foreach (string line in lines)
             {
+                if (line.StartsWith(YoutubeFavoritePrefix + "|", StringComparison.Ordinal))
+                {
+                    string[] y = line.Split(new[] { '|' }, 6);
+                    if (y.Length < 6) throw new FormatException("YouTube 我的最愛資料格式錯誤: " + line);
+                    if (!youtube.TryGetValue(y[1], out List<YoutubeFavoriteItem> items))
+                    {
+                        items = new List<YoutubeFavoriteItem>();
+                        youtube[y[1]] = items;
+                        youtubeOrder.Add(y[1]);
+                    }
+                    int.TryParse(y[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out int length);
+                    items.Add(new YoutubeFavoriteItem(y[2], y[5], length, YoutubeFavorites.ReadDate(y[4])));
+                    continue;
+                }
+
                 string[] f = line.Split('|');
                 switch (f[0])
                 {
@@ -3711,6 +3759,15 @@ namespace CrazyKTV_SongMgr
                 store.ClearFavoriteUsers();
                 foreach (var u in users) store.AddFavoriteUser(u.Id, u.Name);
                 foreach (string userId in favoriteOrder) songCount += store.AddFavorites(userId, favorites[userId]);
+                if (youtubeOrder.Count > 0)
+                {
+                    store.ClearYoutubeFavorites();
+                    foreach (string userId in youtubeOrder) songCount += store.AddYoutubeFavorites(userId, youtube[userId]);
+                }
+                else
+                {
+                    store.RemoveYoutubeFavoritesExcept(userIds);
+                }
                 store.Commit();
             }
             catch

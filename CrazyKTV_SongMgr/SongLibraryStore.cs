@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 
@@ -238,22 +238,28 @@ namespace CrazyKTV_SongMgr
             });
         }
 
-        /// <summary>Removes the 最愛用戶 and all of their 我的最愛. Returns the number of ktv_User rows removed.</summary>
+        /// <summary>Removes the 最愛用戶 and all of their 我的最愛, YouTube ones too. Returns the number of ktv_User rows removed.</summary>
         public int RemoveFavoriteUser(string userId)
         {
-            Execute("delete from ktv_Favorite where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", userId));
-            return Execute("delete from ktv_User where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", userId));
+            if (HasYoutubeFavoriteTable) Execute("delete from YoutubeFavorite where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", userId));
+            return RemoveKtvFavoriteUser(userId);
         }
 
         /// <summary>
         /// The 最愛用戶 ends up named <paramref name="name"/> with exactly <paramref name="songIds"/> as 我的最愛
-        /// (錢櫃排行 lists). Returns the number of songs written.
+        /// (錢櫃排行 lists). Their YouTube 我的最愛 stay. Returns the number of songs written.
         /// </summary>
         public int ReplaceFavoriteUser(string userId, string name, IEnumerable<string> songIds)
         {
-            RemoveFavoriteUser(userId);
+            RemoveKtvFavoriteUser(userId);
             AddFavoriteUser(userId, name);
             return AddFavorites(userId, songIds);
+        }
+
+        private int RemoveKtvFavoriteUser(string userId)
+        {
+            Execute("delete from ktv_Favorite where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", userId));
+            return Execute("delete from ktv_User where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", userId));
         }
 
         /// <summary>
@@ -300,10 +306,15 @@ namespace CrazyKTV_SongMgr
 
         private HashSet<string> FavoriteSongIds(string userId)
         {
+            return ReadIds("select Song_Id from ktv_Favorite where User_Id = @UserId", userId);
+        }
+
+        private HashSet<string> ReadIds(string sql, string userId)
+        {
             var ids = new HashSet<string>();
             lock (commands)
             {
-                using (DbCommand cmd = Db.Command("select Song_Id from ktv_Favorite where User_Id = @UserId", conn))
+                using (DbCommand cmd = Db.Command(sql, conn))
                 {
                     cmd.Transaction = transaction;
                     cmd.Parameters.AddWithValue("@UserId", userId);
@@ -314,6 +325,108 @@ namespace CrazyKTV_SongMgr
                 }
             }
             return ids;
+        }
+
+        #endregion
+
+        #region --- YouTube 我的最愛 (YoutubeFavorite) ---
+
+        private bool? hasYoutubeFavoriteTable;
+
+        /// <summary>Whether the database has UltimateKtv's YoutubeFavorite table (UltimateKtv creates it when it starts).</summary>
+        public bool HasYoutubeFavoriteTable
+        {
+            get
+            {
+                if (hasYoutubeFavoriteTable == null)
+                {
+                    lock (commands) { hasYoutubeFavoriteTable = Db.GetTableList(conn).Contains(YoutubeFavorites.TableName); }
+                }
+                return hasYoutubeFavoriteTable.Value;
+            }
+        }
+
+        /// <summary>Creates YoutubeFavorite the way UltimateKtv does when the database has none yet.</summary>
+        public void EnsureYoutubeFavoriteTable()
+        {
+            if (HasYoutubeFavoriteTable) return;
+            Execute(YoutubeFavorites.CreateTableSql, cmd => { });
+            hasYoutubeFavoriteTable = true;
+        }
+
+        /// <summary>
+        /// Adds YouTube 歌曲 to the user's 我的最愛, creating YoutubeFavorite if needed. Skips videos already on the
+        /// list or repeated in <paramref name="items"/>, and items without a valid video ID; 名稱 is cut to 255
+        /// characters. Returns the number added.
+        /// </summary>
+        public int AddYoutubeFavorites(string userId, IEnumerable<YoutubeFavoriteItem> items)
+        {
+            EnsureYoutubeFavoriteTable();
+            HashSet<string> present = ReadIds("select VideoId from YoutubeFavorite where User_Id = @UserId", userId);
+            DateTime now = DateTime.Now;
+            int added = 0;
+            foreach (YoutubeFavoriteItem item in items)
+            {
+                if (!YoutubeFavorites.IsValidVideoId(item.VideoId) || !present.Add(item.VideoId)) continue;
+                string name = (item.Name.Length > 255) ? item.Name.Substring(0, 255) : item.Name;
+                string date = (item.Created ?? now).ToString(YoutubeFavorites.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                added += Execute("insert into YoutubeFavorite ( User_Id, VideoId, Name, Length, CreatDate ) values ( @UserId, @VideoId, @Name, @Length, @CreatDate )", cmd =>
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.Parameters.AddWithValue("@VideoId", item.VideoId);
+                    cmd.Parameters.AddWithValue("@Name", name);
+                    cmd.Parameters.AddWithValue("@Length", Math.Max(0, item.LengthSeconds));
+                    cmd.Parameters.AddWithValue("@CreatDate", Db.DateParam(conn, date));
+                });
+            }
+            return added;
+        }
+
+        /// <summary>Takes videos out of one user's YouTube 我的最愛. Returns the number removed.</summary>
+        public int RemoveYoutubeFavorites(string userId, IEnumerable<string> videoIds)
+        {
+            if (!HasYoutubeFavoriteTable) return 0;
+            int removed = 0;
+            foreach (string videoId in videoIds)
+            {
+                removed += Execute("delete from YoutubeFavorite where User_Id = @UserId and VideoId = @VideoId", cmd =>
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.Parameters.AddWithValue("@VideoId", videoId);
+                });
+            }
+            return removed;
+        }
+
+        /// <summary>Empties YoutubeFavorite, when there is one, before a 我的最愛 import that carries YouTube 我的最愛.</summary>
+        public void ClearYoutubeFavorites()
+        {
+            if (HasYoutubeFavoriteTable) Execute("delete * from YoutubeFavorite", cmd => { });
+        }
+
+        /// <summary>Removes the YouTube 我的最愛 of every User_Id not in <paramref name="userIds"/>. Returns the number removed.</summary>
+        public int RemoveYoutubeFavoritesExcept(ICollection<string> userIds)
+        {
+            if (!HasYoutubeFavoriteTable) return 0;
+            var owners = new HashSet<string>();
+            lock (commands)
+            {
+                using (DbCommand cmd = Db.Command("select distinct User_Id from YoutubeFavorite", conn))
+                {
+                    cmd.Transaction = transaction;
+                    using (DbDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read()) owners.Add(Convert.ToString(reader.GetValue(0)));
+                    }
+                }
+            }
+            int removed = 0;
+            foreach (string owner in owners)
+            {
+                if (userIds.Contains(owner)) continue;
+                removed += Execute("delete from YoutubeFavorite where User_Id = @UserId", cmd => cmd.Parameters.AddWithValue("@UserId", owner));
+            }
+            return removed;
         }
 
         #endregion

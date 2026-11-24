@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -191,26 +191,45 @@ namespace CrazyKTV_SongMgr
         {
             if (!SongQuery_DataGridView.Rows[e.RowIndex].Selected) SongQuery_DataGridView.CurrentCell = SongQuery_DataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex];
 
-            int RowIndex = e.RowIndex;
+            object VideoId = SongQuery_DataGridView.Rows[e.RowIndex].Cells["Url"].Value;
             ContextMenuStrip GridView_ContextMenu = new ContextMenuStrip();
-            GridView_ContextMenu.Items.Add("在瀏覽器開啟", null, (s, a) => SongQuery_YoutubeOpenInBrowser(RowIndex));
-            GridView_ContextMenu.Items.Add("複製影片網址", null, (s, a) =>
+            GridView_ContextMenu.Items.Add("在瀏覽器開啟", null, (s, a) => SongQuery_YoutubeOpenInBrowser(VideoId));
+            GridView_ContextMenu.Items.Add("複製影片網址", null, (s, a) => SongQuery_YoutubeCopyUrl(VideoId));
+            if (Global.FavoriteUserDT.Rows.Count > 0)
             {
-                string url = YoutubeSongStore.WatchUrl(SongQuery_DataGridView.Rows[RowIndex].Cells["Url"].Value);
-                if (url == "")
+                ToolStripMenuItem FavoriteItem = new ToolStripMenuItem("加入我的最愛");
+                foreach (DataRow row in Global.FavoriteUserDT.AsEnumerable())
                 {
-                    SongQuery_QueryStatus_Label.Text = "此筆資料沒有影片 ID...";
-                    return;
+                    string UserId = row["User_Id"].ToString();
+                    string UserName = row["User_Name"].ToString();
+                    FavoriteItem.DropDown.Items.Add(UserName, null, (s, a) => SongQuery_YoutubeAddFavorites(UserId, UserName));
                 }
-                Clipboard.SetText(url);
-                SongQuery_QueryStatus_Label.Text = "已複製影片網址: " + url;
-            });
+                EnableDropDownMouseWheelScroll(FavoriteItem.DropDown);
+                GridView_ContextMenu.Items.Add(FavoriteItem);
+            }
             GridView_ContextMenu.Show(MousePosition.X, MousePosition.Y);
+        }
+
+        private void SongQuery_YoutubeCopyUrl(object VideoId)
+        {
+            string url = YoutubeSongStore.WatchUrl(VideoId);
+            if (url == "")
+            {
+                SongQuery_QueryStatus_Label.Text = "此筆資料沒有影片 ID...";
+                return;
+            }
+            Clipboard.SetText(url);
+            SongQuery_QueryStatus_Label.Text = "已複製影片網址: " + url;
         }
 
         private void SongQuery_YoutubeOpenInBrowser(int RowIndex)
         {
-            string url = YoutubeSongStore.WatchUrl(SongQuery_DataGridView.Rows[RowIndex].Cells["Url"].Value);
+            SongQuery_YoutubeOpenInBrowser(SongQuery_DataGridView.Rows[RowIndex].Cells["Url"].Value);
+        }
+
+        private void SongQuery_YoutubeOpenInBrowser(object VideoId)
+        {
+            string url = YoutubeSongStore.WatchUrl(VideoId);
             if (url == "")
             {
                 SongQuery_QueryStatus_Label.Text = "此筆資料沒有影片 ID...";
@@ -225,6 +244,59 @@ namespace CrazyKTV_SongMgr
                 SongQuery_QueryStatus_Label.Text = "無法開啟瀏覽器: " + ex.Message;
             }
         }
+
+        /// <summary>Puts the selected YouTube 歌曲 on the user's 我的最愛 (UltimateKtv's YoutubeFavorite).</summary>
+        private void SongQuery_YoutubeAddFavorites(string UserId, string UserName)
+        {
+            List<YoutubeFavoriteItem> items = SongQuery_DataGridView.SelectedRows.Cast<DataGridViewRow>()
+                .OrderBy(row => row.Index)
+                .Select(row => new YoutubeFavoriteItem(
+                    Convert.ToString(row.Cells["Url"].Value).Trim(),
+                    Convert.ToString(row.Cells["Name"].Value),
+                    (row.Cells["Length"].Value == null || row.Cells["Length"].Value == DBNull.Value) ? 0 : Convert.ToInt32(row.Cells["Length"].Value)))
+                .ToList();
+            int NoId = items.Count(item => !YoutubeFavorites.IsValidVideoId(item.VideoId));
+
+            try
+            {
+                int added;
+                using (SongLibraryStore store = SongLibraryStore.OpenOrThrow())
+                {
+                    added = store.AddYoutubeFavorites(UserId, items);
+                }
+                string skipped = (items.Count - added - NoId > 0) ? ", " + (items.Count - added - NoId) + " 筆已在清單中" : "";
+                string invalid = (NoId > 0) ? ", " + NoId + " 筆沒有影片 ID" : "";
+                SongQuery_QueryStatus_Label.Text = "已將 " + added + " 筆 YouTube 歌曲加入【" + UserName + "】的我的最愛" + skipped + invalid + "。";
+            }
+            catch (Exception ex)
+            {
+                SongQuery_QueryStatus_Label.Text = "加入我的最愛失敗: " + ex.Message;
+            }
+        }
+
+        #region --- SongQuery YouTube 我的最愛 ---
+
+        /// <summary>A row of a 我的最愛 list that is a YouTube 我的最愛 (Song_Id holds the video ID) rather than a song.</summary>
+        private bool SongQuery_IsYoutubeFavoriteRow(int RowIndex)
+        {
+            if (Global.SongQueryQueryType != "FavoriteQuery" || RowIndex < 0) return false;
+            DataGridViewRow row = SongQuery_DataGridView.Rows[RowIndex];
+            return YoutubeFavorites.IsFavoriteRow(row.Cells["Song_Lang"].Value, row.Cells["Song_Path"].Value);
+        }
+
+        private void SongQuery_YoutubeFavoriteShowContextMenu(int RowIndex)
+        {
+            object VideoId = SongQuery_DataGridView.Rows[RowIndex].Cells["Song_Id"].Value;
+            ContextMenuStrip GridView_ContextMenu = new ContextMenuStrip();
+            GridView_ContextMenu.Items.Add("在瀏覽器開啟", null, (s, a) => SongQuery_YoutubeOpenInBrowser(VideoId));
+            GridView_ContextMenu.Items.Add("複製影片網址", null, (s, a) => SongQuery_YoutubeCopyUrl(VideoId));
+            ToolStripMenuItem RemoveItem = new ToolStripMenuItem("從我的最愛移除");
+            RemoveItem.Click += new EventHandler(SongQuery_DataGridView_ContextMenuItem_RightClick);
+            GridView_ContextMenu.Items.Add(RemoveItem);
+            GridView_ContextMenu.Show(MousePosition.X, MousePosition.Y);
+        }
+
+        #endregion
 
         #endregion
 
