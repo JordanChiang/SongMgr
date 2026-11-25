@@ -4,6 +4,8 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace CrazyKTV_SongMgr
@@ -74,6 +76,8 @@ namespace CrazyKTV_SongMgr
                 SongQuery_DataGridView.DataSource = dt;
                 SongQuery_YoutubeSetupColumns(dt);
                 SongQuery_EditMode_CheckBox.Enabled = dt.Rows.Count > 0;
+                SongQuery_YoutubeShowCheckButton(true);
+                SongQuery_YoutubeCheck_Button.Enabled = dt.Rows.Count > 0;
 
                 string QueryText = (keyword.Trim() == "") ? "YouTube 歌曲" : "名稱包含『" + keyword.Trim() + "』的 YouTube 歌曲";
                 SongQuery_QueryStatus_Label.Text = CreatedText + ((dt.Rows.Count > 0) ? "總共查詢到 " + dt.Rows.Count + " 筆" + QueryText + "。" : "查無" + QueryText + "...");
@@ -104,11 +108,20 @@ namespace CrazyKTV_SongMgr
                 var spec = SongQuery_YoutubeColumns[i];
                 DataGridViewColumn column = SongQuery_DataGridView.Columns[spec.Name];
                 column.HeaderText = spec.Header;
-                column.Width = Convert.ToInt32(spec.Width * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
+                column.Width = Math.Max(Convert.ToInt32(spec.Width * Global.DPIScalingFactor * MainUIScale.UIScalingFactor), SongQuery_YoutubeHeaderWidth(column));
                 column.ReadOnly = spec.Editable == null;
                 column.DisplayIndex = i;
             }
             ((DataGridViewTextBoxColumn)SongQuery_DataGridView.Columns["Name"]).MaxInputLength = 255;
+        }
+
+        /// <summary>
+        /// The width that keeps the header on one line (the header row grows to fit, so a narrow column wraps 長度 into
+        /// 長 / 度): what the grid itself needs for the header text in the header font, with its margins and sort arrow.
+        /// </summary>
+        private static int SongQuery_YoutubeHeaderWidth(DataGridViewColumn column)
+        {
+            return column.GetPreferredWidth(DataGridViewAutoSizeColumnMode.ColumnHeader, true);
         }
 
         private void SongQuery_YoutubeReplaceWithComboBox(string name, Action<DataGridViewComboBoxColumn> fill)
@@ -134,6 +147,8 @@ namespace CrazyKTV_SongMgr
             if (SongQuery_YoutubeTable == null || SongQuery_DataGridView.DataSource == SongQuery_YoutubeTable) return;
 
             SongQuery_YoutubeTable = null;
+            SongQuery_YoutubeCheckCancel?.Cancel();
+            SongQuery_YoutubeShowCheckButton(false);
             // The 聲道 drop-down was added by hand, so unbinding does not remove it.
             foreach (DataGridViewColumn column in SongQuery_DataGridView.Columns.Cast<DataGridViewColumn>().Where(c => c is DataGridViewComboBoxColumn).ToList())
             {
@@ -169,6 +184,11 @@ namespace CrazyKTV_SongMgr
                 case "Id":
                 case "Url":
                     e.CellStyle.ForeColor = Color.Blue;
+                    break;
+                case SongQuery_YoutubeCheckColumn:
+                    string result = Convert.ToString(e.Value);
+                    if (result.StartsWith("已失效", StringComparison.Ordinal)) e.CellStyle.ForeColor = Color.Red;
+                    else if (result.StartsWith("無法確認", StringComparison.Ordinal)) e.CellStyle.ForeColor = Color.Gray;
                     break;
             }
         }
@@ -297,6 +317,170 @@ namespace CrazyKTV_SongMgr
         }
 
         #endregion
+
+        #endregion
+
+        #region --- SongQuery YouTube 檢查影片 ---
+
+        /// <summary>The column 檢查影片 adds to the YouTube list (not a YoutubeSongList column).</summary>
+        private const string SongQuery_YoutubeCheckColumn = "CheckResult";
+
+        /// <summary>Set while 檢查影片 runs; 取消檢查 and leaving the YouTube list cancel it.</summary>
+        private CancellationTokenSource SongQuery_YoutubeCheckCancel;
+
+        /// <summary>The room between the status text and 編輯模式 when 檢查影片 is hidden, measured the first time.</summary>
+        private int SongQuery_StatusLabelGap = -1;
+
+        /// <summary>檢查影片 shows only with the YouTube list; the status text makes room for it.</summary>
+        private void SongQuery_YoutubeShowCheckButton(bool show)
+        {
+            if (SongQuery_StatusLabelGap < 0 && !SongQuery_YoutubeCheck_Button.Visible)
+            {
+                SongQuery_StatusLabelGap = Math.Max(0, SongQuery_EditMode_CheckBox.Left - SongQuery_QueryStatus_Label.Right);
+            }
+            SongQuery_YoutubeCheck_Button.Visible = show;
+            int gap = Math.Max(0, SongQuery_StatusLabelGap);
+            int right = (show ? SongQuery_YoutubeCheck_Button.Left : SongQuery_EditMode_CheckBox.Left) - gap;
+            SongQuery_QueryStatus_Label.Width = Math.Max(0, right - SongQuery_QueryStatus_Label.Left);
+            if (!show)
+            {
+                SongQuery_YoutubeCheck_Button.Text = "檢查影片";
+                SongQuery_YoutubeCheck_Button.Enabled = true;
+            }
+        }
+
+        /// <summary>
+        /// 檢查影片: asks yt-dlp about every YouTube 歌曲 on show, one at a time, and writes the answer in 檢查結果. Then
+        /// offers to remove those whose video is gone and whose file is not in the 下載目錄 (see YoutubeCheckResult.Removable).
+        /// Pressed again while it runs (取消檢查), it stops after the video being checked.
+        /// </summary>
+        private void SongQuery_YoutubeCheck_Button_Click(object sender, EventArgs e)
+        {
+            if (SongQuery_YoutubeCheckCancel != null)
+            {
+                SongQuery_YoutubeCheckCancel.Cancel();
+                SongQuery_YoutubeCheck_Button.Enabled = false;
+                SongQuery_QueryStatus_Label.Text = "正在取消檢查,請稍待...";
+                return;
+            }
+            if (!SongQuery_IsYoutubeMode || SongQuery_YoutubeTable.Rows.Count == 0) return;
+
+            string AppDir = Application.StartupPath;
+            string YtDlp = YoutubeAvailability.FindYtDlp(AppDir);
+            if (YtDlp == null)
+            {
+                SongQuery_QueryStatus_Label.Text = @"找不到 yt-dlp (Tools\yt-dlp.exe),請將加歌程式和 UltimateKtv 放在同一個資料夾...";
+                return;
+            }
+            string DownloadDir = YoutubeAvailability.DownloadDir(AppDir, out bool FromSettings);
+
+            if (SongQuery_EditMode_CheckBox.Checked) SongQuery_EditMode_CheckBox.Checked = false;
+            DataTable Table = SongQuery_YoutubeTable;
+            if (!Table.Columns.Contains(SongQuery_YoutubeCheckColumn))
+            {
+                Table.Columns.Add(SongQuery_YoutubeCheckColumn, typeof(string));
+                DataGridViewColumn column = SongQuery_DataGridView.Columns[SongQuery_YoutubeCheckColumn];
+                column.HeaderText = "檢查結果";
+                column.ReadOnly = true;
+                column.Width = Convert.ToInt32(220 * Global.DPIScalingFactor * MainUIScale.UIScalingFactor);
+                column.DisplayIndex = SongQuery_DataGridView.Columns["Name"].DisplayIndex + 1; // in sight, next to 名稱
+            }
+
+            // In the order on show; the values are read here, on the UI thread, which alone writes the table.
+            var Songs = Table.DefaultView.Cast<DataRowView>()
+                .Select(v => (Row: v.Row, Name: Convert.ToString(v.Row["Name"]), VideoId: v.Row["Url"], FileName: v.Row["FileName"]))
+                .ToList();
+            foreach (var song in Songs) song.Row[SongQuery_YoutubeCheckColumn] = "";
+
+            var Cancel = new CancellationTokenSource();
+            SongQuery_YoutubeCheckCancel = Cancel;
+            SongQuery_YoutubeCheck_Button.Text = "取消檢查";
+            SongQuery_EditMode_CheckBox.Enabled = false;
+            SongQuery_Query_Button.Enabled = false;
+            string DirText = DownloadDir + (FromSettings ? "" : " (預設)");
+            SongQuery_QueryStatus_Label.Text = "正在檢查 " + Songs.Count + " 筆 YouTube 影片,下載目錄: " + DirText + "...";
+
+            Task.Run(() =>
+            {
+                var Checked = new YoutubeCheckResult?[Songs.Count];
+                int Done = 0;
+                var Items = Songs.Select(song => (song.VideoId, YoutubeAvailability.HasLocalFile(DownloadDir, song.FileName))).ToList();
+                YoutubeAvailability.CheckAll(Items, YoutubeAvailability.OEmbedStatus, YtDlp, TimeSpan.FromSeconds(60), Cancel.Token, (i, result) =>
+                {
+                    Checked[i] = result;
+                    int done = Interlocked.Increment(ref Done);
+                    var song = Songs[i];
+                    SongQuery_YoutubeCheckInvoke(() =>
+                    {
+                        if (song.Row.RowState != DataRowState.Detached) song.Row[SongQuery_YoutubeCheckColumn] = result.Text;
+                        if (SongQuery_YoutubeTable == Table && !Cancel.IsCancellationRequested) SongQuery_QueryStatus_Label.Text = "正在檢查 YouTube 影片 " + done + "/" + Songs.Count + ": " + song.Name + "...";
+                    });
+                });
+                var Results = Enumerable.Range(0, Songs.Count).Where(i => Checked[i] != null)
+                    .Select(i => (Songs[i].Row, Songs[i].Name, Checked[i].Value)).ToList();
+                SongQuery_YoutubeCheckInvoke(() => SongQuery_YoutubeCheckFinished(Table, Cancel, Results, Songs.Count, DirText));
+            });
+        }
+
+        /// <summary>Runs <paramref name="action"/> on the UI thread, unless SongMgr is closing.</summary>
+        private void SongQuery_YoutubeCheckInvoke(Action action)
+        {
+            try
+            {
+                if (!IsDisposed && IsHandleCreated) BeginInvoke(action);
+            }
+            catch (InvalidOperationException) { }
+        }
+
+        private void SongQuery_YoutubeCheckFinished(DataTable Table, CancellationTokenSource Cancel, List<(DataRow Row, string Name, YoutubeCheckResult Result)> Results, int Total, string DirText)
+        {
+            bool Cancelled = Cancel.IsCancellationRequested;
+            if (SongQuery_YoutubeCheckCancel == Cancel) SongQuery_YoutubeCheckCancel = null;
+            Cancel.Dispose();
+            SongQuery_Query_Button.Enabled = true;
+            if (SongQuery_YoutubeTable != Table) return; // the list was left while it ran
+
+            SongQuery_YoutubeCheck_Button.Text = "檢查影片";
+            SongQuery_YoutubeCheck_Button.Enabled = true;
+            SongQuery_EditMode_CheckBox.Enabled = Table.Rows.Count > 0;
+
+            int Available = Results.Count(r => r.Result.State == YoutubeVideoState.Available);
+            int LocalOnly = Results.Count(r => r.Result.State == YoutubeVideoState.Unavailable && r.Result.HasLocalFile);
+            var Removable = Results.Where(r => r.Result.Removable && r.Row.RowState != DataRowState.Detached).ToList();
+            int Unknown = Results.Count(r => r.Result.State == YoutubeVideoState.Unknown);
+            // Short enough to fit beside 檢查影片: the gone-without-a-file count says what became of them.
+            string Head = Cancelled ? "已取消 (查了 " + Results.Count + "/" + Total + " 筆)" : "檢查完成";
+            string SummaryOf(string gone) => Head + ": 可用 " + Available + " 筆,失效但本機可播 " + LocalOnly + " 筆," + gone + ",無法確認 " + Unknown + " 筆。";
+            SongQuery_QueryStatus_Label.Text = SummaryOf("失效無檔 " + Removable.Count + " 筆");
+            if (Removable.Count == 0) return;
+
+            const int Shown = 10;
+            string Names = string.Join(Environment.NewLine, Removable.Take(Shown).Select(r => "・" + r.Name));
+            if (Removable.Count > Shown) Names += Environment.NewLine + "...等 " + Removable.Count + " 筆";
+            string Message = "有 " + Removable.Count + " 筆 YouTube 影片已失效,下載目錄裡也沒有影片檔:" + Environment.NewLine + Environment.NewLine + Names + Environment.NewLine + Environment.NewLine
+                + "要移除這些 YouTube 歌曲資料嗎?" + Environment.NewLine + "(已失效但本機可播的不會移除;下載目錄: " + DirText + ")";
+            if (MessageBox.Show(Message, "移除提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            {
+                SongQuery_QueryStatus_Label.Text = SummaryOf("失效無檔未移除 " + Removable.Count + " 筆");
+                return;
+            }
+
+            try
+            {
+                int Count = YoutubeSongStore.Delete(Global.CrazyktvDatabaseFile, Removable.Select(r => r.Row["Id"].ToString()).ToList());
+                foreach (var r in Removable) Table.Rows.Remove(r.Row);
+                SongQuery_QueryStatus_Label.Text = SummaryOf("失效無檔已移除 " + Count + " 筆");
+                if (Table.Rows.Count == 0)
+                {
+                    SongQuery_EditMode_CheckBox.Enabled = false;
+                    SongQuery_YoutubeCheck_Button.Enabled = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                SongQuery_QueryStatus_Label.Text = "移除已失效的 YouTube 歌曲資料失敗: " + ex.Message;
+            }
+        }
 
         #endregion
 
