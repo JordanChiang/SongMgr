@@ -317,8 +317,13 @@ namespace CrazyKTV_SongMgr
                     break;
 
                 case SongSearchKind.Favorite:
+                {
+                    // The user's songs, then their YouTube 我的最愛 (see YoutubeFavorites.AppendTo).
                     q.Where("Song_Id in (select Song_Id from ktv_Favorite where User_Id = @UserId)", ("@UserId", v)).OrderBy("Song_Id");
-                    break;
+                    DataTable songs = q.Run(databaseFile);
+                    YoutubeFavorites.AppendTo(songs, databaseFile, v);
+                    return new SongSearchResult(songs);
+                }
 
                 case SongSearchKind.MissingFile:
                     return new SongSearchResult(MissingFiles(q.OrderBy("Song_Id").Run(databaseFile)));

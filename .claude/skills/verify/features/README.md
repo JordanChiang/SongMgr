@@ -11,5 +11,7 @@
 | [歌曲編號維護](song-id-maintenance.md) | 歌庫維護 › 維護雜項 | 有 | `Category=EndToEnd&FullyQualifiedName~位數` |
 | [套用錢櫃編號](cashbox-apply-id.md) | 錢櫃資料 | 有 | `Category=EndToEnd&FullyQualifiedName~套用錢櫃編號` |
 | [資料庫結構更新](schema-upgrade.md) | 啟動時自動、歌庫維護 › 資料庫結構 | 有 | `Category=EndToEnd&FullyQualifiedName~資料庫結構更新` |
+| [YouTube 我的最愛](youtube-favorite.md) | 歌庫查詢（YouTube 歌曲、其它查詢 › 最愛）、歌庫維護 › 我的最愛 | 有 | `Category=EndToEnd&FullyQualifiedName~YoutubeFavoriteEndToEndTests` |
+| [檢查影片](youtube-check.md) | 歌庫查詢（YouTube 歌曲） | 有（要網路與 `SONGMGR_YTDLP`） | `Category=EndToEnd&FullyQualifiedName~YoutubeCheckEndToEndTests` |
 
-還沒有地圖的分頁：歌手管理、歌庫設定的其他子分頁（歌曲類別、歌手群組、歌庫結構、自訂結構）、歌庫維護的我的最愛／自訂語系／FFmpeg、程式設定、歌庫轉換、內建播放器。改到這些時先照同樣的形狀補一個檔案，再寫它的端對端測試。
+還沒有地圖的分頁：歌手管理、歌庫設定的其他子分頁（歌曲類別、歌手群組、歌庫結構、自訂結構）、歌庫維護的自訂語系／FFmpeg、程式設定、歌庫轉換、內建播放器。改到這些時先照同樣的形狀補一個檔案，再寫它的端對端測試。

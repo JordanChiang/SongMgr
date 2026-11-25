@@ -27,7 +27,16 @@ namespace CrazyKTV_SongMgr
 
             int val;
             string valStr;
-            switch (SongQuery_DataGridView.Columns[e.ColumnIndex].Name)
+            string ColumnName = SongQuery_DataGridView.Columns[e.ColumnIndex].Name;
+            if ((ColumnName == "Song_SingerType" || ColumnName == "Song_Track") && SongQuery_IsYoutubeFavoriteRow(e.RowIndex))
+            {
+                // A YouTube 我的最愛 has no 歌手類別 or ktv_Song 聲道.
+                e.Value = "";
+                e.FormattingApplied = true;
+                return;
+            }
+
+            switch (ColumnName)
             {
                 case "Song_SingerType":
                     val = Convert.ToInt32(e.Value);
@@ -182,7 +191,11 @@ namespace CrazyKTV_SongMgr
                     }
                     else
                     {
-                        if (Global.SongQueryQueryType == "FavoriteQuery")
+                        if (SongQuery_IsYoutubeFavoriteRow(e.RowIndex))
+                        {
+                            SongQuery_YoutubeFavoriteShowContextMenu(e.RowIndex);
+                        }
+                        else if (Global.SongQueryQueryType == "FavoriteQuery")
                         {
                             GridView_ContextMenu = new ContextMenuStrip();
                             int ContextMenuCount = Convert.ToInt32(SongQuery.GetContextMenuStr(0, 3, true));
@@ -342,12 +355,14 @@ namespace CrazyKTV_SongMgr
                         }
 
                         List<string> SongIdlist = new List<string>();
+                        List<string> VideoIdlist = new List<string>();
                         foreach (DataGridViewRow row in SongQuery_DataGridView.SelectedRows)
                         {
-                            SongIdlist.Add(row.Cells["Song_Id"].Value.ToString());
+                            if (SongQuery_IsYoutubeFavoriteRow(row.Index)) VideoIdlist.Add(row.Cells["Song_Id"].Value.ToString());
+                            else SongIdlist.Add(row.Cells["Song_Id"].Value.ToString());
                             SongQuery_DataGridView.Rows.Remove(row);
                         }
-                        Task.Factory.StartNew(() => SongQuery_FavoriteRemove(SongIdlist, UserId));
+                        Task.Factory.StartNew(() => SongQuery_FavoriteRemove(SongIdlist, VideoIdlist, UserId));
                     }
                     break;
             }
@@ -393,6 +408,12 @@ namespace CrazyKTV_SongMgr
             if (SongQuery_EditMode_CheckBox.Checked == false)
             {
                 if (e.RowIndex < 0) return;
+
+                if (SongQuery_IsYoutubeFavoriteRow(e.RowIndex))
+                {
+                    SongQuery_YoutubeOpenInBrowser(SongQuery_DataGridView.Rows[e.RowIndex].Cells["Song_Id"].Value);
+                    return;
+                }
 
                 int i = e.RowIndex;
                 string SongPath = SongQuery_DataGridView.Rows[i].Cells["Song_Path"].Value.ToString();

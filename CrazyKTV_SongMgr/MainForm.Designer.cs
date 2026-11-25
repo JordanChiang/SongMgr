@@ -94,6 +94,7 @@
             this.SongQuery_Statistics1_Label = new System.Windows.Forms.Label();
             this.SongQuery_QueryStatus_GroupBox = new System.Windows.Forms.GroupBox();
             this.SongQuery_EditMode_CheckBox = new System.Windows.Forms.CheckBox();
+            this.SongQuery_YoutubeCheck_Button = new System.Windows.Forms.Button();
             this.SongQuery_QueryStatus_Label = new System.Windows.Forms.Label();
             this.SongQuery_DataGridView = new System.Windows.Forms.DataGridView();
             this.SongQuery_Edit_GroupBox = new System.Windows.Forms.GroupBox();
@@ -1385,6 +1386,7 @@
             // 
             // SongQuery_QueryStatus_GroupBox
             // 
+            this.SongQuery_QueryStatus_GroupBox.Controls.Add(this.SongQuery_YoutubeCheck_Button);
             this.SongQuery_QueryStatus_GroupBox.Controls.Add(this.SongQuery_EditMode_CheckBox);
             this.SongQuery_QueryStatus_GroupBox.Controls.Add(this.SongQuery_QueryStatus_Label);
             this.SongQuery_QueryStatus_GroupBox.Font = new System.Drawing.Font("新細明體", 1.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
@@ -1408,6 +1410,19 @@
             this.SongQuery_EditMode_CheckBox.Text = "編輯模式";
             this.SongQuery_EditMode_CheckBox.UseVisualStyleBackColor = true;
             this.SongQuery_EditMode_CheckBox.CheckedChanged += new System.EventHandler(this.SongQuery_EditMode_CheckBox_CheckedChanged);
+            // 
+            // SongQuery_YoutubeCheck_Button
+            // 
+            this.SongQuery_YoutubeCheck_Button.Font = new System.Drawing.Font("微軟正黑體", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
+            this.SongQuery_YoutubeCheck_Button.Location = new System.Drawing.Point(718, 2);
+            this.SongQuery_YoutubeCheck_Button.Margin = new System.Windows.Forms.Padding(6, 2, 6, 2);
+            this.SongQuery_YoutubeCheck_Button.Name = "SongQuery_YoutubeCheck_Button";
+            this.SongQuery_YoutubeCheck_Button.Size = new System.Drawing.Size(110, 31);
+            this.SongQuery_YoutubeCheck_Button.TabIndex = 2;
+            this.SongQuery_YoutubeCheck_Button.Text = "檢查影片";
+            this.SongQuery_YoutubeCheck_Button.UseVisualStyleBackColor = true;
+            this.SongQuery_YoutubeCheck_Button.Visible = false;
+            this.SongQuery_YoutubeCheck_Button.Click += new System.EventHandler(this.SongQuery_YoutubeCheck_Button_Click);
             // 
             // SongQuery_QueryStatus_Label
             // 
@@ -8419,6 +8434,7 @@
         private System.Windows.Forms.GroupBox SongQuery_QueryStatus_GroupBox;
         private System.Windows.Forms.Label SongQuery_QueryStatus_Label;
         private System.Windows.Forms.CheckBox SongQuery_EditMode_CheckBox;
+        private System.Windows.Forms.Button SongQuery_YoutubeCheck_Button;
         private System.Windows.Forms.TabPage SongMgrCfg_TabPage;
         private System.Windows.Forms.GroupBox SongMgrCfg_General_GroupBox;
         private System.Windows.Forms.Label SongMgrCfg_DBFile_Label;

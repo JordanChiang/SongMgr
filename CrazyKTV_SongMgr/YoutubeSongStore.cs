@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -182,5 +182,144 @@ namespace CrazyKTV_SongMgr
         }
 
         private static DbConnection Open(string databaseFile) => Db.Open(databaseFile);
+    }
+
+    /// <summary>
+    /// One YouTube 歌曲 to put on a 最愛用戶's 我的最愛: its 11-character video ID, 名稱, 長度 in seconds (0 when unknown)
+    /// and when it was put there (null: now).
+    /// </summary>
+    struct YoutubeFavoriteItem
+    {
+        public YoutubeFavoriteItem(string videoId, string name, int lengthSeconds, DateTime? created = null)
+        {
+            VideoId = videoId ?? "";
+            Name = name ?? "";
+            LengthSeconds = lengthSeconds;
+            Created = created;
+        }
+
+        public string VideoId { get; }
+        public string Name { get; }
+        public int LengthSeconds { get; }
+        public DateTime? Created { get; }
+    }
+
+    /// <summary>
+    /// YouTube 我的最愛: UltimateKtv keeps them in YoutubeFavorite rather than ktv_Favorite, keyed by User_Id + VideoId
+    /// and carrying their own 名稱 and 長度, since a video not downloaded yet has no YoutubeSongList row
+    /// (UltimateKtv Library/SongLibrary.cs). The rows are written through <see cref="SongLibraryStore"/>.
+    /// </summary>
+    static class YoutubeFavorites
+    {
+        public const string TableName = "YoutubeFavorite";
+
+        /// <summary>The 語系 a YouTube 我的最愛 shows under in the 歌庫查詢 list.</summary>
+        public const string Lang = "YouTube";
+
+        /// <summary>UltimateKtv's date format for CreatDate.</summary>
+        public const string DateFormat = "yyyy-MM-dd HH:mm:ss";
+
+        /// <summary>UltimateKtv's EnsureYoutubeFavoriteTable; the same statement works on Access and SQLite.</summary>
+        public const string CreateTableSql = "create table YoutubeFavorite ( User_Id TEXT(50), VideoId TEXT(16), Name TEXT(255), Length INTEGER, CreatDate DATETIME, CONSTRAINT PK_YoutubeFavorite PRIMARY KEY (User_Id, VideoId) )";
+
+        private static readonly System.Text.RegularExpressions.Regex VideoIdPattern = new System.Text.RegularExpressions.Regex("^[A-Za-z0-9_-]{11}$");
+
+        /// <summary>A YouTube video ID: 11 letters, digits, '_' or '-'.</summary>
+        public static bool IsValidVideoId(string id) => !string.IsNullOrEmpty(id) && VideoIdPattern.IsMatch(id);
+
+        public static bool TableExists(string databaseFile) => Db.GetTableList(databaseFile, "").Contains(TableName);
+
+        /// <summary>
+        /// The user's YouTube 我的最愛 as rows of <paramref name="songs"/> (a 歌庫查詢 result): Song_Id holds the video ID,
+        /// Song_Lang <see cref="Lang"/>, Song_SongName the 名稱, Song_FileName the video's address and Song_Path stays empty.
+        /// 點播次數, 音量 and 大小 come from the video's YoutubeSongList row when it has been downloaded.
+        /// Added in the order they were put on the list; nothing is added when the database has no YoutubeFavorite table.
+        /// </summary>
+        public static void AppendTo(DataTable songs, string databaseFile, string userId)
+        {
+            List<string> tables = Db.GetTableList(databaseFile, "");
+            if (!tables.Contains(TableName)) return;
+
+            DataTable favorites;
+            using (DbConnection conn = Db.Open(databaseFile))
+            {
+                favorites = Read(conn, "select VideoId, Name, Length, CreatDate from YoutubeFavorite where User_Id = @UserId order by CreatDate, VideoId", userId);
+            }
+
+            var history = new Dictionary<string, DataRow>();
+            if (favorites.Rows.Count > 0 && tables.Contains(YoutubeSongStore.TableName))
+            {
+                foreach (DataRow row in YoutubeSongStore.Query(databaseFile, "").Rows)
+                {
+                    string url = row["Url"].ToString().Trim();
+                    if (url != "" && !history.ContainsKey(url)) history[url] = row;
+                }
+            }
+
+            foreach (DataRow fav in favorites.Rows)
+            {
+                string videoId = fav["VideoId"].ToString();
+                DataRow row = songs.NewRow();
+                foreach (DataColumn column in songs.Columns) row[column] = EmptyValue(column.DataType);
+
+                DateTime created = ReadDate(fav["CreatDate"]) ?? DateTime.Now;
+                row["Song_Id"] = videoId;
+                row["Song_Lang"] = Lang;
+                row["Song_SongName"] = fav["Name"].ToString();
+                row["Song_FileName"] = YoutubeSongStore.WatchUrl(videoId);
+                row["Song_CreatDate"] = (songs.Columns["Song_CreatDate"].DataType == typeof(DateTime)) ? (object)created : created.ToString(DateFormat, CultureInfo.InvariantCulture);
+                if (history.TryGetValue(videoId, out DataRow downloaded))
+                {
+                    SetNumber(row, "Song_PlayCount", downloaded["PlayCount"]);
+                    SetNumber(row, "Song_Volume", downloaded["Volume"]);
+                    if (downloaded["FileSize"] != DBNull.Value) SetNumber(row, "Song_MB", Math.Round(Convert.ToDouble(downloaded["FileSize"]) / 1024 / 1024, 2));
+                }
+                songs.Rows.Add(row);
+            }
+            songs.AcceptChanges();
+        }
+
+        /// <summary>A 歌庫查詢 row that <see cref="AppendTo"/> added rather than a ktv_Song row.</summary>
+        public static bool IsFavoriteRow(object lang, object path)
+        {
+            return Convert.ToString(lang) == Lang && Convert.ToString(path) == "";
+        }
+
+        private static DataTable Read(DbConnection conn, string sql, string userId)
+        {
+            DataTable dt = new DataTable();
+            using (DbCommand cmd = Db.Command(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@UserId", userId);
+                using (DbDataAdapter da = Db.Adapter(cmd))
+                {
+                    da.Fill(dt);
+                }
+            }
+            return dt;
+        }
+
+        public static DateTime? ReadDate(object value)
+        {
+            if (value is DateTime date) return date;
+            if (value != null && value != DBNull.Value && DateTime.TryParse(value.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out date)) return date;
+            return null;
+        }
+
+        private static void SetNumber(DataRow row, string column, object value)
+        {
+            if (value == null || value == DBNull.Value) return;
+            Type type = row.Table.Columns[column].DataType;
+            row[column] = (type == typeof(string)) ? Convert.ToString(value, CultureInfo.InvariantCulture) : Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
+        }
+
+        private static object EmptyValue(Type type)
+        {
+            if (type == typeof(string)) return "";
+            if (type == typeof(DateTime)) return DBNull.Value;
+            if (type == typeof(bool)) return false;
+            if (type.IsPrimitive || type == typeof(decimal)) return Convert.ChangeType(0, type, CultureInfo.InvariantCulture);
+            return DBNull.Value;
+        }
     }
 }

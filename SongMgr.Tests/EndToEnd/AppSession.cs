@@ -335,7 +335,142 @@ namespace SongMgr.Tests.EndToEnd
         }
 
         /// <summary>Clicks the row of grid <paramref name="gridId"/> whose first column reads <paramref name="firstCell"/>.</summary>
-        public void ClickRow(string gridId, string firstCell)
+        public void ClickRow(string gridId, string firstCell) => ClickAt(FindRowCell(gridId, firstCell));
+
+        /// <summary>Right-clicks the row of grid <paramref name="gridId"/> whose first column reads <paramref name="firstCell"/>, opening its 右鍵選單.</summary>
+        public void RightClickRow(string gridId, string firstCell)
+        {
+            Snap("rightclick-" + firstCell);
+            ClickAt(FindRowCell(gridId, firstCell), right: true);
+        }
+
+        /// <summary>
+        /// Clicks through an open 右鍵選單: each name but the last opens a submenu, the last is the command. Clicked with
+        /// the mouse like a user, since invoking a menu item whose handler opens a MessageBox would wait for it to close.
+        /// </summary>
+        public void ClickMenu(params string[] path)
+        {
+            foreach (string name in path)
+            {
+                AutomationElement item = null;
+                try
+                {
+                    WaitUntil(() => (item = MenuItems().FirstOrDefault(e => e.Current.Name == name)) != null, 20, "menu item 「" + name + "」");
+                }
+                catch (TimeoutException ex)
+                {
+                    string seen = string.Join(", ", AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, process.Id)).Cast<AutomationElement>()
+                        .Select(w => w.Current.ClassName + "「" + w.Current.Name + "」[" + string.Join("|", w.FindAll(TreeScope.Descendants, Condition.TrueCondition).Cast<AutomationElement>()
+                            .Take(30).Select(d => d.Current.ControlType.ProgrammaticName.Replace("ControlType.", "") + ":" + d.Current.Name)) + "]"));
+                    throw new TimeoutException(ex.Message + Environment.NewLine + "Windows: " + seen, ex);
+                }
+                Snap("menu-" + name);
+                ClickAt(item, foreground: false);
+            }
+        }
+
+        /// <summary>
+        /// The items of SongMgr's open 右鍵選單 and their submenus. UI Automation puts a ContextMenuStrip under the main
+        /// window, a submenu possibly in a window of its own, so every window of the process is searched.
+        /// </summary>
+        IEnumerable<AutomationElement> MenuItems()
+        {
+            return TopWindows().SelectMany(w => w.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem)).Cast<AutomationElement>());
+        }
+
+        /// <summary>
+        /// Selects the tab <paramref name="name"/> of the tab control <paramref name="tabControlId"/> inside a main tab, whose
+        /// tabs are <paramref name="order"/>, with Ctrl+PageDown / Ctrl+PageUp as a user can.
+        /// </summary>
+        public void SelectSubTab(string tabControlId, string name, params string[] order)
+        {
+            int index = Array.IndexOf(order, name);
+            if (index < 0) throw new ArgumentException("not one of the tabs: " + name, nameof(name));
+            // Ctrl+PageDown does not reach a tab control inside a tab page, and UI Automation shows neither the other tabs
+            // nor where the tab headers are (a TabItem's rectangle is its page). So click along the header strip from the
+            // left, like a user looking for the tab, until the wanted one is selected.
+            AutomationElement tabs = ById(tabControlId);
+            IntPtr handle = new IntPtr(tabs.Current.NativeWindowHandle);
+            int Current() => (int)SendMessage(handle, TCM_GETCURSEL, IntPtr.Zero, IntPtr.Zero);
+            if (Current() == index) return;
+
+            System.Windows.Rect strip = tabs.Current.BoundingRectangle;
+            AutomationElement page = tabs.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TabItem)).Cast<AutomationElement>().FirstOrDefault();
+            double pageTop = (page != null && page.Current.BoundingRectangle.Top > strip.Top + 8) ? page.Current.BoundingRectangle.Top : strip.Top + 24 * (strip.Height > 0 ? 1 : 0);
+            double y = (strip.Top + pageTop) / 2;
+            for (double x = strip.Left + 10; x < strip.Right - 5; x += 15)
+            {
+                ClickAtPoint(x, y);
+                Thread.Sleep(250);
+                if (Current() == index) return;
+                if (Current() > index) break; // went past it
+            }
+            throw new TimeoutException("could not reach the 「" + name + "」 tab of " + tabControlId + " (now tab " + Current() + ")");
+        }
+
+        void ClickAtPoint(double x, double y)
+        {
+            IntPtr previous = SetThreadDpiAwarenessContext(new IntPtr(-4));
+            try
+            {
+                SetForegroundWindow(new IntPtr(main.Current.NativeWindowHandle));
+                SetCursorPos((int)x, (int)y);
+                Thread.Sleep(150);
+                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, IntPtr.Zero);
+                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, IntPtr.Zero);
+            }
+            finally
+            {
+                SetThreadDpiAwarenessContext(previous);
+            }
+        }
+
+        /// <summary>
+        /// One Ctrl+PageDown / Ctrl+PageUp at a time, each waited for, until tab <paramref name="index"/> is on show and stays
+        /// there for a second (SongMgr switches tabs itself while it starts). Keys sent faster than the tab control
+        /// takes them would overshoot.
+        /// </summary>
+        void MoveTabTo(AutomationElement tabs, int index, string name)
+        {
+            IntPtr handle = new IntPtr(tabs.Current.NativeWindowHandle);
+            int Current() => (int)SendMessage(handle, TCM_GETCURSEL, IntPtr.Zero, IntPtr.Zero);
+            var settled = Stopwatch.StartNew();
+            WaitUntil(() =>
+            {
+                int current = Current();
+                tabLog.Add("tab " + current + " -> " + index);
+                if (current == index) return settled.Elapsed.TotalSeconds >= 1;
+                tabs.SetFocus();
+                PressCtrl((byte)(current < index ? VK_NEXT : VK_PRIOR));
+                try { WaitUntil(() => Current() != current, 3, "the tab to move"); } catch (TimeoutException) { }
+                settled.Restart();
+                return false;
+            }, 30, "the 「" + name + "」 tab");
+        }
+
+        static void PressCtrl(byte key)
+        {
+            keybd_event(VK_CONTROL, 0, 0, IntPtr.Zero);
+            keybd_event(key, 0, 0, IntPtr.Zero);
+            keybd_event(key, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+        }
+
+        /// <summary>Gives the control keyboard focus, as clicking into it does (some SongMgr handlers act only on a focused control).</summary>
+        public void Focus(string id) => ById(id).SetFocus();
+
+        /// <summary>Focuses list box <paramref name="listId"/> and selects its item <paramref name="item"/>.</summary>
+        public void SelectListItem(string listId, string item)
+        {
+            AutomationElement list = ById(listId);
+            list.SetFocus();
+            AutomationElement option = null;
+            WaitUntil(() => (option = list.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, item)).Cast<AutomationElement>()
+                .FirstOrDefault(o => o.Current.ControlType == ControlType.ListItem)) != null, 10, item + " in " + listId);
+            ((SelectionItemPattern)option.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
+        }
+
+        AutomationElement FindRowCell(string gridId, string firstCell)
         {
             AutomationElement grid = ById(gridId);
             AutomationElement cell = null;
@@ -353,13 +488,21 @@ namespace SongMgr.Tests.EndToEnd
                 return false;
             }, 30, "row " + firstCell + " in " + gridId);
 
-            // UI Automation has no way to select a DataGridView row, so click it like a user.
-            ClickAt(cell);
+            // UI Automation has no way to select a DataGridView row, so the caller clicks it like a user.
+            return cell;
         }
 
         // MainTabControl's first tabs, in MainForm.Designer.cs order; SongMgr never hides these. (UI Automation lists
         // only the selected tab and those after it, so it cannot tell a tab's index.)
         static readonly string[] MainTabs = { "歌庫查詢", "加歌頁面", "歌手管理", "歌庫設定", "歌庫維護", "錢櫃資料", "程式設定" };
+
+        /// <summary>Selects one of the main tabs and waits until it is the one on show.</summary>
+        public void GoToTab(string name)
+        {
+            int index = Array.IndexOf(MainTabs, name);
+            if (index < 0) throw new InvalidOperationException("not a fixed main tab: " + name);
+            MoveTabTo(ById("MainTabControl"), index, name);
+        }
 
         /// <summary>
         /// Moves the main tab control one tab towards <paramref name="name"/> with Ctrl+PageDown / Ctrl+PageUp, as a
@@ -382,17 +525,18 @@ namespace SongMgr.Tests.EndToEnd
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
         }
 
-        void ClickAt(AutomationElement target)
+        /// <param name="foreground">Bring the main window to the front first; not for a 右鍵選單, which would close.</param>
+        void ClickAt(AutomationElement target, bool right = false, bool foreground = true)
         {
             IntPtr previous = SetThreadDpiAwarenessContext(new IntPtr(-4)); // per-monitor v2: same pixels as the bounding rectangle
             try
             {
-                SetForegroundWindow(new IntPtr(main.Current.NativeWindowHandle));
+                if (foreground) SetForegroundWindow(new IntPtr(main.Current.NativeWindowHandle));
                 System.Windows.Rect r = target.Current.BoundingRectangle;
                 SetCursorPos((int)(r.X + r.Width / 2), (int)(r.Y + r.Height / 2));
                 Thread.Sleep(150);
-                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, IntPtr.Zero);
-                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, IntPtr.Zero);
+                mouse_event(right ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN, 0, 0, 0, IntPtr.Zero);
+                mouse_event(right ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_LEFTUP, 0, 0, 0, IntPtr.Zero);
             }
             finally
             {
@@ -454,7 +598,7 @@ namespace SongMgr.Tests.EndToEnd
             catch (UnauthorizedAccessException) { }
         }
 
-        const int MOUSEEVENTF_LEFTDOWN = 0x02, MOUSEEVENTF_LEFTUP = 0x04, TCM_GETCURSEL = 0x130B, KEYEVENTF_KEYUP = 0x2;
+        const int MOUSEEVENTF_LEFTDOWN = 0x02, MOUSEEVENTF_LEFTUP = 0x04, MOUSEEVENTF_RIGHTDOWN = 0x08, MOUSEEVENTF_RIGHTUP = 0x10, TCM_GETCURSEL = 0x130B, KEYEVENTF_KEYUP = 0x2;
         const byte VK_CONTROL = 0x11, VK_PRIOR = 0x21, VK_NEXT = 0x22;
         [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
